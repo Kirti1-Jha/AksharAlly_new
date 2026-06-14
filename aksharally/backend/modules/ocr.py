@@ -1,10 +1,17 @@
 import cv2
 import numpy as np
 from PIL import Image
-import easyocr
+import pytesseract
 
-# Supports English + Hindi (Devanagari)
-reader = easyocr.Reader(['en', 'hi'], gpu=False)
+try:
+    import easyocr
+    reader = easyocr.Reader(['en', 'hi'], gpu=False)
+    EASYOCR_AVAILABLE = True
+    print("✅ EasyOCR loaded successfully")
+except Exception as e:
+    EASYOCR_AVAILABLE = False
+    reader = None
+    print(f"⚠️ EasyOCR not available ({e}), falling back to pytesseract")
 
 
 def preprocess_image(image_np):
@@ -15,21 +22,17 @@ def preprocess_image(image_np):
 
     height, width = gray.shape
 
-    # Resize small images
     if height < 1000 or width < 1000:
         gray = cv2.resize(
             gray, None, fx=1.5, fy=1.5,
             interpolation=cv2.INTER_CUBIC
         )
 
-    # Contrast enhancement
     clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
     enhanced = clahe.apply(gray)
 
-    # Noise removal
     denoised = cv2.fastNlMeansDenoising(enhanced, h=10)
 
-    # Better for Devanagari text
     thresh = cv2.adaptiveThreshold(
         denoised,
         255,
@@ -51,10 +54,14 @@ def extract_text(image_input, language="en"):
 
     processed = preprocess_image(image_np)
 
-    results = reader.readtext(
-        processed,
-        detail=0,
-        paragraph=True
-    )
-
-    return " ".join(results).strip()
+    if EASYOCR_AVAILABLE:
+        results = reader.readtext(
+            processed,
+            detail=0,
+            paragraph=True
+        )
+        return " ".join(results).strip()
+    else:
+        lang_code = "hin+eng" if language == "hi" else "eng"
+        text = pytesseract.image_to_string(processed, lang=lang_code)
+        return text.strip()
