@@ -8,3 +8,5 @@ easyocr
 google-genai
 python-dotenv
 firebase-admin
+pymupdf
+python-docx

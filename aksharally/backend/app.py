@@ -6,6 +6,7 @@ from flask_cors import CORS
 from routes.ocr_routes import ocr_bp
 from routes.simplify_routes import simplify_bp
 from routes.pipeline_routes import pipeline_bp
+from routes.input_routes import input_bp
 
 # Load environment variables from .env file
 load_dotenv()
@@ -21,6 +22,7 @@ app.register_blueprint(ocr_bp)
 app.register_blueprint(simplify_bp)
 app.register_blueprint(pipeline_bp)
 app.register_blueprint(auth_bp, url_prefix="/auth")
+app.register_blueprint(input_bp)
 
 # Health check endpoint (for testing)
 @app.route("/health")

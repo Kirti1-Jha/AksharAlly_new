@@ -1,0 +1,99 @@
+Analyze my existing AksharAlly project and implement a complete Input Processing Module without breaking existing functionality.
+
+Project Goal:
+
+AksharAlly is an accessibility platform for dyslexic users. The Input Processing Module should accept content from multiple sources and convert everything into clean extracted text that can later be passed to formatting and text-to-speech services.
+
+Requirements:
+
+Supported Input Types
+Direct text input
+User enters text manually.
+Validate and clean the text.
+Image upload
+Support JPG, JPEG, PNG, and WEBP.
+Extract text using OCR.
+Return extracted text.
+Camera capture
+Add support for images captured from the device camera.
+Frontend should send the captured image to the backend.
+Backend should process it exactly like a normal image upload.
+PDF upload
+Extract text from text-based PDFs.
+If extraction fails or PDF is scanned, automatically use OCR.
+DOCX upload
+Extract text from Word documents.
+Architecture Requirements
+
+Create a modular structure:
+
+input_processing/
+│
+├── image_processor
+├── pdf_processor
+├── docx_processor
+├── text_processor
+├── ocr_service
+└── input_router
+
+Each processor should have a single responsibility.
+
+API Requirements
+
+Create a unified endpoint:
+
+POST /api/process-input
+
+The endpoint should detect the input type and route it to the correct processor.
+
+Do not create separate endpoints for every file type unless necessary.
+
+Standard Response Format
+
+Regardless of input type, return:
+
+{
+  "status": "success",
+  "sourceType": "image",
+  "extractedText": "...",
+  "characterCount": 0,
+  "wordCount": 0
+}
+
+Every processor should return the same structure.
+
+Error Handling
+
+Handle:
+
+Unsupported file types
+Empty uploads
+Corrupted files
+OCR failures
+PDF extraction failures
+Large file uploads
+
+Return meaningful error messages.
+
+Code Quality
+Keep the implementation modular and scalable.
+Add comments explaining major functions.
+Reuse code wherever possible.
+Follow best practices for file uploads and security.
+Integration Requirements
+Review the current project structure before making changes.
+Integrate this module into the existing backend.
+Show every file that is created or modified.
+Explain why each change was made.
+Do not remove or break existing features.
+Final Goal
+
+After implementation, AksharAlly should be able to accept:
+
+Typed text
+Uploaded images
+Camera-captured images
+PDF files
+DOCX files
+
+and convert all of them into clean extracted text through a single processing pipeline.
