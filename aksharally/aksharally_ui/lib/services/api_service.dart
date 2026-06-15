@@ -35,29 +35,26 @@ class ApiService {
   /// 🖼 IMAGE OCR + SIMPLIFICATION
   /// ================================
   static Future<String> processImage(File imageFile) async {
-    final uri = Uri.parse('$baseUrl/process/ocr-format');
+    final uri = Uri.parse('$baseUrl/api/format-text');           // ✅ correct endpoint
 
     try {
       print("📡 Sending IMAGE request to: $uri");
       print("🖼 Image path: ${imageFile.path}");
 
-      final headers = await _getHeaders();
-
+      // No auth header — /api/format-text is unauthenticated
       final request = http.MultipartRequest('POST', uri);
-
-      // ✅ Attach headers
-      request.headers.addAll(headers);
 
       request.fields['language'] = 'hi';
 
       request.files.add(
         await http.MultipartFile.fromPath(
-          'image',
+          'file',                                                 // ✅ correct field name
           imageFile.path,
         ),
       );
 
-      final streamedResponse = await request.send();
+      final streamedResponse = await request.send()
+          .timeout(const Duration(seconds: 30));                  // ✅ 30-second timeout
       final response = await http.Response.fromStream(streamedResponse);
 
       print("📥 Status Code: ${response.statusCode}");
@@ -65,8 +62,8 @@ class ApiService {
 
       final data = json.decode(response.body);
 
-      if (response.statusCode == 200 && data['success'] == true) {
-        return data['formatted_text'] ?? "No text returned";
+      if (response.statusCode == 200) {                          // ✅ HTTP status check only
+        return data['processedText'] ?? "No text returned";      // ✅ correct response key
       } else {
         throw Exception(data['error'] ?? "Unknown backend error");
       }
