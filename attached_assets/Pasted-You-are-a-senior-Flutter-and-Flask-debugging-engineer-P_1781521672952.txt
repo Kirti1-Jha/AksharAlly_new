@@ -1,0 +1,84 @@
+You are a senior Flutter and Flask debugging engineer.
+
+Project: AksharAlly
+
+Current Situation:
+
+* Flutter app builds successfully.
+* App launches on a physical Android device.
+* User can select an image.
+* When the image is submitted, the loading indicator spins indefinitely.
+* No formatted text is displayed.
+* Backend changes have already been made to align API response fields with the Flutter FormatResult model.
+
+I suspect there may be a communication issue between the Flutter frontend and Flask backend.
+
+Your task is to diagnose the connection between frontend and backend.
+
+Do NOT redesign the UI.
+Do NOT create new folders.
+Do NOT refactor unrelated code.
+
+Investigation Steps:
+
+1. Identify the exact API endpoint being called from Flutter.
+
+2. Identify the exact backend route that should receive the request.
+
+3. Verify that the frontend URL matches the backend URL.
+
+4. Check for localhost / 127.0.0.1 issues on a physical Android device.
+
+5. Trace the complete request lifecycle:
+   Flutter Button
+   → API Service
+   → HTTP Request
+   → Flask Route
+   → OCR
+   → Formatter
+   → JSON Response
+   → Flutter Response Parsing
+   → UI Update
+
+6. Add temporary debug logging at:
+
+   * Flutter request sent
+   * Flutter response received
+   * Backend request received
+   * OCR started
+   * OCR completed
+   * Formatting started
+   * Formatting completed
+   * Response sent
+
+7. Verify:
+
+   * Request actually leaves Flutter.
+   * Request reaches Flask.
+   * Flask returns a response.
+   * Flutter receives the response.
+   * FormatResult.fromJson successfully parses the response.
+
+8. Check for:
+
+   * Timeouts
+   * Network errors
+   * Missing awaits
+   * Infinite loading states
+   * Swallowed exceptions
+   * Incorrect API URLs
+   * Parsing failures
+
+Output Required:
+
+A. Frontend API URL being used.
+B. Backend route being called.
+C. Whether the request reaches the backend.
+D. Whether the backend returns a response.
+E. Whether Flutter receives the response.
+F. Exact point where the process stops.
+G. Most likely root cause.
+H. Smallest fix required.
+
+Do not modify business logic until the root cause is proven with logs.
+First show your investigation findings.
