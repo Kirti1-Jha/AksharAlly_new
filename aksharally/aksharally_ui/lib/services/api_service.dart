@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'auth_service.dart';
+import '../models/format_result.dart';
 
 class ApiService {
 
@@ -32,29 +33,36 @@ class ApiService {
 
 
   /// ================================
-  /// 🖼 IMAGE OCR + SIMPLIFICATION
+  /// 🖼 IMAGE OCR + DYSLEXIA FORMATTING
+  /// Calls /api/format-text — no auth required.
+  /// Returns a FormatResult with processedText and all typography values.
   /// ================================
-  static Future<String> processImage(File imageFile) async {
-    final uri = Uri.parse('$baseUrl/api/format-text');           // ✅ correct endpoint
+  static Future<FormatResult> processImage(
+    File imageFile, {
+    String profile = 'moderate',
+  }) async {
+    final uri = Uri.parse('$baseUrl/api/format-text');
 
     try {
       print("📡 Sending IMAGE request to: $uri");
       print("🖼 Image path: ${imageFile.path}");
+      print("📐 Profile: $profile");
 
       // No auth header — /api/format-text is unauthenticated
       final request = http.MultipartRequest('POST', uri);
 
       request.fields['language'] = 'hi';
+      request.fields['profile']  = profile;            // mild | moderate | severe
 
       request.files.add(
         await http.MultipartFile.fromPath(
-          'file',                                                 // ✅ correct field name
+          'file',                                       // field name expected by backend
           imageFile.path,
         ),
       );
 
       final streamedResponse = await request.send()
-          .timeout(const Duration(seconds: 30));                  // ✅ 30-second timeout
+          .timeout(const Duration(seconds: 30));
       final response = await http.Response.fromStream(streamedResponse);
 
       print("📥 Status Code: ${response.statusCode}");
@@ -62,8 +70,8 @@ class ApiService {
 
       final data = json.decode(response.body);
 
-      if (response.statusCode == 200) {                          // ✅ HTTP status check only
-        return data['processedText'] ?? "No text returned";      // ✅ correct response key
+      if (response.statusCode == 200) {
+        return FormatResult.fromJson(data);             // parse full model
       } else {
         throw Exception(data['error'] ?? "Unknown backend error");
       }
@@ -76,44 +84,45 @@ class ApiService {
 
 
   /// ================================
-  /// 📝 TEXT SIMPLIFICATION
+  /// 📝 TEXT SIMPLIFICATION (Gemini AI)
+  /// Rewrites / simplifies text — separate from formatting.
   /// ================================
   static Future<String> simplifyText(String text) async {
-  final auth = AuthService();
-  final token = await auth.getToken();
+    final auth = AuthService();
+    final token = await auth.getToken();
 
-  final uri = Uri.parse('$baseUrl/process/text-format');
+    final uri = Uri.parse('$baseUrl/process/text-format');
 
-  try {
-    print("📡 Sending TEXT request to: $uri");
-    print("📝 Input text: $text");
+    try {
+      print("📡 Sending TEXT request to: $uri");
+      print("📝 Input text: $text");
 
-    final response = await http.post(
-      uri,
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": "Bearer $token",
-      },
-      body: json.encode({
-        "text": text,
-        "language": "hi",
-      }),
-    );
+      final response = await http.post(
+        uri,
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $token",
+        },
+        body: json.encode({
+          "text": text,
+          "language": "hi",
+        }),
+      );
 
-    print("📥 Status Code: ${response.statusCode}");
-    print("📥 Response Body: ${response.body}");
+      print("📥 Status Code: ${response.statusCode}");
+      print("📥 Response Body: ${response.body}");
 
-    final data = json.decode(response.body);
+      final data = json.decode(response.body);
 
-    if (response.statusCode == 200 && data['success'] == true) {
-      return data['formatted_text'];
-    } else {
-      throw Exception(data['error']);
+      if (response.statusCode == 200 && data['success'] == true) {
+        return data['formatted_text'];
+      } else {
+        throw Exception(data['error']);
+      }
+
+    } catch (e) {
+      print("❌ TEXT API ERROR: $e");
+      throw Exception("Connection failed: $e");
     }
-
-  } catch (e) {
-    print("❌ TEXT API ERROR: $e");
-    throw Exception("Connection failed: $e");
   }
-}
 }
