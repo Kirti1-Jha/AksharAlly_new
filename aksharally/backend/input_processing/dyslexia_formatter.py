@@ -16,31 +16,45 @@ Visual pipeline (words untouched at every step):
 import re
 
 # ── Reading profiles ──────────────────────────────────────────────────────────
+# Field names match Flutter TextStyle parameters exactly so the client can
+# pass them directly without any mapping:
+#   fontSize         → TextStyle.fontSize
+#   lineHeight       → TextStyle.height          (multiplier, e.g. 1.8)
+#   letterSpacing    → TextStyle.letterSpacing   (logical pixels)
+#   wordSpacing      → TextStyle.wordSpacing     (logical pixels)
+#   paragraphSpacing → SizedBox height between paragraph chunks
+#   recommendedFont  → font-family string for google_fonts lookup
 PROFILES = {
     "mild": {
         "profile": "mild",
-        "font": "Lexend",
-        "fontSize": 18,
-        "lineSpacing": 1.5,
+        "recommendedFont": "Lexend",
+        "fontSize": 18.0,
+        "lineHeight": 1.6,
         "letterSpacing": 0.5,
+        "wordSpacing": 2.0,
+        "paragraphSpacing": 12.0,
         "sentencesPerChunk": 3,
         "wordsPerLine": 12,
     },
     "moderate": {
         "profile": "moderate",
-        "font": "Lexend",
-        "fontSize": 20,
-        "lineSpacing": 1.8,
+        "recommendedFont": "Lexend",
+        "fontSize": 20.0,
+        "lineHeight": 1.8,
         "letterSpacing": 1.0,
+        "wordSpacing": 4.0,
+        "paragraphSpacing": 16.0,
         "sentencesPerChunk": 2,
         "wordsPerLine": 10,
     },
     "severe": {
         "profile": "severe",
-        "font": "Lexend",
-        "fontSize": 22,
-        "lineSpacing": 2.0,
+        "recommendedFont": "Lexend",
+        "fontSize": 22.0,
+        "lineHeight": 2.0,
         "letterSpacing": 1.5,
+        "wordSpacing": 6.0,
+        "paragraphSpacing": 20.0,
         "sentencesPerChunk": 1,
         "wordsPerLine": 8,
     },

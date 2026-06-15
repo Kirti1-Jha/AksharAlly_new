@@ -38,7 +38,7 @@ def format_text_endpoint():
         type: string
         enum: [mild, moderate, severe]
         default: moderate
-        description: Reading profile — controls font size, line spacing, and letter spacing
+        description: Reading profile — controls font size, line height, letter spacing, and word spacing
       - in: formData
         name: text
         type: string
@@ -67,27 +67,30 @@ def format_text_endpoint():
             originalText:
               type: string
               example: As he leaned down he saw his reflection in the water.
-            formattedText:
+            processedText:
               type: string
-              example: As he leaned down he saw his reflection in the water.
-            readingProfile:
-              type: object
-              properties:
-                profile:
-                  type: string
-                  example: moderate
-                font:
-                  type: string
-                  example: Lexend
-                fontSize:
-                  type: integer
-                  example: 20
-                lineSpacing:
-                  type: number
-                  example: 1.8
-                letterSpacing:
-                  type: number
-                  example: 1.0
+              example: "As he leaned down he saw his reflection\nin the water and gasped in surprise.\n\nThe image stared back at him."
+            profile:
+              type: string
+              example: moderate
+            fontSize:
+              type: number
+              example: 20.0
+            lineHeight:
+              type: number
+              example: 1.8
+            letterSpacing:
+              type: number
+              example: 1.0
+            wordSpacing:
+              type: number
+              example: 4.0
+            paragraphSpacing:
+              type: number
+              example: 16.0
+            recommendedFont:
+              type: string
+              example: Lexend
             metadata:
               type: object
               properties:
@@ -119,20 +122,30 @@ def format_text_endpoint():
     extraction = route_input(request, language)
 
     if extraction.get("status") != "success":
-        # Propagate the extraction error directly
         return jsonify(extraction), 400
 
     raw_text    = extraction["extractedText"]
     source_type = extraction["sourceType"]
 
     # ── Step 2: apply dyslexia formatting (no AI, no rewrites) ───────────────
-    formatting = format_text(raw_text, profile)
+    formatting  = format_text(raw_text, profile)
+    rp          = formatting["readingProfile"]   # already stripped of internal keys
 
+    # ── Step 3: return flat response — all typography fields at the top level
+    # so Flutter's FormatResult.fromJson() can read them without any mapping.
     return jsonify({
-        "status":        "success",
-        "sourceType":    source_type,
-        "originalText":  raw_text,
-        "formattedText": formatting["formattedText"],
-        "readingProfile": formatting["readingProfile"],
-        "metadata":      formatting["metadata"],
+        "status":           "success",
+        "sourceType":       source_type,
+        "originalText":     raw_text,
+        # FormatResult fields (flat, matching FormatResult.fromJson exactly)
+        "processedText":    formatting["formattedText"],
+        "profile":          rp["profile"],
+        "fontSize":         rp["fontSize"],
+        "lineHeight":       rp["lineHeight"],
+        "letterSpacing":    rp["letterSpacing"],
+        "wordSpacing":      rp["wordSpacing"],
+        "paragraphSpacing": rp["paragraphSpacing"],
+        "recommendedFont":  rp["recommendedFont"],
+        # Extra info the Flutter client can use or ignore
+        "metadata":         formatting["metadata"],
     }), 200
