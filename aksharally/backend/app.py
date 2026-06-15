@@ -9,6 +9,8 @@ from routes.ocr_routes import ocr_bp
 from routes.simplify_routes import simplify_bp
 from routes.pipeline_routes import pipeline_bp
 from routes.input_routes import input_bp
+from routes.format_routes import format_bp
+from routes.simplify_text_routes import simplify_text_bp
 
 load_dotenv()
 
@@ -37,20 +39,25 @@ swagger_template = {
         "title": "AksharAlly API",
         "description": (
             "Backend API for AksharAlly — an accessibility platform for dyslexic users.\n\n"
-            "**Input Processing Module** (`/api/process-input`) accepts typed text, "
-            "image uploads, camera captures, PDFs, and DOCX files through a single endpoint.\n\n"
-            "**Legacy endpoints** (`/process/*`) are the original OCR and simplification routes."
+            "## Two separate features\n\n"
+            "**1. Dyslexia Formatter** (`/api/format-text`) — extracts text and restructures it "
+            "for readability. Words are NEVER changed, translated, or simplified.\n\n"
+            "**2. Text Simplification** (`/api/simplify-text`) — optional AI step (Gemini) that "
+            "rewrites difficult vocabulary. Only called when the user explicitly requests it.\n\n"
+            "**Input pipeline** (`/api/process-input`) — raw extraction only (no formatting).\n\n"
+            "**Legacy endpoints** (`/process/*`) — original OCR and simplification routes."
         ),
         "version": "1.0.0",
         "contact": {"email": "support@aksharally.com"},
     },
     "tags": [
-        {"name": "Input Processing", "description": "Unified multi-source input pipeline"},
-        {"name": "OCR",              "description": "Direct image-to-text extraction"},
-        {"name": "Simplification",   "description": "AI dyslexia-friendly text simplification"},
-        {"name": "Pipeline",         "description": "Protected OCR + simplification combo"},
-        {"name": "Auth",             "description": "User registration and token verification"},
-        {"name": "System",           "description": "Health check and info routes"},
+        {"name": "Dyslexia Formatter", "description": "Extract + format for readability — no AI, no rewrites"},
+        {"name": "Input Processing",   "description": "Raw multi-source extraction pipeline"},
+        {"name": "OCR",                "description": "Direct image-to-text extraction (legacy)"},
+        {"name": "Simplification",     "description": "AI text simplification via Gemini (legacy)"},
+        {"name": "Pipeline",           "description": "Protected OCR + simplification combo (legacy)"},
+        {"name": "Auth",               "description": "User registration and token verification"},
+        {"name": "System",             "description": "Health check and info routes"},
     ],
     "consumes": ["application/json", "multipart/form-data"],
     "produces": ["application/json"],
@@ -59,11 +66,13 @@ swagger_template = {
 Swagger(app, config=swagger_config, template=swagger_template)
 
 # ── Blueprints ────────────────────────────────────────────────────────────────
+app.register_blueprint(format_bp)
+app.register_blueprint(simplify_text_bp)
+app.register_blueprint(input_bp)
 app.register_blueprint(ocr_bp)
 app.register_blueprint(simplify_bp)
 app.register_blueprint(pipeline_bp)
 app.register_blueprint(auth_bp, url_prefix="/auth")
-app.register_blueprint(input_bp)
 
 
 # ── System routes ─────────────────────────────────────────────────────────────
