@@ -12,8 +12,13 @@ import '../theme/app_settings.dart';
 
 class ReaderScreen extends StatefulWidget {
   final String? initialText;
+  final FormatResult? initialFormatResult;   // pre-processed result from UploadFileScreen
 
-  const ReaderScreen({super.key, this.initialText});
+  const ReaderScreen({
+    super.key,
+    this.initialText,
+    this.initialFormatResult,
+  });
 
   @override
   State<ReaderScreen> createState() => _ReaderScreenState();
@@ -39,6 +44,11 @@ class _ReaderScreenState extends State<ReaderScreen> {
   int currentIndex = -1;
   Timer? _timer;
 
+  // ── paragraph sentinel ────────────────────────────────────────────────────
+  // Replaces \n\n in the words list so the renderer can insert paragraph gaps.
+  // The sentinel is never spoken by TTS (TTS reads simplifiedText directly).
+  static const String _para = '¶';
+
   // ── theme colours ─────────────────────────────────────────────────────────
   static const blueGradient   = [Color(0xFF1565C0), Color(0xFF42A5F5)];
   static const creamGradient  = [Color(0xFFFFF3E0), Color(0xFFFFE0B2)];
@@ -49,20 +59,53 @@ class _ReaderScreenState extends State<ReaderScreen> {
   void initState() {
     super.initState();
     _tts.init();
-    if (widget.initialText != null) {
+    if (widget.initialFormatResult != null) {
+      // Document arrived pre-formatted — load without an API call
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _loadInitialFormatResult(widget.initialFormatResult!);
+      });
+    } else if (widget.initialText != null) {
       simplifyInitialText();
     }
   }
 
-  // ── initial-text path (AI simplify — unchanged) ───────────────────────────
+  // ── word-splitting that removes embedded \n / \n\n ───────────────────────
+  // \n\n becomes a paragraph-sentinel token (¶).
+  // \n  becomes a space.
+  // Result: a flat list safe to render word-by-word with proper paragraph gaps.
+  List<String> _splitToWords(String text) {
+    return text
+        .replaceAll('\r\n', '\n')
+        .replaceAll('\n\n', ' $_para ')    // double newline → paragraph sentinel
+        .replaceAll('\n', ' ')             // single newline → space
+        .split(' ')
+        .where((w) => w.isNotEmpty)
+        .toList();
+  }
+
+  // ── load a pre-processed FormatResult (from UploadFileScreen) ────────────
+  void _loadInitialFormatResult(FormatResult r) {
+    setState(() {
+      _formatResult  = r;
+      simplifiedText = r.processedText;
+      words          = _splitToWords(r.processedText);
+    });
+    _saveToLibrary(r.processedText, r.sourceType);
+    if (autoRead) {
+      _tts.setRate(speechRate).then((_) => startReading());
+    }
+  }
+
+  // ── initial-text path: AI simplify (enter-text flow — unchanged) ──────────
   Future<void> simplifyInitialText() async {
     setState(() { isLoading = true; });
     try {
       final result = await ApiService.simplifyText(widget.initialText!);
       setState(() {
         simplifiedText = result;
-        words = result.split(" ");
+        words          = _splitToWords(result);
       });
+      _saveToLibrary(result, 'text');
       if (autoRead) {
         await _tts.setRate(speechRate);
         startReading();
@@ -74,6 +117,30 @@ class _ReaderScreenState extends State<ReaderScreen> {
     }
   }
 
+  // ── library save ──────────────────────────────────────────────────────────
+  void _saveToLibrary(String content, String sourceType) {
+    if (content.isEmpty ||
+        content.startsWith('❌') ||
+        content.startsWith('⚠️')) return;
+
+    final wordCount = content
+        .split(' ')
+        .where((w) => w.isNotEmpty)
+        .length;
+    final now = DateTime.now();
+    final label = sourceType.isEmpty ? 'Document' : _cap(sourceType);
+
+    LibraryStorage.addItem(LibraryItem(
+      title:      '$label · ${wordCount}w · ${now.day}/${now.month}/${now.year}',
+      content:    content,
+      date:       now,
+      sourceType: sourceType,
+    ));
+  }
+
+  String _cap(String s) =>
+      s.isEmpty ? s : '${s[0].toUpperCase()}${s.substring(1)}';
+
   // ── theme helpers ─────────────────────────────────────────────────────────
   Color getBackgroundColor() {
     if (AppSettings.themeMode == 1) return const Color(0xFF1E1E1E);
@@ -81,9 +148,8 @@ class _ReaderScreenState extends State<ReaderScreen> {
     return Colors.white;
   }
 
-  Color getTextColor() {
-    return AppSettings.themeMode == 1 ? Colors.white : Colors.black;
-  }
+  Color getTextColor() =>
+      AppSettings.themeMode == 1 ? Colors.white : Colors.black;
 
   // ── image picker ──────────────────────────────────────────────────────────
   Future<void> pickImage() async {
@@ -114,8 +180,9 @@ class _ReaderScreenState extends State<ReaderScreen> {
       setState(() {
         _formatResult  = result;
         simplifiedText = result.processedText;
-        words          = result.processedText.split(" ");
+        words          = _splitToWords(result.processedText);
       });
+      _saveToLibrary(result.processedText, 'image');
       if (autoRead) {
         await _tts.setRate(speechRate);
         startReading();
@@ -142,8 +209,9 @@ class _ReaderScreenState extends State<ReaderScreen> {
       final result = await ApiService.simplifyText(simplifiedText);
       setState(() {
         simplifiedText = result;
-        words          = result.split(" ");
+        words          = _splitToWords(result);
       });
+      _saveToLibrary(result, 'simplified');
       if (autoRead) {
         await _tts.setRate(speechRate);
         startReading();
@@ -156,6 +224,8 @@ class _ReaderScreenState extends State<ReaderScreen> {
   }
 
   // ── TTS ───────────────────────────────────────────────────────────────────
+  // TTS reads simplifiedText (the raw string with \n for natural pauses).
+  // The words list (with ¶ sentinels) is only used for visual rendering.
   void startReading() async {
     if (simplifiedText.isEmpty) return;
     await _tts.setRate(speechRate);
@@ -177,35 +247,67 @@ class _ReaderScreenState extends State<ReaderScreen> {
     setState(() { currentIndex = -1; });
   }
 
-  // ── text display with FormatResult typography ─────────────────────────────
+  // ── single word widget ────────────────────────────────────────────────────
+  Widget _wordWidget(int index) {
+    return Text(
+      words[index],
+      style: TextStyle(
+        fontFamily:    _formatResult?.recommendedFont,
+        fontSize:      _formatResult?.fontSize      ?? AppSettings.fontSize,
+        height:        _formatResult?.lineHeight    ?? AppSettings.lineSpacing,
+        letterSpacing: _formatResult?.letterSpacing,
+        color: index == currentIndex ? Colors.red : getTextColor(),
+        fontWeight:
+            index == currentIndex ? FontWeight.bold : FontWeight.normal,
+      ),
+    );
+  }
+
+  // ── paragraph-aware text renderer ────────────────────────────────────────
+  // Groups words into Wrap blocks. When a ¶ sentinel is encountered the
+  // current Wrap is closed and a SizedBox of paragraphSpacing is inserted.
   Widget buildHighlightedText() {
     if (simplifiedText.isEmpty) {
       return Text(
         'Formatted text will appear here...',
         style: TextStyle(
           fontSize: AppSettings.fontSize,
-          color: getTextColor(),
+          color:    getTextColor(),
         ),
       );
     }
 
-    return Wrap(
-      spacing:    _formatResult?.wordSpacing ?? 6.0,
-      runSpacing: 10,
-      children: List.generate(words.length, (index) {
-        return Text(
-          words[index],
-          style: TextStyle(
-            fontFamily:    _formatResult?.recommendedFont,
-            fontSize:      _formatResult?.fontSize      ?? AppSettings.fontSize,
-            height:        _formatResult?.lineHeight    ?? AppSettings.lineSpacing,
-            letterSpacing: _formatResult?.letterSpacing,
-            color: index == currentIndex ? Colors.red : getTextColor(),
-            fontWeight:
-                index == currentIndex ? FontWeight.bold : FontWeight.normal,
-          ),
-        );
-      }),
+    final double wSpacing = _formatResult?.wordSpacing    ?? 6.0;
+    final double pSpacing = _formatResult?.paragraphSpacing ?? 16.0;
+
+    final List<Widget> sections = [];
+    List<Widget> currentParagraph = [];
+
+    void flushParagraph() {
+      if (currentParagraph.isNotEmpty) {
+        sections.add(Wrap(
+          spacing:    wSpacing,
+          runSpacing: 4.0,
+          children:   List.from(currentParagraph),
+        ));
+        currentParagraph = [];
+      }
+    }
+
+    for (int i = 0; i < words.length; i++) {
+      if (words[i] == _para) {
+        flushParagraph();
+        sections.add(SizedBox(height: pSpacing));
+      } else {
+        currentParagraph.add(_wordWidget(i));
+      }
+    }
+    flushParagraph();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize:       MainAxisSize.min,
+      children:           sections,
     );
   }
 
@@ -219,13 +321,13 @@ class _ReaderScreenState extends State<ReaderScreen> {
         return GestureDetector(
           onTap: () => setState(() => _selectedProfile = p),
           child: Container(
-            margin: const EdgeInsets.symmetric(horizontal: 4),
+            margin:  const EdgeInsets.symmetric(horizontal: 4),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
               gradient: isSelected
                   ? const LinearGradient(colors: blueGradient)
                   : null,
-              color: isSelected ? null : Colors.grey.shade200,
+              color:        isSelected ? null : Colors.grey.shade200,
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
@@ -461,7 +563,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                    color:     Colors.black.withOpacity(0.1),
+                    color:      Colors.black.withOpacity(0.1),
                     blurRadius: 6,
                   ),
                 ],
