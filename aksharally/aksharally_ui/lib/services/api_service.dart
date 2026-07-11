@@ -11,7 +11,7 @@ class ApiService {
   /// ================================
 
   // ✅ REAL PHONE (same WiFi)
-  static const String baseUrl = "http://192.168.0.101:5000";
+  static const String baseUrl = "http://192.168.0.102:5000";
 
   // ✅ ANDROID EMULATOR (use this if emulator)
   // static const String baseUrl = "http://10.0.2.2:5000";
