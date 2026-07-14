@@ -261,6 +261,13 @@ class _ReaderScreenState extends State<ReaderScreen> {
     setState(() { currentIndex = -1; });
   }
 
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _tts.stop();
+    super.dispose();
+  }
+
   // ── single word widget ────────────────────────────────────────────────────
   Widget _wordWidget(int index) {
     return Text(
