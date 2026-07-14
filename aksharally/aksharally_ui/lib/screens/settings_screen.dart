@@ -10,9 +10,10 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  double fontSize = AppSettings.fontSize;
+  double fontSize    = AppSettings.fontSize;
   double lineSpacing = AppSettings.lineSpacing;
-  int selectedTheme = AppSettings.themeMode;
+  int    selectedTheme    = AppSettings.themeMode;
+  String selectedLanguage = AppSettings.language;
 
   Color getBackgroundColor() {
     if (selectedTheme == 1) return const Color(0xFF1E1E1E);
@@ -20,9 +21,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Colors.white;
   }
 
-  Color getTextColor() {
-    return selectedTheme == 1 ? Colors.white : Colors.black;
-  }
+  Color getTextColor() =>
+      selectedTheme == 1 ? Colors.white : Colors.black;
 
   @override
   Widget build(BuildContext context) {
@@ -31,21 +31,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
       children: [
         const SizedBox(height: 10),
 
-        Text(
-          "Accessibility Settings",
-          style: AppTheme.headingStyle,
-        ),
+        Text("Accessibility Settings", style: AppTheme.headingStyle),
 
         const SizedBox(height: 25),
 
-        /// FONT SIZE
+        // ── FONT SIZE ────────────────────────────────────────────────────
         const Text("Font Size"),
         Slider(
-          value: fontSize,
-          min: 14,
-          max: 30,
+          value:     fontSize,
+          min:       14,
+          max:       30,
           divisions: 8,
-          label: fontSize.toStringAsFixed(0),
+          label:     fontSize.toStringAsFixed(0),
           onChanged: (value) {
             setState(() {
               fontSize = value;
@@ -56,14 +53,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
         const SizedBox(height: 10),
 
-        /// LINE SPACING
+        // ── LINE SPACING ─────────────────────────────────────────────────
         const Text("Line Spacing"),
         Slider(
-          value: lineSpacing,
-          min: 1.0,
-          max: 2.5,
+          value:     lineSpacing,
+          min:       1.0,
+          max:       2.5,
           divisions: 6,
-          label: lineSpacing.toStringAsFixed(1),
+          label:     lineSpacing.toStringAsFixed(1),
           onChanged: (value) {
             setState(() {
               lineSpacing = value;
@@ -74,39 +71,52 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
         const SizedBox(height: 20),
 
-        /// THEME
+        // ── READING THEME ────────────────────────────────────────────────
         const Text("Reading Theme"),
         const SizedBox(height: 10),
-
         Row(
           children: [
             _themeButton("Light", 0),
             const SizedBox(width: 10),
-            _themeButton("Dark", 1),
+            _themeButton("Dark",  1),
             const SizedBox(width: 10),
             _themeButton("Sepia", 2),
           ],
         ),
 
+        const SizedBox(height: 24),
+
+        // ── LANGUAGE ─────────────────────────────────────────────────────
+        const Text("Language"),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            _languageButton("English", "en"),
+            const SizedBox(width: 10),
+            _languageButton("हिंदी",   "hi"),
+          ],
+        ),
+
         const SizedBox(height: 30),
 
-        /// PREVIEW
+        // ── PREVIEW ──────────────────────────────────────────────────────
         const Text("Preview"),
         const SizedBox(height: 10),
-
         Container(
-          width: double.infinity,
+          width:   double.infinity,
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: getBackgroundColor(),
+            color:        getBackgroundColor(),
             borderRadius: BorderRadius.circular(16),
           ),
           child: Text(
-            "This is how your reading text will look.",
+            selectedLanguage == 'hi'
+                ? "यह आपके पढ़ने का टेक्स्ट ऐसा दिखेगा।"
+                : "This is how your reading text will look.",
             style: TextStyle(
               fontSize: fontSize,
-              height: lineSpacing,
-              color: getTextColor(),
+              height:   lineSpacing,
+              color:    getTextColor(),
             ),
           ),
         ),
@@ -114,27 +124,60 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  // ── theme button ──────────────────────────────────────────────────────────
   Widget _themeButton(String title, int index) {
     final bool isSelected = selectedTheme == index;
-
     return Expanded(
       child: InkWell(
         onTap: () {
           setState(() {
-            selectedTheme = index;
+            selectedTheme      = index;
             AppSettings.themeMode = index;
           });
         },
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
-            color:
-                isSelected ? AppTheme.primaryGreen : Colors.grey.shade200,
+            color: isSelected
+                ? AppTheme.primaryGreen
+                : Colors.grey.shade200,
             borderRadius: BorderRadius.circular(12),
           ),
           child: Center(
             child: Text(
               title,
+              style: TextStyle(
+                color: isSelected ? Colors.white : Colors.black,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── language button ───────────────────────────────────────────────────────
+  Widget _languageButton(String label, String code) {
+    final bool isSelected = selectedLanguage == code;
+    return Expanded(
+      child: InkWell(
+        onTap: () {
+          setState(() {
+            selectedLanguage  = code;
+            AppSettings.language = code;
+          });
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? AppTheme.primaryGreen
+                : Colors.grey.shade200,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Center(
+            child: Text(
+              label,
               style: TextStyle(
                 color: isSelected ? Colors.white : Colors.black,
               ),

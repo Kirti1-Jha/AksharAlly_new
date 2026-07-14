@@ -11,13 +11,22 @@ import '../services/tts_service.dart';
 import '../theme/app_settings.dart';
 
 class ReaderScreen extends StatefulWidget {
+  /// Path A — Enter Text screen: AI-simplifies the text on open.
   final String? initialText;
-  final FormatResult? initialFormatResult;   // pre-processed result from UploadFileScreen
+
+  /// Path B — Upload File screen: displays a pre-formatted result immediately,
+  ///           no extra API call.
+  final FormatResult? initialFormatResult;
+
+  /// Path C — Library screen: displays saved content directly, no API call,
+  ///           no re-simplification.
+  final String? displayText;
 
   const ReaderScreen({
     super.key,
     this.initialText,
     this.initialFormatResult,
+    this.displayText,
   });
 
   @override
@@ -44,12 +53,10 @@ class _ReaderScreenState extends State<ReaderScreen> {
   int currentIndex = -1;
   Timer? _timer;
 
-  // ── paragraph sentinel ────────────────────────────────────────────────────
-  // Replaces \n\n in the words list so the renderer can insert paragraph gaps.
-  // The sentinel is never spoken by TTS (TTS reads simplifiedText directly).
+  // Marks paragraph breaks in the words list (never spoken by TTS).
   static const String _para = '¶';
 
-  // ── theme colours ─────────────────────────────────────────────────────────
+  // ── gradients ─────────────────────────────────────────────────────────────
   static const blueGradient   = [Color(0xFF1565C0), Color(0xFF42A5F5)];
   static const creamGradient  = [Color(0xFFFFF3E0), Color(0xFFFFE0B2)];
   static const yellowGradient = [Color(0xFFFFF59D), Color(0xFFFFF176)];
@@ -59,31 +66,35 @@ class _ReaderScreenState extends State<ReaderScreen> {
   void initState() {
     super.initState();
     _tts.init();
+
     if (widget.initialFormatResult != null) {
-      // Document arrived pre-formatted — load without an API call
+      // Path B: pre-formatted result from UploadFileScreen
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _loadInitialFormatResult(widget.initialFormatResult!);
       });
+    } else if (widget.displayText != null) {
+      // Path C: saved library content — display as-is, no API call
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _loadDisplayText(widget.displayText!);
+      });
     } else if (widget.initialText != null) {
+      // Path A: run AI simplification
       simplifyInitialText();
     }
   }
 
-  // ── word-splitting that removes embedded \n / \n\n ───────────────────────
-  // \n\n becomes a paragraph-sentinel token (¶).
-  // \n  becomes a space.
-  // Result: a flat list safe to render word-by-word with proper paragraph gaps.
+  // ── word-splitting — removes embedded \n / \n\n ───────────────────────────
   List<String> _splitToWords(String text) {
     return text
         .replaceAll('\r\n', '\n')
-        .replaceAll('\n\n', ' $_para ')    // double newline → paragraph sentinel
-        .replaceAll('\n', ' ')             // single newline → space
+        .replaceAll('\n\n', ' $_para ')
+        .replaceAll('\n', ' ')
         .split(' ')
         .where((w) => w.isNotEmpty)
         .toList();
   }
 
-  // ── load a pre-processed FormatResult (from UploadFileScreen) ────────────
+  // ── Path B: load pre-formatted result ────────────────────────────────────
   void _loadInitialFormatResult(FormatResult r) {
     setState(() {
       _formatResult  = r;
@@ -91,12 +102,21 @@ class _ReaderScreenState extends State<ReaderScreen> {
       words          = _splitToWords(r.processedText);
     });
     _saveToLibrary(r.processedText, r.sourceType);
-    if (autoRead) {
-      _tts.setRate(speechRate).then((_) => startReading());
-    }
+    if (autoRead) _tts.setRate(speechRate).then((_) => startReading());
   }
 
-  // ── initial-text path: AI simplify (enter-text flow — unchanged) ──────────
+  // ── Path C: load saved library text — no API call ─────────────────────────
+  void _loadDisplayText(String text) {
+    setState(() {
+      simplifiedText = text;
+      words          = _splitToWords(text);
+    });
+    // Do NOT call _saveToLibrary here — already in library.
+    // Do NOT call any backend endpoint.
+    if (autoRead) _tts.setRate(speechRate).then((_) => startReading());
+  }
+
+  // ── Path A: AI simplify on open (Enter Text flow) ─────────────────────────
   Future<void> simplifyInitialText() async {
     setState(() { isLoading = true; });
     try {
@@ -123,12 +143,9 @@ class _ReaderScreenState extends State<ReaderScreen> {
         content.startsWith('❌') ||
         content.startsWith('⚠️')) return;
 
-    final wordCount = content
-        .split(' ')
-        .where((w) => w.isNotEmpty)
-        .length;
-    final now = DateTime.now();
-    final label = sourceType.isEmpty ? 'Document' : _cap(sourceType);
+    final wordCount = content.split(' ').where((w) => w.isNotEmpty).length;
+    final now       = DateTime.now();
+    final label     = sourceType.isEmpty ? 'Document' : _cap(sourceType);
 
     LibraryStorage.addItem(LibraryItem(
       title:      '$label · ${wordCount}w · ${now.day}/${now.month}/${now.year}',
@@ -153,8 +170,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
 
   // ── image picker ──────────────────────────────────────────────────────────
   Future<void> pickImage() async {
-    final picker = ImagePicker();
-    final picked = await picker.pickImage(source: ImageSource.gallery);
+    final picked = await ImagePicker().pickImage(source: ImageSource.gallery);
     if (picked != null) {
       setState(() {
         selectedImage  = File(picked.path);
@@ -194,7 +210,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
     }
   }
 
-  // ── Simplify (AI) — Gemini rewrite of already-formatted text ─────────────
+  // ── Simplify (AI) ─────────────────────────────────────────────────────────
   Future<void> _onSimplifyPressed() async {
     if (simplifiedText.isEmpty ||
         simplifiedText.startsWith("⚠️") ||
@@ -224,8 +240,6 @@ class _ReaderScreenState extends State<ReaderScreen> {
   }
 
   // ── TTS ───────────────────────────────────────────────────────────────────
-  // TTS reads simplifiedText (the raw string with \n for natural pauses).
-  // The words list (with ¶ sentinels) is only used for visual rendering.
   void startReading() async {
     if (simplifiedText.isEmpty) return;
     await _tts.setRate(speechRate);
@@ -264,26 +278,21 @@ class _ReaderScreenState extends State<ReaderScreen> {
   }
 
   // ── paragraph-aware text renderer ────────────────────────────────────────
-  // Groups words into Wrap blocks. When a ¶ sentinel is encountered the
-  // current Wrap is closed and a SizedBox of paragraphSpacing is inserted.
   Widget buildHighlightedText() {
     if (simplifiedText.isEmpty) {
       return Text(
         'Formatted text will appear here...',
-        style: TextStyle(
-          fontSize: AppSettings.fontSize,
-          color:    getTextColor(),
-        ),
+        style: TextStyle(fontSize: AppSettings.fontSize, color: getTextColor()),
       );
     }
 
-    final double wSpacing = _formatResult?.wordSpacing    ?? 6.0;
+    final double wSpacing = _formatResult?.wordSpacing      ?? 6.0;
     final double pSpacing = _formatResult?.paragraphSpacing ?? 16.0;
 
     final List<Widget> sections = [];
     List<Widget> currentParagraph = [];
 
-    void flushParagraph() {
+    void flush() {
       if (currentParagraph.isNotEmpty) {
         sections.add(Wrap(
           spacing:    wSpacing,
@@ -296,13 +305,13 @@ class _ReaderScreenState extends State<ReaderScreen> {
 
     for (int i = 0; i < words.length; i++) {
       if (words[i] == _para) {
-        flushParagraph();
+        flush();
         sections.add(SizedBox(height: pSpacing));
       } else {
         currentParagraph.add(_wordWidget(i));
       }
     }
-    flushParagraph();
+    flush();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -514,7 +523,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
 
             const SizedBox(height: 10),
 
-            // ── FORMATTING INFO BAR (visible after first format) ─────────
+            // ── FORMATTING INFO BAR ───────────────────────────────────────
             if (_formatResult != null) ...[
               _formattingInfoBar(),
               const SizedBox(height: 10),

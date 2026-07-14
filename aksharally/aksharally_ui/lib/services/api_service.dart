@@ -1,83 +1,63 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
-import 'auth_service.dart';
 import '../models/format_result.dart';
+import '../theme/app_settings.dart';
 
 class ApiService {
 
   /// ================================
-  /// 🌐 BASE URL (IMPORTANT)
+  /// 🌐 BASE URL
   /// ================================
 
   // ✅ REAL PHONE (same WiFi)
-  static const String baseUrl = "http://192.168.0.101:5000";
+  static const String baseUrl = "http://192.168.1.7:5000";
 
-  // ✅ ANDROID EMULATOR (use this if emulator)
+  // ✅ ANDROID EMULATOR
   // static const String baseUrl = "http://10.0.2.2:5000";
 
 
   /// ================================
-  /// 🔐 GET AUTH HEADER
-  /// ================================
-  static Future<Map<String, String>> _getHeaders() async {
-    final auth = AuthService();
-    final token = await auth.getToken();
-
-    print("🔑 Firebase Token: $token");
-
-    return {
-      "Authorization": "Bearer $token",
-    };
-  }
-
-
-  /// ================================
-  /// 🖼 IMAGE OCR + DYSLEXIA FORMATTING
-  /// Calls /api/format-text — no auth required.
-  /// Returns a FormatResult with processedText and all typography values.
+  /// 🖼 IMAGE / FILE OCR + DYSLEXIA FORMATTING
+  /// Calls POST /api/format-text — no auth required.
+  /// Accepts images (.jpg .png .webp), PDFs, and DOCX files.
+  /// Language is read from AppSettings.language (set in Settings screen).
   /// ================================
   static Future<FormatResult> processImage(
-    File imageFile, {
+    File file, {
     String profile = 'moderate',
   }) async {
     final uri = Uri.parse('$baseUrl/api/format-text');
 
     try {
-      print("📡 Sending IMAGE request to: $uri");
-      print("🖼 Image path: ${imageFile.path}");
-      print("📐 Profile: $profile");
+      print("📡 Sending file request to: $uri");
+      print("📄 File path: ${file.path}");
+      print("📐 Profile: $profile  |  🌐 Language: ${AppSettings.language}");
 
-      // No auth header — /api/format-text is unauthenticated
       final request = http.MultipartRequest('POST', uri);
-
-      request.fields['language'] = 'hi';
-      request.fields['profile']  = profile;            // mild | moderate | severe
+      request.fields['language'] = AppSettings.language;
+      request.fields['profile']  = profile;
 
       request.files.add(
-        await http.MultipartFile.fromPath(
-          'file',                                       // field name expected by backend
-          imageFile.path,
-        ),
+        await http.MultipartFile.fromPath('file', file.path),
       );
 
-      final streamedResponse = await request.send()
-          .timeout(const Duration(seconds: 30));
-      final response = await http.Response.fromStream(streamedResponse);
+      final streamed  = await request.send().timeout(const Duration(seconds: 30));
+      final response  = await http.Response.fromStream(streamed);
 
-      print("📥 Status Code: ${response.statusCode}");
-      print("📥 Response Body: ${response.body}");
+      print("📥 Status: ${response.statusCode}");
+      print("📥 Body:   ${response.body}");
 
       final data = json.decode(response.body);
 
       if (response.statusCode == 200) {
-        return FormatResult.fromJson(data);             // parse full model
+        return FormatResult.fromJson(data);
       } else {
         throw Exception(data['error'] ?? "Unknown backend error");
       }
 
     } catch (e) {
-      print("❌ IMAGE API ERROR: $e");
+      print("❌ FILE API ERROR: $e");
       throw Exception('Connection failed: $e');
     }
   }
@@ -85,39 +65,35 @@ class ApiService {
 
   /// ================================
   /// 📝 TEXT SIMPLIFICATION (Gemini AI)
-  /// Rewrites / simplifies text — separate from formatting.
+  /// Calls POST /process/text-format — no auth required.
+  /// Language is read from AppSettings.language.
   /// ================================
   static Future<String> simplifyText(String text) async {
-    final auth = AuthService();
-    final token = await auth.getToken();
-
     final uri = Uri.parse('$baseUrl/process/text-format');
 
     try {
-      print("📡 Sending TEXT request to: $uri");
-      print("📝 Input text: $text");
+      print("📡 Sending text to: $uri");
+      print("📝 Input (first 200): ${text.length > 200 ? text.substring(0, 200) : text}");
+      print("🌐 Language: ${AppSettings.language}");
 
       final response = await http.post(
         uri,
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": "Bearer $token",
-        },
+        headers: {"Content-Type": "application/json"},
         body: json.encode({
-          "text": text,
-          "language": "hi",
+          "text":     text,
+          "language": AppSettings.language,
         }),
-      );
+      ).timeout(const Duration(seconds: 30));
 
-      print("📥 Status Code: ${response.statusCode}");
-      print("📥 Response Body: ${response.body}");
+      print("📥 Status: ${response.statusCode}");
+      print("📥 Body:   ${response.body}");
 
       final data = json.decode(response.body);
 
       if (response.statusCode == 200 && data['success'] == true) {
-        return data['formatted_text'];
+        return data['formatted_text'] as String;
       } else {
-        throw Exception(data['error']);
+        throw Exception(data['error'] ?? "Simplification failed");
       }
 
     } catch (e) {
