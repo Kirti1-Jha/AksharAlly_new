@@ -23,21 +23,25 @@ class ApiService {
   /// 🖼 IMAGE / FILE OCR + DYSLEXIA FORMATTING
   /// Calls POST /api/format-text — no auth required.
   /// Accepts images (.jpg .png .webp), PDFs, and DOCX files.
-  /// Language is read from AppSettings.language (set in Settings screen).
+  ///
+  /// [language] — optional override.  When null, falls back to
+  /// AppSettings.language so all existing callers remain unchanged.
   /// ================================
   static Future<FormatResult> processImage(
     File file, {
     String profile = 'moderate',
+    String? language,
   }) async {
     final uri = Uri.parse('$baseUrl/api/format-text');
+    final lang = language ?? AppSettings.language;
 
     try {
       print("📡 Sending file request to: $uri");
       print("📄 File path: ${file.path}");
-      print("📐 Profile: $profile  |  🌐 Language: ${AppSettings.language}");
+      print("📐 Profile: $profile  |  🌐 Language: $lang");
 
       final request = http.MultipartRequest('POST', uri);
-      request.fields['language'] = AppSettings.language;
+      request.fields['language'] = lang;
       request.fields['profile']  = profile;
 
       request.files.add(
@@ -68,22 +72,25 @@ class ApiService {
   /// ================================
   /// 📝 TEXT SIMPLIFICATION (Gemini AI)
   /// Calls POST /process/text-format — no auth required.
-  /// Language is read from AppSettings.language.
+  ///
+  /// [language] — optional override.  When null, falls back to
+  /// AppSettings.language so all existing callers remain unchanged.
   /// ================================
-  static Future<String> simplifyText(String text) async {
+  static Future<String> simplifyText(String text, {String? language}) async {
     final uri = Uri.parse('$baseUrl/process/text-format');
+    final lang = language ?? AppSettings.language;
 
     try {
       print("📡 Sending text to: $uri");
       print("📝 Input (first 200): ${text.length > 200 ? text.substring(0, 200) : text}");
-      print("🌐 Language: ${AppSettings.language}");
+      print("🌐 Language: $lang");
 
       final response = await http.post(
         uri,
         headers: {"Content-Type": "application/json"},
         body: json.encode({
           "text":     text,
-          "language": AppSettings.language,
+          "language": lang,
         }),
       ).timeout(const Duration(seconds: 30));
 
