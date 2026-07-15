@@ -2,10 +2,11 @@
 name = "repl-nix-workspace"
 version = "0.1.0"
 description = "Add your description here"
-requires-python = ">=3.12"
+requires-python = ">=3.12,<3.13"
 dependencies = [
     "easyocr",
     "firebase-admin>=7.4.0",
+    "flasgger>=0.9.7.1",
     "flask>=3.1.3",
     "flask-cors>=6.0.5",
     "google-genai>=2.8.0",
@@ -374,7 +375,6 @@ dvclive = [{ index = "pytorch-cpu", marker = "platform_system == 'Linux'" }]
 e2-tts-pytorch = [{ index = "pytorch-cpu", marker = "platform_system == 'Linux'" }]
 e2cnn = [{ index = "pytorch-cpu", marker = "platform_system == 'Linux'" }]
 e3nn = [{ index = "pytorch-cpu", marker = "platform_system == 'Linux'" }]
-easyocr = [{ index = "pytorch-cpu", marker = "platform_system == 'Linux'" }]
 ebtorch = [{ index = "pytorch-cpu", marker = "platform_system == 'Linux'" }]
 ecallisto-ng = [{ index = "pytorch-cpu", marker = "platform_system == 'Linux'" }]
 edsnlp = [{ index = "pytorch-cpu", marker = "platform_system == 'Linux'" }]

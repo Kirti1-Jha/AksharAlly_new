@@ -15,8 +15,9 @@ API_KEY = os.getenv("GEMINI_API_KEY")
 if not API_KEY:
     print("Warning: GEMINI_API_KEY not found in .env file")
 
-# ✅ Create client ONCE (important)
-client = genai.Client(api_key=API_KEY)
+# ✅ Create client ONCE (important) — only if a key is available, so the
+# server can still start (with simplification disabled) when it's not set.
+client = genai.Client(api_key=API_KEY) if API_KEY else None
 
 
 def process_text(text, language="en"):
