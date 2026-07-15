@@ -149,7 +149,7 @@ class _ReadingScreenState extends State<ReadingScreen> {
 
       if (_mode == _ProcessMode.formatOnly) {
         // No API call — text passed directly to the reader.
-        _push(OutputScreen(displayText: text));
+        _push(OutputScreen(displayText: text, saveOnLoad: true));
         return;
       }
 
@@ -158,7 +158,7 @@ class _ReadingScreenState extends State<ReadingScreen> {
         text,
         language: _language,   // local state — AppSettings untouched
       );
-      _push(OutputScreen(displayText: simplified));
+      _push(OutputScreen(displayText: simplified, saveOnLoad: true));
       return;
     }
 
@@ -188,7 +188,7 @@ class _ReadingScreenState extends State<ReadingScreen> {
       formatResult.rawText,
       language: _language,
     );
-    _push(OutputScreen(displayText: simplified));
+    _push(OutputScreen(displayText: simplified, saveOnLoad: true));
   }
 
   void _push(Widget screen) {

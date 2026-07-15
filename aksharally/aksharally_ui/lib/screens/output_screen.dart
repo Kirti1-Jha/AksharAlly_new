@@ -41,11 +41,17 @@ class OutputScreen extends StatefulWidget {
   /// text, or OCR+Gemini result) or from LibraryScreen (saved content).
   final String? displayText;
 
+  /// When true, _loadDisplayText() saves the content to the library.
+  /// Set to true only by ReadingScreen (fresh content).
+  /// LibraryScreen and HomeScreen leave this false to avoid duplicates.
+  final bool saveOnLoad;
+
   const OutputScreen({
     super.key,
     this.initialText,
     this.initialFormatResult,
     this.displayText,
+    this.saveOnLoad = false,
   });
 
   @override
@@ -125,10 +131,10 @@ class _OutputScreenState extends State<OutputScreen> {
       simplifiedText = text;
       words          = _splitToWords(text);
     });
-    // Do NOT call _saveToLibrary here — this path covers both
-    // already-in-library content (LibraryScreen) and content ReadingScreen
-    // already produced, matching the original save semantics.
-    // Do NOT call any backend endpoint.
+    // Save only when the caller (ReadingScreen) signals fresh content via
+    // saveOnLoad: true. LibraryScreen and HomeScreen leave saveOnLoad at its
+    // default (false), so reopening existing items never creates duplicates.
+    if (widget.saveOnLoad) _saveToLibrary(text, 'text');
     if (autoRead) _tts.setRate(speechRate).then((_) => startReading());
   }
 
