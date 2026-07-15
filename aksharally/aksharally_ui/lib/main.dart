@@ -6,9 +6,12 @@ import 'screens/splash_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
 import 'theme/app_theme.dart';
+import 'theme/accessibility_settings.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Restore persisted accessibility preferences before the first frame.
+  await AccessibilitySettings.load();
   runApp(const AppInitializer());
 }
 

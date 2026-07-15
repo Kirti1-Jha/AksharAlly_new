@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../services/api_service.dart';
@@ -8,7 +9,7 @@ import '../services/library_storage.dart';
 import '../models/library_item.dart';
 import '../models/format_result.dart';
 import '../services/tts_service.dart';
-import '../theme/app_settings.dart';
+import '../theme/accessibility_settings.dart';
 
 class ReaderScreen extends StatefulWidget {
   /// Path A — Enter Text screen: AI-simplifies the text on open.
@@ -41,7 +42,10 @@ class _ReaderScreenState extends State<ReaderScreen> {
   bool isLoading = false;
 
   // ── profile & format result ───────────────────────────────────────────────
+  // _selectedProfile is the profile sent to the backend (always mild/moderate/severe).
+  // _isCustomize tracks whether the 'Customize' chip is visually active.
   String _selectedProfile = 'moderate';
+  bool   _isCustomize     = false;
   FormatResult? _formatResult;
 
   // ── TTS ───────────────────────────────────────────────────────────────────
@@ -66,6 +70,12 @@ class _ReaderScreenState extends State<ReaderScreen> {
   void initState() {
     super.initState();
     _tts.init();
+
+    // Restore active profile from persisted accessibility settings.
+    _selectedProfile = (AccessibilitySettings.profile == 'customize')
+        ? 'moderate'
+        : AccessibilitySettings.profile;
+    _isCustomize = AccessibilitySettings.profile == 'customize';
 
     if (widget.initialFormatResult != null) {
       // Path B: pre-formatted result from UploadFileScreen
@@ -158,15 +168,42 @@ class _ReaderScreenState extends State<ReaderScreen> {
   String _cap(String s) =>
       s.isEmpty ? s : '${s[0].toUpperCase()}${s.substring(1)}';
 
-  // ── theme helpers ─────────────────────────────────────────────────────────
-  Color getBackgroundColor() {
-    if (AppSettings.themeMode == 1) return const Color(0xFF1E1E1E);
-    if (AppSettings.themeMode == 2) return const Color(0xFFF4ECD8);
-    return Colors.white;
-  }
+  // ── accessibility theme helpers ───────────────────────────────────────────
+  Color getBackgroundColor() => AccessibilitySettings.backgroundColor();
+  Color getTextColor()       => AccessibilitySettings.textColor();
 
-  Color getTextColor() =>
-      AppSettings.themeMode == 1 ? Colors.white : Colors.black;
+  // ── font resolution ───────────────────────────────────────────────────────
+  /// Returns a [TextStyle] using the font selected in AccessibilitySettings.
+  /// OpenDyslexic gracefully falls back to Lexend (OD is not a Google Font).
+  TextStyle _resolveFont({
+    required double size,
+    required double height,
+    required double letterSp,
+    required double wordSp,
+    required Color  color,
+    FontWeight weight = FontWeight.normal,
+  }) {
+    final base = TextStyle(
+      fontSize:      size,
+      height:        height,
+      letterSpacing: letterSp,
+      wordSpacing:   wordSp,
+      color:         color,
+      fontWeight:    weight,
+    );
+    switch (AccessibilitySettings.fontFamily) {
+      case 'Atkinson Hyperlegible':
+        return GoogleFonts.atkinsonHyperlegible(textStyle: base);
+      case 'Noto Sans':
+        return GoogleFonts.notoSans(textStyle: base);
+      case 'System Default':
+        return base;
+      case 'OpenDyslexic': // OD not in Google Fonts — fallback to Lexend
+      case 'Lexend':
+      default:
+        return GoogleFonts.lexend(textStyle: base);
+    }
+  }
 
   // ── image picker ──────────────────────────────────────────────────────────
   Future<void> pickImage() async {
@@ -191,7 +228,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
     try {
       final result = await ApiService.processImage(
         selectedImage!,
-        profile: _selectedProfile,
+        profile: _selectedProfile,   // always mild/moderate/severe
       );
       setState(() {
         _formatResult  = result;
@@ -270,16 +307,17 @@ class _ReaderScreenState extends State<ReaderScreen> {
 
   // ── single word widget ────────────────────────────────────────────────────
   Widget _wordWidget(int index) {
+    final isHighlighted =
+        index == currentIndex && AccessibilitySettings.wordHighlighting;
     return Text(
       words[index],
-      style: TextStyle(
-        fontFamily:    _formatResult?.recommendedFont,
-        fontSize:      _formatResult?.fontSize      ?? AppSettings.fontSize,
-        height:        _formatResult?.lineHeight    ?? AppSettings.lineSpacing,
-        letterSpacing: _formatResult?.letterSpacing,
-        color: index == currentIndex ? Colors.red : getTextColor(),
-        fontWeight:
-            index == currentIndex ? FontWeight.bold : FontWeight.normal,
+      style: _resolveFont(
+        size:     AccessibilitySettings.fontSize,
+        height:   AccessibilitySettings.lineHeight,
+        letterSp: AccessibilitySettings.letterSpacing,
+        wordSp:   AccessibilitySettings.wordSpacing,
+        color:    isHighlighted ? Colors.red : getTextColor(),
+        weight:   isHighlighted ? FontWeight.bold : FontWeight.normal,
       ),
     );
   }
@@ -289,12 +327,18 @@ class _ReaderScreenState extends State<ReaderScreen> {
     if (simplifiedText.isEmpty) {
       return Text(
         'Formatted text will appear here...',
-        style: TextStyle(fontSize: AppSettings.fontSize, color: getTextColor()),
+        style: _resolveFont(
+          size:     AccessibilitySettings.fontSize,
+          height:   AccessibilitySettings.lineHeight,
+          letterSp: AccessibilitySettings.letterSpacing,
+          wordSp:   AccessibilitySettings.wordSpacing,
+          color:    getTextColor().withOpacity(0.5),
+        ),
       );
     }
 
-    final double wSpacing = _formatResult?.wordSpacing      ?? 6.0;
-    final double pSpacing = _formatResult?.paragraphSpacing ?? 16.0;
+    final double wSpacing = AccessibilitySettings.wordSpacing;
+    final double pSpacing = AccessibilitySettings.paragraphSpacing;
 
     final List<Widget> sections = [];
     List<Widget> currentParagraph = [];
@@ -327,44 +371,447 @@ class _ReaderScreenState extends State<ReaderScreen> {
     );
   }
 
-  // ── profile selector ──────────────────────────────────────────────────────
+  // ── profile chip selector ─────────────────────────────────────────────────
   Widget _profileSelector() {
-    const profiles = ['mild', 'moderate', 'severe'];
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: profiles.map((p) {
-        final isSelected = _selectedProfile == p;
-        return GestureDetector(
-          onTap: () => setState(() => _selectedProfile = p),
-          child: Container(
-            margin:  const EdgeInsets.symmetric(horizontal: 4),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              gradient: isSelected
-                  ? const LinearGradient(colors: blueGradient)
-                  : null,
-              color:        isSelected ? null : Colors.grey.shade200,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              '${p[0].toUpperCase()}${p.substring(1)}',
-              style: TextStyle(
-                color:      isSelected ? Colors.white : Colors.black87,
-                fontWeight: FontWeight.w600,
-                fontSize:   13,
-              ),
-            ),
+    const presets = ['mild', 'moderate', 'severe'];
+    // Active chip is 'customize' if _isCustomize, else _selectedProfile.
+    final activeChip = _isCustomize ? 'customize' : _selectedProfile;
+
+    Widget chip(String value, {IconData? icon}) {
+      final isSelected = activeChip == value;
+      final label      = '${value[0].toUpperCase()}${value.substring(1)}';
+      return GestureDetector(
+        onTap: () => _onProfileChanged(value),
+        child: Container(
+          margin:  const EdgeInsets.symmetric(horizontal: 3, vertical: 2),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            gradient: isSelected
+                ? const LinearGradient(colors: blueGradient)
+                : null,
+            color:        isSelected ? null : Colors.grey.shade200,
+            borderRadius: BorderRadius.circular(20),
           ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (icon != null) ...[
+                Icon(icon,
+                  size:  14,
+                  color: isSelected ? Colors.white : Colors.black87,
+                ),
+                const SizedBox(width: 4),
+              ],
+              Text(
+                label,
+                style: TextStyle(
+                  color:      isSelected ? Colors.white : Colors.black87,
+                  fontWeight: FontWeight.w600,
+                  fontSize:   13,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Wrap(
+      alignment:  WrapAlignment.center,
+      spacing:    4,
+      runSpacing: 4,
+      children: [
+        for (final p in presets) chip(p),
+        chip('customize', icon: Icons.tune),
+      ],
+    );
+  }
+
+  // ── profile changed ───────────────────────────────────────────────────────
+  Future<void> _onProfileChanged(String profile) async {
+    if (profile == 'customize') {
+      // Customize is purely client-side. Backend profile stays unchanged.
+      setState(() => _isCustomize = true);
+      AccessibilitySettings.profile = 'customize';
+      await _showCustomizePanel();
+      return;
+    }
+
+    // Preset selected — apply client-side settings and update backend profile.
+    AccessibilitySettings.applyPreset(profile);
+    await AccessibilitySettings.save();
+
+    setState(() {
+      _selectedProfile = profile;
+      _isCustomize     = false;
+    });
+    // Backend is only called when the user presses "Format Text" or "Simplify";
+    // simply updating _selectedProfile is sufficient — no API call here.
+  }
+
+  // ── customize panel ───────────────────────────────────────────────────────
+  Future<void> _showCustomizePanel() async {
+    await showModalBottomSheet(
+      context:           context,
+      isScrollControlled: true,
+      backgroundColor:   Colors.transparent,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setSheet) {
+            // update() modifies AccessibilitySettings, repaints sheet, and
+            // triggers parent rebuild so the text preview updates in real-time.
+            void update(VoidCallback fn) {
+              setSheet(fn);
+              if (mounted) setState(() {});
+            }
+
+            final screenH = MediaQuery.of(ctx).size.height;
+
+            return Container(
+              height: screenH * 0.92,
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: Column(
+                children: [
+                  // Drag handle
+                  const SizedBox(height: 12),
+                  Container(
+                    width: 40, height: 4,
+                    decoration: BoxDecoration(
+                      color:        Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  // Header
+                  Row(
+                    children: [
+                      const SizedBox(width: 16),
+                      const Icon(Icons.tune, color: Color(0xFF1565C0)),
+                      const SizedBox(width: 8),
+                      const Text(
+                        'Customize Reading Experience',
+                        style: TextStyle(
+                          fontSize:   17,
+                          fontWeight: FontWeight.w700,
+                          color:      Color(0xFF1565C0),
+                        ),
+                      ),
+                      const Spacer(),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.of(ctx).pop(),
+                      ),
+                    ],
+                  ),
+                  const Divider(height: 1),
+                  // Scrollable content
+                  Expanded(
+                    child: ListView(
+                      padding: const EdgeInsets.all(16),
+                      children: [
+
+                        // ── FONT SELECTION ─────────────────────────────────
+                        _sectionHeader('Font Family'),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 6, runSpacing: 6,
+                          children: AccessibilitySettings.fonts.map((font) {
+                            final sel = AccessibilitySettings.fontFamily == font;
+                            final shortLabel = font == 'Atkinson Hyperlegible'
+                                ? 'Atkinson'
+                                : font;
+                            return GestureDetector(
+                              onTap: () => update(
+                                () => AccessibilitySettings.fontFamily = font),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 7),
+                                decoration: BoxDecoration(
+                                  color:        sel
+                                      ? const Color(0xFF1565C0)
+                                      : Colors.grey.shade100,
+                                  borderRadius: BorderRadius.circular(10),
+                                  border:       Border.all(
+                                    color: sel
+                                        ? const Color(0xFF1565C0)
+                                        : Colors.grey.shade300,
+                                  ),
+                                ),
+                                child: Text(
+                                  shortLabel,
+                                  style: TextStyle(
+                                    color:      sel ? Colors.white : Colors.black87,
+                                    fontWeight: sel
+                                        ? FontWeight.bold
+                                        : FontWeight.normal,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        ),
+
+                        const SizedBox(height: 20),
+
+                        // ── FONT SIZE ─────────────────────────────────────
+                        _sectionHeader(
+                          'Font Size  •  '
+                          '${AccessibilitySettings.fontSize.toStringAsFixed(0)}px',
+                        ),
+                        Slider(
+                          value:     AccessibilitySettings.fontSize,
+                          min:       14, max: 36,
+                          divisions: 44,
+                          onChanged: (v) => update(
+                            () => AccessibilitySettings.fontSize = v),
+                        ),
+
+                        // ── LETTER SPACING ────────────────────────────────
+                        _sectionHeader(
+                          'Letter Spacing  •  '
+                          '${AccessibilitySettings.letterSpacing.toStringAsFixed(1)}',
+                        ),
+                        Slider(
+                          value:     AccessibilitySettings.letterSpacing,
+                          min:       0, max: 3.0,
+                          divisions: 30,
+                          onChanged: (v) => update(
+                            () => AccessibilitySettings.letterSpacing = v),
+                        ),
+
+                        // ── WORD SPACING ──────────────────────────────────
+                        _sectionHeader(
+                          'Word Spacing  •  '
+                          '${AccessibilitySettings.wordSpacing.toStringAsFixed(1)}',
+                        ),
+                        Slider(
+                          value:     AccessibilitySettings.wordSpacing,
+                          min:       0, max: 8.0,
+                          divisions: 16,
+                          onChanged: (v) => update(
+                            () => AccessibilitySettings.wordSpacing = v),
+                        ),
+
+                        // ── LINE HEIGHT ───────────────────────────────────
+                        _sectionHeader(
+                          'Line Height  •  '
+                          '${AccessibilitySettings.lineHeight.toStringAsFixed(1)}×',
+                        ),
+                        Slider(
+                          value:     AccessibilitySettings.lineHeight,
+                          min:       1.0, max: 3.0,
+                          divisions: 20,
+                          onChanged: (v) => update(
+                            () => AccessibilitySettings.lineHeight = v),
+                        ),
+
+                        // ── PARAGRAPH SPACING ─────────────────────────────
+                        _sectionHeader(
+                          'Paragraph Spacing  •  '
+                          '${AccessibilitySettings.paragraphSpacing.toStringAsFixed(0)}px',
+                        ),
+                        Slider(
+                          value:     AccessibilitySettings.paragraphSpacing,
+                          min:       8, max: 32,
+                          divisions: 24,
+                          onChanged: (v) => update(
+                            () => AccessibilitySettings.paragraphSpacing = v),
+                        ),
+
+                        const SizedBox(height: 8),
+                        const Divider(),
+                        const SizedBox(height: 8),
+
+                        // ── COLOR THEMES ──────────────────────────────────
+                        _sectionHeader('Color Theme'),
+                        const SizedBox(height: 10),
+                        Builder(builder: (ctx2) {
+                          final cardW =
+                              (MediaQuery.of(ctx2).size.width - 48) / 2;
+                          return Wrap(
+                            spacing: 8, runSpacing: 8,
+                            children: AccessibilitySettings.themeLabels.keys
+                                .map((key) {
+                              final bg   = AccessibilitySettings.previewBg(key);
+                              final text =
+                                  AccessibilitySettings.previewText(key);
+                              final sel  =
+                                  AccessibilitySettings.colorTheme == key;
+                              return GestureDetector(
+                                onTap: () => update(
+                                  () => AccessibilitySettings.colorTheme = key),
+                                child: Container(
+                                  width:  cardW,
+                                  height: 52,
+                                  decoration: BoxDecoration(
+                                    color:        bg,
+                                    borderRadius: BorderRadius.circular(10),
+                                    border:       Border.all(
+                                      color: sel
+                                          ? const Color(0xFF1565C0)
+                                          : Colors.grey.shade300,
+                                      width: sel ? 2.5 : 1,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      if (sel)
+                                        Padding(
+                                          padding: const EdgeInsets.only(right: 4),
+                                          child: Icon(Icons.check,
+                                              color: text, size: 13),
+                                        ),
+                                      Text(
+                                        AccessibilitySettings
+                                            .themeLabels[key]!,
+                                        style: TextStyle(
+                                          color:      text,
+                                          fontSize:   12,
+                                          fontWeight: sel
+                                              ? FontWeight.bold
+                                              : FontWeight.normal,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                          );
+                        }),
+
+                        const SizedBox(height: 8),
+                        const Divider(),
+                        const SizedBox(height: 4),
+
+                        // ── ACCESSIBILITY FEATURES ────────────────────────
+                        _sectionHeader('Accessibility Features'),
+                        _toggle(
+                          'Word Highlighting during TTS',
+                          AccessibilitySettings.wordHighlighting,
+                          (v) => update(
+                            () => AccessibilitySettings.wordHighlighting = v),
+                        ),
+                        _toggle(
+                          'Focus Line Mode',
+                          AccessibilitySettings.focusLineMode,
+                          (v) => update(
+                            () => AccessibilitySettings.focusLineMode = v),
+                          subtitle: 'UI ready — coming soon',
+                        ),
+                        _toggle(
+                          'Reading Ruler',
+                          AccessibilitySettings.readingRuler,
+                          (v) => update(
+                            () => AccessibilitySettings.readingRuler = v),
+                          subtitle: 'UI ready — coming soon',
+                        ),
+                        _toggle(
+                          'Syllable Breakdown',
+                          AccessibilitySettings.syllableBreakdown,
+                          (v) => update(
+                            () => AccessibilitySettings.syllableBreakdown = v),
+                          subtitle: 'UI ready — coming soon',
+                        ),
+                        _toggle(
+                          'Larger Touch Targets',
+                          AccessibilitySettings.largerTouchTargets,
+                          (v) => update(
+                            () => AccessibilitySettings.largerTouchTargets = v),
+                        ),
+                        _toggle(
+                          'Reduce Motion / Animations',
+                          AccessibilitySettings.reduceMotion,
+                          (v) => update(
+                            () => AccessibilitySettings.reduceMotion = v),
+                        ),
+
+                        const SizedBox(height: 20),
+
+                        // ── SAVE BUTTON ───────────────────────────────────
+                        ElevatedButton.icon(
+                          icon:  const Icon(Icons.save_outlined),
+                          label: const Text('Save as Default'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF1565C0),
+                            foregroundColor: Colors.white,
+                            minimumSize: const Size.fromHeight(48),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          onPressed: () async {
+                            await AccessibilitySettings.save();
+                            if (ctx.mounted) Navigator.of(ctx).pop();
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
         );
-      }).toList(),
+      },
+    );
+
+    // After the sheet closes, rebuild so the main screen reflects any changes
+    // the user didn't explicitly save.
+    if (mounted) setState(() {});
+  }
+
+  // ── customize panel helpers ───────────────────────────────────────────────
+  Widget _sectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 2),
+      child: Text(
+        title,
+        style: const TextStyle(
+          fontSize:   13,
+          fontWeight: FontWeight.w600,
+          color:      Color(0xFF555555),
+        ),
+      ),
+    );
+  }
+
+  Widget _toggle(
+    String label,
+    bool value,
+    ValueChanged<bool> onChanged, {
+    String? subtitle,
+  }) {
+    return SwitchListTile(
+      contentPadding: EdgeInsets.zero,
+      title: Text(label, style: const TextStyle(fontSize: 14)),
+      subtitle: subtitle != null
+          ? Text(subtitle,
+              style: const TextStyle(fontSize: 11, color: Colors.grey))
+          : null,
+      value:     value,
+      onChanged: onChanged,
+      dense:     true,
     );
   }
 
   // ── formatting info bar ───────────────────────────────────────────────────
   Widget _formattingInfoBar() {
-    final r = _formatResult!;
+    final activeProfile = _isCustomize ? 'customize' : _selectedProfile;
+    final font          = AccessibilitySettings.fontFamily == 'Atkinson Hyperlegible'
+        ? 'Atkinson'
+        : AccessibilitySettings.fontFamily;
+    final theme = AccessibilitySettings
+        .themeLabels[AccessibilitySettings.colorTheme] ?? 'Custom';
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding:   const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color:        Colors.blue.shade50,
         borderRadius: BorderRadius.circular(12),
@@ -374,11 +821,19 @@ class _ReaderScreenState extends State<ReaderScreen> {
         spacing:    8,
         runSpacing: 6,
         children: [
-          _infoBadge('Font',  r.recommendedFont),
-          _infoBadge('Size',  '${r.fontSize.toInt()}px'),
-          _infoBadge('Line',  '${r.lineHeight}×'),
-          _infoBadge('Word',  '${r.wordSpacing}px'),
-          _infoBadge('Para',  '${r.paragraphSpacing}px'),
+          _infoBadge('Profile', _cap(activeProfile)),
+          _infoBadge('Font',    font),
+          _infoBadge('Size',
+            '${AccessibilitySettings.fontSize.toStringAsFixed(0)}px'),
+          _infoBadge('Letter',
+            '${AccessibilitySettings.letterSpacing.toStringAsFixed(1)}'),
+          _infoBadge('Word',
+            '${AccessibilitySettings.wordSpacing.toStringAsFixed(1)}px'),
+          _infoBadge('Line',
+            '${AccessibilitySettings.lineHeight.toStringAsFixed(1)}×'),
+          _infoBadge('Para',
+            '${AccessibilitySettings.paragraphSpacing.toStringAsFixed(0)}px'),
+          _infoBadge('Theme',   theme),
         ],
       ),
     );
@@ -486,7 +941,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
         child: ListView(
           children: [
 
-            // ── IMAGE PREVIEW ────────────────────────────────────────────
+            // ── IMAGE PREVIEW ──────────────────────────────────────────────
             Container(
               height: 180,
               decoration: BoxDecoration(
@@ -503,17 +958,17 @@ class _ReaderScreenState extends State<ReaderScreen> {
 
             const SizedBox(height: 10),
 
-            // ── CHOOSE IMAGE ─────────────────────────────────────────────
+            // ── CHOOSE IMAGE ───────────────────────────────────────────────
             _yellowButton("Choose Image", pickImage),
 
             const SizedBox(height: 12),
 
-            // ── PROFILE SELECTOR ─────────────────────────────────────────
+            // ── PROFILE SELECTOR (mild / moderate / severe / customize) ────
             _profileSelector(),
 
             const SizedBox(height: 10),
 
-            // ── FORMAT TEXT ──────────────────────────────────────────────
+            // ── FORMAT TEXT ────────────────────────────────────────────────
             _yellowButton(
               "Format Text",
               isLoading ? () {} : _onFormatPressed,
@@ -522,7 +977,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
 
             const SizedBox(height: 10),
 
-            // ── SIMPLIFY (AI) ────────────────────────────────────────────
+            // ── SIMPLIFY (AI) ──────────────────────────────────────────────
             _yellowButton(
               "Simplify (AI)",
               isLoading ? () {} : _onSimplifyPressed,
@@ -530,13 +985,12 @@ class _ReaderScreenState extends State<ReaderScreen> {
 
             const SizedBox(height: 10),
 
-            // ── FORMATTING INFO BAR ───────────────────────────────────────
-            if (_formatResult != null) ...[
-              _formattingInfoBar(),
-              const SizedBox(height: 10),
-            ],
+            // ── FORMATTING INFO BAR (always visible) ──────────────────────
+            _formattingInfoBar(),
 
-            // ── START / STOP ─────────────────────────────────────────────
+            const SizedBox(height: 10),
+
+            // ── START / STOP ───────────────────────────────────────────────
             Row(
               children: [
                 Expanded(
@@ -559,7 +1013,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
 
             const SizedBox(height: 20),
 
-            // ── AUTO READ SWITCH ─────────────────────────────────────────
+            // ── AUTO READ SWITCH ───────────────────────────────────────────
             SwitchListTile(
               title: Text(
                 "Auto Read",
@@ -571,7 +1025,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
 
             const SizedBox(height: 20),
 
-            // ── OUTPUT BOX ───────────────────────────────────────────────
+            // ── OUTPUT BOX ─────────────────────────────────────────────────
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
