@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/library_item.dart';
 import '../services/library_storage.dart';
-import 'reader_screen.dart';
+import 'output_screen.dart';
 
 class LibraryScreen extends StatelessWidget {
   const LibraryScreen({super.key});
@@ -36,7 +36,7 @@ class LibraryScreen extends StatelessWidget {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => ReaderScreen(displayText: item.content),
+                  builder: (_) => OutputScreen(displayText: item.content),
                 ),
               );
             },
