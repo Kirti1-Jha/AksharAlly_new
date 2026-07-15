@@ -1,0 +1,205 @@
+Redesign the Settings screen completely and transform it into an **Accessibility Center** for AksharAlly.
+
+IMPORTANT REQUIREMENT:
+
+The accessibility settings should affect ONLY the application's UI text and interface elements. They must NOT affect OCR output, uploaded text, PDF content, simplified text, or reader content because content formatting is already handled separately in the Reader screen.
+
+### Scope of Global Accessibility Settings
+
+The following UI elements should automatically inherit accessibility preferences:
+
+* App title (AksharAlly)
+* Screen titles and headings
+* Buttons
+* Navigation bar labels
+* Cards
+* Dialogs and popups
+* Settings page text
+* Library page text
+* Home page text
+* Empty states
+* Error messages
+* Future screens and components
+
+The following should NOT be affected:
+
+* OCR extracted text
+* Uploaded PDF content
+* Uploaded image text
+* Simplified text output
+* Reader content
+* Any user-provided reading material
+
+These remain controlled by the existing Reader customization features.
+
+---
+
+## Accessibility Center Layout
+
+### Section 1: Recommended Dyslexia Profiles
+
+Place this section at the top.
+
+Create one-tap preset cards that instantly apply recommended accessibility settings.
+
+Examples:
+
+1. Dyslexia Recommended
+
+   * Lexend font
+   * Cream background
+   * Dark gray text
+   * Increased spacing
+
+2. Low Eye Strain
+
+   * Sans-serif font
+   * Soft yellow background
+   * Dark brown text
+
+3. Maximum Clarity
+
+   * Monospaced font
+   * Large text
+   * High spacing
+
+4. Beginner Reader
+
+   * Very large text
+   * Extra spacing
+   * Simplified visual appearance
+
+Each profile should have:
+
+* Name
+* Short description
+* Preview
+* Apply button
+
+---
+
+### Section 2: Typography Settings
+
+Allow users to customize UI text appearance.
+
+Controls:
+
+* Font Family selector
+* Font Size slider
+* Letter Spacing slider
+* Word Spacing slider
+* Line Height slider
+
+Suggested fonts:
+
+* Lexend
+* OpenDyslexic
+* Atkinson Hyperlegible
+* Inter
+* Roboto
+* Arial
+* Monospace
+
+Display a small preview sentence beneath each font option.
+
+---
+
+### Section 3: Recommended Color Themes
+
+Create dyslexia-friendly theme cards.
+
+Examples:
+
+* Cream background + Dark Gray text
+* Soft Yellow background + Dark Brown text
+* Light Blue background + Navy text
+* Pale Green background + Dark Gray text
+* Peach background + Black text
+
+Each card should contain:
+
+* Visual preview
+* Theme name
+* Apply button
+
+I will add additional color combinations later.
+
+---
+
+### Section 4: Custom Appearance
+
+Advanced customization section.
+
+Controls:
+
+* Text Color picker
+* Background Color picker
+
+Changes should update preview instantly.
+
+---
+
+### Section 5: Additional Accessibility Options
+
+Add accessibility toggles such as:
+
+* Bold UI Text
+* Reduced Animations
+* Larger Touch Targets
+* High Contrast Mode
+* Icon + Text Labels
+* Reset to Default
+
+---
+
+### Section 6: Live Preview
+
+Create a preview card that mimics the actual app interface.
+
+Example:
+
+AksharAlly
+
+Welcome Back
+
+[ Continue Reading ]
+
+[ New Reading ]
+
+[ Library ]
+
+[ Settings ]
+
+As users change settings, the preview should update immediately so they can see how the actual application will look.
+
+---
+
+## Technical Requirements
+
+Create a centralized AccessibilitySettings model that stores:
+
+* fontFamily
+* fontSize
+* letterSpacing
+* wordSpacing
+* lineHeight
+* textColor
+* backgroundColor
+* boldTextEnabled
+* highContrastEnabled
+* reducedAnimationsEnabled
+* largeTouchTargetsEnabled
+
+Persist settings using SharedPreferences.
+
+Load settings when the app starts.
+
+Apply settings globally through a centralized theme provider/state management solution so that all UI text across the application updates automatically.
+
+Do NOT hardcode styling inside individual screens.
+
+Use the accessibility settings as the primary source of truth for UI typography and colors.
+
+Changes should take effect immediately without requiring an app restart.
+
+The goal is to make the entire AksharAlly interface dyslexia-friendly while keeping reading-content customization completely separate.
