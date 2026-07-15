@@ -7,11 +7,14 @@ import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
 import 'theme/app_theme.dart';
 import 'theme/accessibility_settings.dart';
+import 'services/library_storage.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // Restore persisted accessibility preferences before the first frame.
   await AccessibilitySettings.load();
+  // Hydrate reading history from SharedPreferences before the first frame.
+  await LibraryStorage.load();
   runApp(const AppInitializer());
 }
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../theme/app_settings.dart';
+import '../services/library_storage.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -120,8 +121,77 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
         ),
+
+        const SizedBox(height: 30),
+
+        // ── READING HISTORY ───────────────────────────────────────────────
+        Text("Reading History", style: AppTheme.titleStyle),
+        const SizedBox(height: 10),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            icon:  const Icon(Icons.delete_sweep_outlined,
+                color: Colors.redAccent),
+            label: const Text(
+              "Clear Reading History",
+              style: TextStyle(color: Colors.redAccent),
+            ),
+            style: OutlinedButton.styleFrom(
+              side:    const BorderSide(color: Colors.redAccent),
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape:   RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppTheme.radiusMD),
+              ),
+            ),
+            onPressed: _confirmClearHistory,
+          ),
+        ),
       ],
     );
+  }
+
+  // ── clear history dialog ──────────────────────────────────────────────────
+
+  Future<void> _confirmClearHistory() async {
+    final count = LibraryStorage.getItems().length;
+
+    if (count == 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Reading history is already empty.")),
+      );
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Clear reading history?"),
+        content: Text(
+          "This will permanently delete all $count saved "
+          "${count == 1 ? 'reading' : 'readings'}. "
+          "This cannot be undone.",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text("Cancel"),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text("Clear All"),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      LibraryStorage.clearAll();
+      setState(() {});
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Reading history cleared.")),
+      );
+    }
   }
 
   // ── theme button ──────────────────────────────────────────────────────────
