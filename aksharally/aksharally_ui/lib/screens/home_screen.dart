@@ -168,11 +168,12 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _newReadingCard(BuildContext context) {
     return InkWell(
       borderRadius: BorderRadius.circular(AppTheme.radiusLG),
-      onTap: () {
-        Navigator.push(
+      onTap: () async {
+        await Navigator.push(
           context,
           MaterialPageRoute(builder: (_) => const ReadingScreen()),
         );
+        if (mounted) setState(() {});
       },
       child: Container(
         padding: const EdgeInsets.all(AppTheme.spaceMD),
@@ -356,13 +357,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return InkWell(
       borderRadius: BorderRadius.circular(AppTheme.radiusMD),
-      onTap: () {
-        Navigator.push(
+      onTap: () async {
+        await Navigator.push(
           context,
           MaterialPageRoute(
             builder: (_) => OutputScreen(displayText: item.content),
           ),
         );
+        if (mounted) setState(() {});
       },
       child: Container(
         padding: const EdgeInsets.all(AppTheme.spaceMD),
