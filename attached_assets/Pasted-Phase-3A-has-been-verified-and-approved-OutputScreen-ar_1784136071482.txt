@@ -1,0 +1,213 @@
+Phase 3A has been verified and approved.
+
+OutputScreen architecture is now correct:
+
+Home
+→ ReadingScreen
+→ OutputScreen
+
+Library Item
+→ OutputScreen
+
+OutputScreen is display-only and feature parity is confirmed.
+
+We are now starting Phase 4.
+
+IMPORTANT
+
+Do NOT write code yet.
+
+Do NOT modify files yet.
+
+First inspect the current HomeScreen, LibraryScreen, AppTheme, LibraryStorage, and LibraryItem implementations and provide a complete implementation plan.
+
+--------------------------------------------------
+PHASE 4
+HOME DASHBOARD REDESIGN
+--------------------------------------------------
+
+The current Home screen still reflects the older workflow.
+
+I want Home to become a dashboard.
+
+--------------------------------------------------
+DESIGN GOALS
+--------------------------------------------------
+
+The Home screen should feel modern, welcoming, and focused.
+
+The user should immediately understand:
+
+1. Start a new reading
+2. Continue recent readings
+3. Access full library
+
+Home should NOT feel like an input screen.
+
+ReadingScreen already handles all input workflows.
+
+--------------------------------------------------
+HOME LAYOUT
+--------------------------------------------------
+
+1. HEADER
+
+Display:
+
+- AksharAlly branding
+- Greeting
+
+Examples:
+
+Good Morning
+Welcome Back
+
+Good Evening
+Welcome Back
+
+Use the Phase 1 design system.
+
+--------------------------------------------------
+2. PRIMARY ACTION
+--------------------------------------------------
+
+Large prominent card/button:
+
++ New Reading
+
+This should be the primary CTA on the screen.
+
+Tap:
+→ ReadingScreen
+
+This replaces the old workflow cards.
+
+--------------------------------------------------
+3. STATS SECTION
+--------------------------------------------------
+
+Keep only ONE useful metric.
+
+Examples:
+
+- Total Readings
+OR
+- Total Documents Processed
+
+Remove:
+
+- Language card
+- Streak card
+- Any unnecessary metrics
+
+--------------------------------------------------
+4. CONTINUE READING
+--------------------------------------------------
+
+Show ONLY the 2–3 newest items.
+
+Data source:
+
+LibraryStorage.getItems()
+
+Use existing fields only:
+
+- title
+- date
+- sourceType
+
+Do NOT redesign LibraryStorage.
+
+Do NOT add persistence.
+
+Do NOT add IDs.
+
+Do NOT modify LibraryItem.
+
+This is a UI-only feature.
+
+Display examples:
+
+Continue Reading
+
+📷 Image · 42w · 15/7/2026
+2 hours ago
+
+📄 PDF · 108w · Yesterday
+
+✍ Text · 20w · 3 days ago
+
+Tap:
+→ OutputScreen(displayText: item.content)
+
+--------------------------------------------------
+5. LIBRARY SECTION
+--------------------------------------------------
+
+Home should NOT show the full reading history.
+
+Instead show:
+
+Library
+
+View All →
+
+Tap:
+→ LibraryScreen
+
+LibraryScreen remains the place for full history.
+
+--------------------------------------------------
+6. PRESERVE
+--------------------------------------------------
+
+Do NOT modify:
+
+- ReadingScreen
+- OutputScreen
+- ReaderScreen
+- Backend
+- OCR
+- Gemini
+- TTS
+- Highlighting
+- Firebase
+- LibraryStorage model
+- LibraryItem model
+
+--------------------------------------------------
+VISUAL REQUIREMENTS
+--------------------------------------------------
+
+Use the existing Phase 1 design system.
+
+Design language:
+
+- Blue primary actions
+- Cream/white surfaces
+- Rounded cards
+- Consistent spacing
+- Modern dashboard appearance
+
+Avoid:
+
+- Large empty spaces
+- Generic placeholder cards
+- Old Scan / Upload / Type workflow cards
+
+--------------------------------------------------
+BEFORE WRITING CODE
+--------------------------------------------------
+
+Provide:
+
+1. Detailed Phase 4 implementation plan
+2. Exact files to be modified
+3. HomeScreen component structure
+4. Continue Reading data flow
+5. Stats calculation approach
+6. Navigation changes
+7. Visual mockup description
+8. Risks and rollback strategy
+
+Wait for approval before making any code changes.
