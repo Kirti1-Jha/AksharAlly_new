@@ -5,6 +5,7 @@ import 'library_screen.dart';
 import 'settings_screen.dart';
 import 'enter_text_screen.dart';
 import 'upload_file_screen.dart';
+import 'reading_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -162,7 +163,7 @@ class _HomeScreenState extends State<HomeScreen> {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (_) => const ReaderScreen(),
+                builder: (_) => const ReadingScreen(initialTab: ReadingTab.scan),
               ),
             );
           },
@@ -179,7 +180,7 @@ class _HomeScreenState extends State<HomeScreen> {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (_) => const EnterTextScreen(),
+                builder: (_) => const ReadingScreen(initialTab: ReadingTab.type),
               ),
             );
           },
@@ -196,7 +197,7 @@ class _HomeScreenState extends State<HomeScreen> {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (_) => const UploadFileScreen(),
+                builder: (_) => const ReadingScreen(initialTab: ReadingTab.upload),
               ),
             );
           },
