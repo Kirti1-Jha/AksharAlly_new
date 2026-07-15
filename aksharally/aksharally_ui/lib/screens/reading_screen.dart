@@ -6,7 +6,7 @@ import 'package:file_picker/file_picker.dart';
 import '../theme/app_theme.dart';
 import '../services/api_service.dart';
 import '../models/format_result.dart';
-import 'reader_screen.dart';
+import 'output_screen.dart';
 
 /// Public enum so HomeScreen can specify which tab opens by default.
 enum ReadingTab { scan, type, upload }
@@ -149,7 +149,7 @@ class _ReadingScreenState extends State<ReadingScreen> {
 
       if (_mode == _ProcessMode.formatOnly) {
         // No API call — text passed directly to the reader.
-        _push(ReaderScreen(displayText: text));
+        _push(OutputScreen(displayText: text));
         return;
       }
 
@@ -158,7 +158,7 @@ class _ReadingScreenState extends State<ReadingScreen> {
         text,
         language: _language,   // local state — AppSettings untouched
       );
-      _push(ReaderScreen(displayText: simplified));
+      _push(OutputScreen(displayText: simplified));
       return;
     }
 
@@ -172,7 +172,7 @@ class _ReadingScreenState extends State<ReadingScreen> {
         language: _language,   // local state — AppSettings untouched
         profile:  _profile,    // local state — AppSettings untouched
       );
-      _push(ReaderScreen(initialFormatResult: result));
+      _push(OutputScreen(initialFormatResult: result));
       return;
     }
 
@@ -188,7 +188,7 @@ class _ReadingScreenState extends State<ReadingScreen> {
       formatResult.rawText,
       language: _language,
     );
-    _push(ReaderScreen(displayText: simplified));
+    _push(OutputScreen(displayText: simplified));
   }
 
   void _push(Widget screen) {
