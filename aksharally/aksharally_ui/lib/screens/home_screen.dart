@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
+import '../theme/ui_accessibility.dart';
 import '../models/library_item.dart';
 import '../services/library_storage.dart';
 import 'library_screen.dart';
@@ -17,40 +18,74 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int currentIndex = 0;
 
+  // ── Derived UIAccessibility helpers ─────────────────────────────────────
+  // These are read fresh on every build(), so they respond instantly after Apply.
+
+  /// The applied background colour — drives body container, bottom nav, etc.
+  Color get _bg  => UIAccessibility.backgroundColor;
+  Color get _txt => UIAccessibility.textColor;
+
+  /// Returns white when the background is dark (low luminance) so cards
+  /// always contrast with the page background.
+  Color get _cardBg {
+    return _bg.computeLuminance() < 0.3
+        ? const Color(0xFF2E2E2E)
+        : Colors.white;
+  }
+
+  Color get _iconChipBg {
+    return _bg.computeLuminance() < 0.3
+        ? const Color(0xFF3A3A3A)
+        : AppTheme.accentCream;
+  }
+
+  Color get _mutedTxt {
+    return _txt.withOpacity(0.6);
+  }
+
+  // ── TextStyle factory (reads UIAccessibility each build) ─────────────────
+  TextStyle _ts(double size, FontWeight weight, Color color) =>
+      UIAccessibility.previewStyleFor(UIAccessibility.fontFamily).copyWith(
+        fontSize:           UIAccessibility.fontSize * (size / 15),
+        fontWeight:         UIAccessibility.boldTextEnabled ? FontWeight.bold : weight,
+        color:              color,
+        letterSpacing:      UIAccessibility.letterSpacing,
+        wordSpacing:        UIAccessibility.wordSpacing,
+        height:             UIAccessibility.lineHeight,
+        fontFamilyFallback: const ['Noto Sans', 'sans-serif'],
+      );
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.transparent,
 
-      /// APP BAR — cream gradient, unchanged from previous shell.
+      // ── APP BAR — keep brand cream gradient as fixed identity ──────────────
       appBar: AppBar(
         elevation: 0,
         centerTitle: true,
         backgroundColor: Colors.transparent,
         flexibleSpace: Container(
-          decoration: const BoxDecoration(
-            gradient: AppTheme.creamGradient,
-          ),
+          decoration: const BoxDecoration(gradient: AppTheme.creamGradient),
         ),
         title: ShaderMask(
           shaderCallback: (bounds) =>
               AppTheme.brandGradient.createShader(bounds),
           child: const Text(
-            "AksharAlly",
+            'AksharAlly',
             style: TextStyle(
               fontWeight: FontWeight.w900,
-              fontSize: 22,
-              color: Colors.white,
+              fontSize:   22,
+              color:      Colors.white,
             ),
           ),
         ),
       ),
 
-      /// BODY — blue gradient background, unchanged shell.
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: AppTheme.brandGradientVertical,
-        ),
+      // ── BODY — solid colour from UIAccessibility (responds to Apply) ───────
+      body: AnimatedContainer(
+        duration: const Duration(milliseconds: 350),
+        color: _bg,
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 420),
@@ -62,34 +97,46 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
 
-      /// BOTTOM NAV — preserved exactly as before.
-      bottomNavigationBar: Container(
-        decoration: const BoxDecoration(
-          gradient: AppTheme.creamGradient,
+      // ── BOTTOM NAV — background adapts; brand blue kept for active icon ────
+      bottomNavigationBar: AnimatedContainer(
+        duration: const Duration(milliseconds: 350),
+        decoration: BoxDecoration(
+          color: _bg.computeLuminance() > 0.85
+              // Very light bg: use cream gradient to keep the nav visually
+              // distinct from the body.
+              ? null
+              : _bg.withOpacity(0.97),
+          gradient: _bg.computeLuminance() > 0.85
+              ? AppTheme.creamGradient
+              : null,
+          boxShadow: [
+            BoxShadow(
+              color:      Colors.black.withOpacity(0.08),
+              blurRadius: 8,
+              offset:     const Offset(0, -2),
+            ),
+          ],
         ),
         child: BottomNavigationBar(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          currentIndex: currentIndex,
-          selectedItemColor: AppTheme.primaryBlue,
-          unselectedItemColor: Colors.grey,
-          onTap: (index) {
-            setState(() {
-              currentIndex = index;
-            });
-          },
+          backgroundColor:      Colors.transparent,
+          elevation:            0,
+          currentIndex:         currentIndex,
+          selectedItemColor:    AppTheme.primaryBlue,
+          unselectedItemColor:  _txt.withOpacity(0.45),
+          selectedLabelStyle:   const TextStyle(fontWeight: FontWeight.w700),
+          onTap: (index) => setState(() => currentIndex = index),
           items: const [
             BottomNavigationBarItem(
-              icon: Icon(Icons.home_outlined),
-              label: "Home",
+              icon:  Icon(Icons.home_outlined),
+              label: 'Home',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.book_outlined),
-              label: "Library",
+              icon:  Icon(Icons.book_outlined),
+              label: 'Library',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.settings_outlined),
-              label: "Settings",
+              icon:  Icon(Icons.settings_outlined),
+              label: 'Settings',
             ),
           ],
         ),
@@ -99,18 +146,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _getScreenForIndex(BuildContext context) {
     switch (currentIndex) {
-      case 0:
-        return _buildDashboard(context);
-      case 1:
-        return const LibraryScreen();
-      case 2:
-        return const SettingsScreen();
-      default:
-        return _buildDashboard(context);
+      case 0:  return _buildDashboard(context);
+      case 1:  return const LibraryScreen();
+      case 2:  return const SettingsScreen();
+      default: return _buildDashboard(context);
     }
   }
 
-  // ── DASHBOARD ───────────────────────────────────────────────────────────
+  // ── DASHBOARD ─────────────────────────────────────────────────────────────
 
   Widget _buildDashboard(BuildContext context) {
     return Column(
@@ -129,13 +172,13 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ── 1. HEADER — time-based greeting ────────────────────────────────────
+  // ── 1. HEADER ─────────────────────────────────────────────────────────────
 
   String _timeBasedGreeting() {
     final hour = DateTime.now().hour;
-    if (hour < 12) return "Good Morning";
-    if (hour < 17) return "Good Afternoon";
-    return "Good Evening";
+    if (hour < 12) return 'Good Morning';
+    if (hour < 17) return 'Good Afternoon';
+    return 'Good Evening';
   }
 
   Widget _dashboardHeader() {
@@ -144,26 +187,18 @@ class _HomeScreenState extends State<HomeScreen> {
       children: [
         Text(
           _timeBasedGreeting(),
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 24,
-            fontWeight: FontWeight.w800,
-          ),
+          style: _ts(24, FontWeight.w800, _txt),
         ),
         const SizedBox(height: AppTheme.spaceXS),
         Text(
-          "Welcome Back",
-          style: TextStyle(
-            color: Colors.white.withOpacity(0.85),
-            fontSize: 15,
-            fontWeight: FontWeight.w500,
-          ),
+          'Welcome Back',
+          style: _ts(15, FontWeight.w500, _mutedTxt),
         ),
       ],
     );
   }
 
-  // ── 2. PRIMARY ACTION — New Reading ────────────────────────────────────
+  // ── 2. NEW READING ────────────────────────────────────────────────────────
 
   Widget _newReadingCard(BuildContext context) {
     return InkWell(
@@ -182,9 +217,9 @@ class _HomeScreenState extends State<HomeScreen> {
           borderRadius: BorderRadius.circular(AppTheme.radiusLG),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.15),
+              color:      Colors.black.withOpacity(0.15),
               blurRadius: 10,
-              offset: const Offset(0, 4),
+              offset:     const Offset(0, 4),
             ),
           ],
         ),
@@ -193,7 +228,7 @@ class _HomeScreenState extends State<HomeScreen> {
             Container(
               padding: const EdgeInsets.all(AppTheme.spaceSM),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
+                color:        Colors.white.withOpacity(0.2),
                 borderRadius: BorderRadius.circular(AppTheme.radiusMD),
               ),
               child: const Icon(Icons.add, color: Colors.white, size: 28),
@@ -204,20 +239,20 @@ class _HomeScreenState extends State<HomeScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    "New Reading",
+                    'New Reading',
                     style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
+                      color:      Colors.white,
+                      fontSize:   18,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    "Scan, type, or upload content for dyslexia-friendly reading.",
+                    'Scan, type, or upload content for dyslexia-friendly reading.',
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.9),
+                      color:    Colors.white.withOpacity(0.9),
                       fontSize: 13,
-                      height: 1.3,
+                      height:   1.3,
                     ),
                   ),
                 ],
@@ -230,23 +265,23 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ── 3. STATS — single metric ───────────────────────────────────────────
+  // ── 3. STATS ──────────────────────────────────────────────────────────────
 
   Widget _statsCard() {
     final total = LibraryStorage.getItems().length;
     return Container(
       padding: const EdgeInsets.symmetric(
         horizontal: AppTheme.spaceMD,
-        vertical: AppTheme.spaceMD,
+        vertical:   AppTheme.spaceMD,
       ),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color:        _cardBg,
         borderRadius: BorderRadius.circular(AppTheme.radiusMD),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.06),
+            color:      Colors.black.withOpacity(0.06),
             blurRadius: 8,
-            offset: const Offset(0, 3),
+            offset:     const Offset(0, 3),
           ),
         ],
       ),
@@ -255,28 +290,28 @@ class _HomeScreenState extends State<HomeScreen> {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: AppTheme.accentCream,
+              color:        _iconChipBg,
               borderRadius: BorderRadius.circular(AppTheme.radiusSM),
             ),
-            child: const Icon(Icons.auto_stories_outlined,
+            child: Icon(Icons.auto_stories_outlined,
                 color: AppTheme.primaryBlue, size: 22),
           ),
           const SizedBox(width: AppTheme.spaceMD),
           Text(
             '$total',
-            style: AppTheme.headingStyle.copyWith(fontSize: 22),
+            style: _ts(22, FontWeight.w800, _txt),
           ),
           const SizedBox(width: AppTheme.spaceSM),
           Text(
-            "Total Readings",
-            style: AppTheme.bodyStrongStyle.copyWith(color: AppTheme.textMuted),
+            'Total Readings',
+            style: _ts(14, FontWeight.w500, _mutedTxt),
           ),
         ],
       ),
     );
   }
 
-  // ── 4. CONTINUE READING ─────────────────────────────────────────────────
+  // ── 4. CONTINUE READING ───────────────────────────────────────────────────
 
   Widget _continueReadingSection(BuildContext context) {
     final items = LibraryStorage.getItems().take(3).toList();
@@ -285,20 +320,21 @@ class _HomeScreenState extends State<HomeScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          "Continue Reading",
-          style: AppTheme.titleStyle.copyWith(color: Colors.white),
+          'Continue Reading',
+          style: _ts(16, FontWeight.w700, _txt),
         ),
         const SizedBox(height: AppTheme.spaceSM),
         if (items.isEmpty)
           Container(
             padding: const EdgeInsets.all(AppTheme.spaceMD),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.12),
+              color:        _cardBg.withOpacity(0.7),
               borderRadius: BorderRadius.circular(AppTheme.radiusMD),
+              border:       Border.all(color: _txt.withOpacity(0.1)),
             ),
             child: Text(
-              "No readings yet — start one above.",
-              style: TextStyle(color: Colors.white.withOpacity(0.85)),
+              'No readings yet — start one above.',
+              style: _ts(14, FontWeight.w400, _mutedTxt),
             ),
           )
         else
@@ -314,40 +350,31 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // Maps sourceType → (icon, friendly label). sourceType values come from
-  // LibraryItem as-is: 'image' | 'pdf' | 'docx' | 'text' | 'simplified' |
-  // 'unknown' — nothing here modifies LibraryItem/LibraryStorage.
   (IconData, String) _sourceMeta(String sourceType) {
     switch (sourceType) {
-      case 'image':
-        return (Icons.camera_alt_outlined, 'Image');
-      case 'pdf':
-        return (Icons.picture_as_pdf_outlined, 'PDF');
-      case 'docx':
-        return (Icons.description_outlined, 'Document');
-      case 'text':
-        return (Icons.edit_outlined, 'Typed Text');
-      case 'simplified':
-        return (Icons.auto_awesome_outlined, 'Simplified Text');
-      default:
-        return (Icons.menu_book_outlined, 'Document');
+      case 'image':      return (Icons.camera_alt_outlined, 'Image');
+      case 'pdf':        return (Icons.picture_as_pdf_outlined, 'PDF');
+      case 'docx':       return (Icons.description_outlined, 'Document');
+      case 'text':       return (Icons.edit_outlined, 'Typed Text');
+      case 'simplified': return (Icons.auto_awesome_outlined, 'Simplified Text');
+      default:           return (Icons.menu_book_outlined, 'Document');
     }
   }
 
   String _relativeTime(DateTime date) {
     final diff = DateTime.now().difference(date);
-    if (diff.inMinutes < 1) return "Just now";
+    if (diff.inMinutes < 1)  return 'Just now';
     if (diff.inMinutes < 60) {
       final m = diff.inMinutes;
-      return "$m minute${m == 1 ? '' : 's'} ago";
+      return '$m minute${m == 1 ? '' : 's'} ago';
     }
     if (diff.inHours < 24) {
       final h = diff.inHours;
-      return "$h hour${h == 1 ? '' : 's'} ago";
+      return '$h hour${h == 1 ? '' : 's'} ago';
     }
-    if (diff.inDays == 1) return "Yesterday";
-    if (diff.inDays < 7) return "${diff.inDays} days ago";
-    return "${date.day}/${date.month}/${date.year}";
+    if (diff.inDays == 1)  return 'Yesterday';
+    if (diff.inDays < 7)   return '${diff.inDays} days ago';
+    return '${date.day}/${date.month}/${date.year}';
   }
 
   Widget _continueReadingTile(BuildContext context, LibraryItem item) {
@@ -369,13 +396,13 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Container(
         padding: const EdgeInsets.all(AppTheme.spaceMD),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color:        _cardBg,
           borderRadius: BorderRadius.circular(AppTheme.radiusMD),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.06),
+              color:      Colors.black.withOpacity(0.06),
               blurRadius: 8,
-              offset: const Offset(0, 3),
+              offset:     const Offset(0, 3),
             ),
           ],
         ),
@@ -384,7 +411,7 @@ class _HomeScreenState extends State<HomeScreen> {
             Container(
               padding: const EdgeInsets.all(9),
               decoration: BoxDecoration(
-                color: AppTheme.accentCream,
+                color:        _iconChipBg,
                 borderRadius: BorderRadius.circular(AppTheme.radiusSM),
               ),
               child: Icon(icon, color: AppTheme.primaryBlue, size: 20),
@@ -394,78 +421,69 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // line 1 — title
                   Text(
                     label,
-                    style: AppTheme.bodyStrongStyle,
+                    style:    _ts(14, FontWeight.w700, _txt),
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 2),
-                  // line 2 — source/word-count metadata
                   Text(
                     '$label · ${wordCount}w',
-                    style: AppTheme.captionStyle,
+                    style:    _ts(12, FontWeight.w400, _mutedTxt),
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 2),
-                  // line 3 — relative time
                   Text(
                     _relativeTime(item.date),
-                    style: AppTheme.captionStyle.copyWith(
-                      color: AppTheme.primaryBlue,
-                      fontWeight: FontWeight.w600,
-                    ),
+                    style:    _ts(12, FontWeight.w600, AppTheme.primaryBlue),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right,
-                color: AppTheme.textMuted, size: 20),
+            Icon(Icons.chevron_right, color: _mutedTxt, size: 20),
           ],
         ),
       ),
     );
   }
 
-  // ── 5. LIBRARY LINK ─────────────────────────────────────────────────────
+  // ── 5. LIBRARY LINK ───────────────────────────────────────────────────────
 
   Widget _libraryLinkCard() {
+    final linkBg = _bg.computeLuminance() < 0.3
+        ? const Color(0xFF3A3A3A)
+        : AppTheme.accentCream;
+
     return InkWell(
       borderRadius: BorderRadius.circular(AppTheme.radiusMD),
       onTap: () => setState(() => currentIndex = 1),
       child: Container(
         padding: const EdgeInsets.symmetric(
           horizontal: AppTheme.spaceMD,
-          vertical: AppTheme.spaceMD,
+          vertical:   AppTheme.spaceMD,
         ),
         decoration: BoxDecoration(
-          color: AppTheme.accentCream,
+          color:        linkBg,
           borderRadius: BorderRadius.circular(AppTheme.radiusMD),
         ),
         child: Row(
           children: [
-            const Icon(Icons.book_outlined, color: AppTheme.primaryBlue),
+            Icon(Icons.book_outlined, color: AppTheme.primaryBlue),
             const SizedBox(width: AppTheme.spaceSM),
-            const Expanded(
+            Expanded(
               child: Text(
-                "Library",
-                style: TextStyle(
-                  fontWeight: FontWeight.w700,
-                  color: AppTheme.textDark,
-                  fontSize: 15,
-                ),
+                'Library',
+                style: _ts(15, FontWeight.w700, _txt),
               ),
             ),
-            const Text(
-              "View All",
-              style: TextStyle(
-                color: AppTheme.primaryBlue,
-                fontWeight: FontWeight.w600,
-                fontSize: 13,
-              ),
+            Text(
+              'View All',
+              style: _ts(13, FontWeight.w600, AppTheme.primaryBlue),
             ),
             const SizedBox(width: 2),
-            const Icon(Icons.arrow_forward, color: AppTheme.primaryBlue, size: 16),
+            const Icon(Icons.arrow_forward,
+                color: AppTheme.primaryBlue, size: 16),
           ],
         ),
       ),
