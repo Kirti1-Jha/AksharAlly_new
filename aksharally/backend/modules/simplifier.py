@@ -13,10 +13,10 @@ load_dotenv()
 API_KEY = os.getenv("GEMINI_API_KEY")
 
 if not API_KEY:
-    print("Warning: GEMINI_API_KEY not found in .env file")
+    print("Warning: GEMINI_API_KEY not found - Gemini features will be disabled")
 
-# ✅ Create client ONCE (important)
-client = genai.Client(api_key=API_KEY)
+# ✅ Create client lazily so missing key doesn't crash startup
+client = genai.Client(api_key=API_KEY) if API_KEY else None
 
 
 def process_text(text, language="en"):
