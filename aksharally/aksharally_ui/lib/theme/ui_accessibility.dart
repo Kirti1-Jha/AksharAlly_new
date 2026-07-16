@@ -80,6 +80,11 @@ class UIAccessibility {
     'beginner':   'OpenDyslexic · Light Blue · Very large text',
   };
 
+  /// Badges shown on profile cards.
+  static const Map<String, String> profileBadges = {
+    'dyslexia': 'Dyslexia Recommended',
+  };
+
   /// Applies all fields for the given profile key.
   static void applyProfile(String key) {
     activeProfile = key;
@@ -90,9 +95,9 @@ class UIAccessibility {
         letterSpacing   = 0.3;
         wordSpacing     = 2.0;
         lineHeight      = 1.6;
-        activeColorTheme = 'cream';
-        textColor       = const Color(0xFF333333);
-        backgroundColor = const Color(0xFFFDF6E3);
+        activeColorTheme = 'cream_black';
+        textColor       = const Color(0xFF111111);
+        backgroundColor = const Color(0xFFF5F1E6);
         break;
       case 'eye_strain':
         fontFamily      = 'Inter';
@@ -100,9 +105,9 @@ class UIAccessibility {
         letterSpacing   = 0.2;
         wordSpacing     = 1.5;
         lineHeight      = 1.5;
-        activeColorTheme = 'soft_yellow';
-        textColor       = const Color(0xFF4A3728);
-        backgroundColor = const Color(0xFFFFF9C4);
+        activeColorTheme = 'soft_yellow_black';
+        textColor       = const Color(0xFF111111);
+        backgroundColor = const Color(0xFFFFF8C6);
         break;
       case 'clarity':
         fontFamily      = 'Monospace';
@@ -110,7 +115,7 @@ class UIAccessibility {
         letterSpacing   = 0.5;
         wordSpacing     = 3.0;
         lineHeight      = 1.8;
-        activeColorTheme = 'white';
+        activeColorTheme = 'white_black';
         textColor       = const Color(0xFF000000);
         backgroundColor = const Color(0xFFFFFFFF);
         break;
@@ -120,45 +125,97 @@ class UIAccessibility {
         letterSpacing   = 0.5;
         wordSpacing     = 4.0;
         lineHeight      = 2.0;
-        activeColorTheme = 'light_blue';
-        textColor       = const Color(0xFF1A237E);
-        backgroundColor = const Color(0xFFE3F2FD);
+        activeColorTheme = 'pale_blue_navy';
+        textColor       = const Color(0xFF001F54);
+        backgroundColor = const Color(0xFFDCEEFF);
         break;
     }
   }
 
   // ── Color themes ───────────────────────────────────────────────────────────
 
+  /// Display names for all colour themes.
   static const Map<String, String> colorThemeLabels = {
-    'cream':       'Cream',
-    'soft_yellow': 'Soft Yellow',
-    'light_blue':  'Light Blue',
-    'pale_green':  'Pale Green',
-    'peach':       'Peach',
-    'white':       'Clean White',
+    'cream_black':         'Cream + Black',
+    'soft_yellow_black':   'Soft Yellow + Black',
+    'pale_blue_navy':      'Pale Blue + Navy',
+    'pale_green_gray':     'Pale Green + Dark Gray',
+    'peach_black':         'Peach + Black',
+    'white_black':         'White + Black',
+    'dark_mode':           'Dark Mode',
+    'cream_navy':          'Cream + Navy',
+    'cream_dark_green':    'Cream + Dark Green',
+    'cream_burgundy':      'Cream + Burgundy',
+    'soft_yellow_purple':  'Soft Yellow + Purple',
+  };
+
+  /// Short research-backed descriptions for each colour theme.
+  static const Map<String, String> colorThemeDescriptions = {
+    'cream_black':         'High readability with reduced glare.',
+    'soft_yellow_black':   'Reduces eye strain and improves focus.',
+    'pale_blue_navy':      'Helps visual tracking and letter distinction.',
+    'pale_green_gray':     'Comfortable for long reading sessions.',
+    'peach_black':         'Warm tone with strong contrast.',
+    'white_black':         'Maximum contrast.',
+    'dark_mode':           'Comfortable for low-light environments.',
+    'cream_navy':          'Classic cream with deep navy text.',
+    'cream_dark_green':    'Earthy tones for reduced eye strain.',
+    'cream_burgundy':      'Warm cream with rich burgundy text.',
+    'soft_yellow_purple':  'Calming yellow with vivid purple contrast.',
+  };
+
+  /// Accessibility badges displayed on theme cards.  A theme may have at
+  /// most one badge.
+  static const Map<String, String> colorThemeBadges = {
+    'cream_black': 'Most Popular',
+    'white_black': 'High Contrast',
   };
 
   static Color themeBg(String key) {
     switch (key) {
-      case 'cream':       return const Color(0xFFFDF6E3);
-      case 'soft_yellow': return const Color(0xFFFFF9C4);
-      case 'light_blue':  return const Color(0xFFE3F2FD);
+      case 'cream_black':        return const Color(0xFFF5F1E6);
+      case 'soft_yellow_black':  return const Color(0xFFFFF8C6);
+      case 'pale_blue_navy':     return const Color(0xFFDCEEFF);
+      case 'pale_green_gray':    return const Color(0xFFE8F5E9);
+      case 'peach_black':        return const Color(0xFFFFE5D0);
+      case 'white_black':        return const Color(0xFFFFFFFF);
+      case 'dark_mode':          return const Color(0xFF121212);
+      case 'cream_navy':         return const Color(0xFFF5F1E6);
+      case 'cream_dark_green':   return const Color(0xFFF5F1E6);
+      case 'cream_burgundy':     return const Color(0xFFF5F1E6);
+      case 'soft_yellow_purple': return const Color(0xFFFFF8C6);
+      // Legacy keys — kept so old SharedPreferences values degrade gracefully.
+      case 'cream':       return const Color(0xFFF5F1E6);
+      case 'soft_yellow': return const Color(0xFFFFF8C6);
+      case 'light_blue':  return const Color(0xFFDCEEFF);
       case 'pale_green':  return const Color(0xFFE8F5E9);
-      case 'peach':       return const Color(0xFFFFE0CC);
+      case 'peach':       return const Color(0xFFFFE5D0);
       case 'white':       return const Color(0xFFFFFFFF);
-      default:            return const Color(0xFFFDF6E3);
+      default:            return const Color(0xFFF5F1E6);
     }
   }
 
   static Color themeText(String key) {
     switch (key) {
-      case 'cream':       return const Color(0xFF333333);
-      case 'soft_yellow': return const Color(0xFF4A3728);
-      case 'light_blue':  return const Color(0xFF1A237E);
-      case 'pale_green':  return const Color(0xFF2E5B2E);
-      case 'peach':       return const Color(0xFF3E1F00);
+      case 'cream_black':        return const Color(0xFF111111);
+      case 'soft_yellow_black':  return const Color(0xFF111111);
+      case 'pale_blue_navy':     return const Color(0xFF001F54);
+      case 'pale_green_gray':    return const Color(0xFF222222);
+      case 'peach_black':        return const Color(0xFF111111);
+      case 'white_black':        return const Color(0xFF000000);
+      case 'dark_mode':          return const Color(0xFFF5F5F5);
+      case 'cream_navy':         return const Color(0xFF0A2342);
+      case 'cream_dark_green':   return const Color(0xFF1B4332);
+      case 'cream_burgundy':     return const Color(0xFF6A040F);
+      case 'soft_yellow_purple': return const Color(0xFF4C1D95);
+      // Legacy keys
+      case 'cream':       return const Color(0xFF111111);
+      case 'soft_yellow': return const Color(0xFF111111);
+      case 'light_blue':  return const Color(0xFF001F54);
+      case 'pale_green':  return const Color(0xFF222222);
+      case 'peach':       return const Color(0xFF111111);
       case 'white':       return const Color(0xFF000000);
-      default:            return const Color(0xFF333333);
+      default:            return const Color(0xFF111111);
     }
   }
 
@@ -171,9 +228,9 @@ class UIAccessibility {
   ];
 
   static const List<Color> bgSwatches = [
-    Color(0xFFFDF6E3), Color(0xFFFFF9C4), Color(0xFFE3F2FD),
-    Color(0xFFE8F5E9), Color(0xFFFFE0CC), Color(0xFFF3E5F5),
-    Color(0xFFFFFFFF), Color(0xFF1E1E1E),
+    Color(0xFFF5F1E6), Color(0xFFFFF8C6), Color(0xFFDCEEFF),
+    Color(0xFFE8F5E9), Color(0xFFFFE5D0), Color(0xFFF3E5F5),
+    Color(0xFFFFFFFF), Color(0xFF121212),
   ];
 
   // ── Theme builder ──────────────────────────────────────────────────────────
