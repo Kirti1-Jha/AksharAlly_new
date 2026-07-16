@@ -14,6 +14,25 @@ class LibraryScreen extends StatefulWidget {
 
 class _LibraryScreenState extends State<LibraryScreen> {
 
+  // ── Subscribe to UIAccessibility.notifier ────────────────────────────────
+  // Mirrors the HomeScreen fix: forces build() to re-evaluate colour/font
+  // getters immediately when Apply is pressed, without a tab-switch.
+  @override
+  void initState() {
+    super.initState();
+    UIAccessibility.notifier.addListener(_onAccessibilityChanged);
+  }
+
+  @override
+  void dispose() {
+    UIAccessibility.notifier.removeListener(_onAccessibilityChanged);
+    super.dispose();
+  }
+
+  void _onAccessibilityChanged() {
+    if (mounted) setState(() {});
+  }
+
   // ── UIAccessibility helpers (re-read on every build after Apply) ──────────
   Color get _bg    => UIAccessibility.backgroundColor;
   Color get _txt   => UIAccessibility.textColor;

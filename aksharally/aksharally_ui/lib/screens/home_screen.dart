@@ -18,6 +18,26 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int currentIndex = 0;
 
+  // ── Subscribe to UIAccessibility.notifier ────────────────────────────────
+  // When Apply is pressed in SettingsScreen, notifier.value++ fires.
+  // Calling setState() here marks this element dirty so build() re-evaluates
+  // _bg, _txt, _cardBg, and _ts() immediately — no tab-switch required.
+  @override
+  void initState() {
+    super.initState();
+    UIAccessibility.notifier.addListener(_onAccessibilityChanged);
+  }
+
+  @override
+  void dispose() {
+    UIAccessibility.notifier.removeListener(_onAccessibilityChanged);
+    super.dispose();
+  }
+
+  void _onAccessibilityChanged() {
+    if (mounted) setState(() {});
+  }
+
   // ── Derived UIAccessibility helpers ─────────────────────────────────────
   // These are read fresh on every build(), so they respond instantly after Apply.
 
