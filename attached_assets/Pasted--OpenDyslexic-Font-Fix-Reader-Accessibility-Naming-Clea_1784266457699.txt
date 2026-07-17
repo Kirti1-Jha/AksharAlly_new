@@ -1,0 +1,284 @@
+# OpenDyslexic Font Fix + Reader Accessibility Naming Cleanup
+# Source of Truth: redesign-work
+
+========================================================
+STOP AND READ FIRST
+========================================================
+
+This is NOT a new feature implementation.
+
+This is a targeted correction based on the final verification report.
+
+The verification report identified that OpenDyslexic is not actually being used even though the font assets already exist in the project.
+
+The report also identified that Focus Line Mode is implemented as a manually controlled focus window rather than an automatically tracking reading line.
+
+The goal is to correct these issues without affecting any other functionality.
+
+========================================================
+REPOSITORY RULES
+========================================================
+
+Use ONLY:
+
+redesign-work
+
+Use ONLY:
+
+aksharally/aksharally_ui/
+
+Ignore:
+
+backend/
+aksharally_ui/
+
+outside the aksharally folder.
+
+========================================================
+PRE-CODE VALIDATION
+========================================================
+
+Before making any changes:
+
+1. Confirm the branch being used.
+2. List every file you intend to modify.
+3. Confirm that:
+   - OutputScreen functionality will remain unchanged.
+   - Reader themes will remain unchanged.
+   - Accessibility Center will remain unchanged.
+   - UIAccessibility will remain unchanged.
+   - OCR functionality will remain unchanged.
+   - Simplification functionality will remain unchanged.
+
+Then proceed.
+
+========================================================
+ISSUE 1 — OPENDYSLEXIC IS NOT ACTUALLY BEING USED
+========================================================
+
+The verification report confirmed:
+
+OpenDyslexic font files already exist:
+
+assets/fonts/OpenDyslexic/OpenDyslexic3-Regular.ttf
+assets/fonts/OpenDyslexic/OpenDyslexic3-Bold.ttf
+
+The font family is already registered in pubspec.yaml.
+
+However:
+
+When the user selects:
+
+OpenDyslexic
+
+the implementation currently falls through to:
+
+GoogleFonts.lexend
+
+which means:
+
+OpenDyslexic
+=
+Lexend
+
+This is incorrect.
+
+========================================================
+REQUIRED INVESTIGATION
+========================================================
+
+Before changing code:
+
+Verify:
+
+1. The font assets still exist.
+2. The font family registration in pubspec.yaml is correct.
+3. The registered family name exactly matches:
+   
+   OpenDyslexic
+
+4. No other code path overrides the selected font.
+
+Provide a brief verification summary.
+
+========================================================
+REQUIRED FIX
+========================================================
+
+Update font resolution logic so that:
+
+OpenDyslexic
+
+uses the actual bundled OpenDyslexic font asset.
+
+Expected behavior:
+
+OpenDyslexic
+→ OpenDyslexic font
+
+Lexend
+→ Lexend font
+
+Atkinson Hyperlegible
+→ Atkinson Hyperlegible
+
+etc.
+
+Do NOT use Lexend as a fallback for OpenDyslexic.
+
+Use the actual asset-based font family.
+
+========================================================
+VERIFICATION REQUIREMENTS
+========================================================
+
+After implementation verify:
+
+OpenDyslexic selection renders differently from Lexend.
+
+OpenDyslexic selection uses:
+
+fontFamily: 'OpenDyslexic'
+
+or equivalent asset-based implementation.
+
+Font switching still works.
+
+Persistence still works.
+
+No regressions introduced.
+
+========================================================
+ISSUE 2 — IMPROVE READER AID LABELS
+========================================================
+
+This is a small UX improvement.
+
+The verification report confirmed:
+
+Focus Line Mode
+
+is NOT automatically tracking the active reading line.
+
+Instead:
+
+The user manually drags a focus band.
+
+This is still a useful dyslexia aid.
+
+However:
+
+"Focus Line Mode"
+
+implies automatic line tracking.
+
+The implementation is actually a:
+
+manual reading focus window.
+
+========================================================
+REQUIRED CHANGE
+========================================================
+
+Rename:
+
+Focus Line Mode
+
+to:
+
+Focus Window
+
+or another name that accurately reflects the existing implementation.
+
+Do NOT change functionality.
+
+Only improve wording.
+
+========================================================
+SYLLABLE BREAKDOWN LABEL
+========================================================
+
+The verification report confirmed that:
+
+Syllable Breakdown
+
+uses a rule-based approximation.
+
+Examples:
+
+reading
+→ read-ing
+
+important
+→ im-por-tant
+
+but
+
+education
+→ educa-tion
+
+instead of:
+
+ed-u-ca-tion
+
+This is acceptable for Version 1.
+
+However users should understand that it is not perfect linguistic syllabification.
+
+========================================================
+REQUIRED CHANGE
+========================================================
+
+Rename:
+
+Syllable Breakdown
+
+to:
+
+Syllable Breakdown (Experimental)
+
+or a similarly clear label.
+
+Do NOT change the implementation.
+
+Only improve user expectations.
+
+========================================================
+IMPORTANT RESTRICTIONS
+========================================================
+
+Do NOT:
+
+- redesign OutputScreen
+- redesign the customize sheet
+- modify reader themes
+- modify theme categories
+- modify profile mappings
+- modify Reading Ruler
+- modify Focus Window functionality
+- modify syllable breakdown logic
+- modify Accessibility Center
+- modify UIAccessibility
+
+Only:
+
+1. Fix OpenDyslexic.
+2. Improve naming of the two reader aids.
+
+========================================================
+FINAL VERIFICATION REPORT
+========================================================
+
+Provide:
+
+1. Files modified.
+2. OpenDyslexic verification summary.
+3. Exact code path now used for OpenDyslexic.
+4. Confirmation that Lexend remains separate.
+5. Confirmation that persistence still works.
+6. New labels shown to users.
+7. Confirmation that no other functionality changed.
+
+This should be a small, targeted correction.
+
+Do not make any unrelated changes.
