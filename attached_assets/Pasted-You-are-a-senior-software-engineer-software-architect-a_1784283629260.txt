@@ -1,0 +1,309 @@
+You are a senior software engineer, software architect, and technical documentation writer.
+
+Your task is to create a COMPLETE, PROFESSIONAL, PRODUCTION-QUALITY README.md for this project by analyzing the actual repository structure and source code.
+
+IMPORTANT:
+Do NOT create a generic README.
+Do NOT assume features.
+Do NOT invent functionality.
+Read the entire codebase first and document only what actually exists.
+
+Analyze:
+
+- Flutter frontend
+- Flask backend
+- OCR modules
+- Text simplification modules
+- Authentication system
+- Accessibility features
+- Text-to-Speech features
+- API routes
+- Dependencies
+- Assets
+- Fonts
+- Project architecture
+- Environment variables
+- Folder structure
+
+Generate a polished README.md that would be suitable for:
+
+- GitHub portfolio
+- MCA project submission
+- Hackathon showcase
+- Technical evaluation by recruiters
+
+═══════════════════════════════════════
+SECTION 1: PROJECT TITLE & OVERVIEW
+═══════════════════════════════════════
+
+Create:
+
+# Project Title
+
+A professional one-line tagline.
+
+Then write a detailed overview explaining:
+
+- What AksharAlly is
+- The problem it solves
+- Why dyslexia-friendly reading matters
+- Who the target users are
+- The project's overall objective
+
+═══════════════════════════════════════
+SECTION 2: FEATURES
+═══════════════════════════════════════
+
+Document all implemented features grouped by category.
+
+## Text Input Features
+
+Include all input methods actually implemented:
+- Typed text
+- Image upload
+- Camera capture
+- PDF support (if implemented)
+- DOCX support (if implemented)
+
+## OCR Processing
+
+Document:
+- OCR engines used
+- Supported languages
+- Image preprocessing pipeline
+- OCR workflow
+
+## AI Processing
+
+Document:
+- Text simplification
+- Formatting pipeline
+- Gemini integration
+- Any fallback mechanisms
+
+## Accessibility Features
+
+Document:
+- OpenDyslexic font support
+- Accessibility Center
+- Font customization
+- Font size adjustment
+- Line spacing adjustment
+- Letter spacing adjustment
+- Word spacing adjustment
+- High contrast modes
+- Theme customization
+- Reading customization
+
+Only include features verified from the codebase.
+
+## Reading Features
+
+Document:
+- Reader screen
+- Text display
+- Text-to-Speech
+- Highlighting
+- Reading controls
+- Library functionality
+- Saved content
+
+## Authentication
+
+Document:
+- Firebase Authentication
+- Login functionality
+- User session handling
+
+═══════════════════════════════════════
+SECTION 3: SCREENSHOTS
+═══════════════════════════════════════
+
+Create placeholder sections for:
+
+## Home Screen
+## Input Screen
+## Reader Screen
+## Accessibility Center
+## Library Screen
+
+Use markdown image placeholders such as:
+
+![Home Screen](screenshots/home.png)
+
+═══════════════════════════════════════
+SECTION 4: TECH STACK
+═══════════════════════════════════════
+
+Create a professional table.
+
+Example:
+
+| Layer | Technology |
+|---------|------------|
+| Frontend | Flutter |
+| Language | Dart |
+| Backend | Flask |
+| Language | Python |
+| OCR | EasyOCR, Tesseract |
+| AI | Gemini |
+| Authentication | Firebase |
+
+Only include technologies actually used.
+
+═══════════════════════════════════════
+SECTION 5: PROJECT ARCHITECTURE
+═══════════════════════════════════════
+
+Explain:
+
+- Frontend architecture
+- Backend architecture
+- OCR flow
+- AI processing flow
+- Authentication flow
+
+Create architecture diagrams using markdown code blocks where appropriate.
+
+Example:
+
+User → Input → OCR → Simplification → Formatting → Reader
+
+Use the actual project implementation.
+
+═══════════════════════════════════════
+SECTION 6: FOLDER STRUCTURE
+═══════════════════════════════════════
+
+Generate the ACTUAL folder structure.
+
+Include:
+
+- backend
+- modules
+- routes
+- input_processing
+- frontend folders
+- assets
+- fonts
+- configuration files
+
+Only include folders/files that truly exist.
+
+═══════════════════════════════════════
+SECTION 7: API DOCUMENTATION
+═══════════════════════════════════════
+
+Read the Flask routes and create a table:
+
+| Method | Endpoint | Purpose |
+
+Document every implemented endpoint.
+
+Explain:
+- Request purpose
+- Response purpose
+
+Only document routes that actually exist.
+
+═══════════════════════════════════════
+SECTION 8: INSTALLATION GUIDE
+═══════════════════════════════════════
+
+Provide complete setup instructions.
+
+Backend setup:
+- Virtual environment
+- Dependency installation
+- Environment variables
+- Running Flask server
+
+Frontend setup:
+- Flutter installation requirements
+- flutter pub get
+- flutter run
+
+Use actual dependency files from the project.
+
+═══════════════════════════════════════
+SECTION 9: ENVIRONMENT VARIABLES
+═══════════════════════════════════════
+
+Create a dedicated section listing all required variables.
+
+Example:
+
+GEMINI_API_KEY
+
+Only include variables that are actually referenced in code.
+
+═══════════════════════════════════════
+SECTION 10: ACCESSIBILITY DESIGN
+═══════════════════════════════════════
+
+Create a dedicated section explaining:
+
+- Accessibility philosophy
+- Dyslexia-friendly design decisions
+- OpenDyslexic usage
+- Reading customization system
+- UI accessibility system
+- Why these features improve readability
+
+Use information verified from the codebase.
+
+═══════════════════════════════════════
+SECTION 11: FUTURE ENHANCEMENTS
+═══════════════════════════════════════
+
+Create a realistic roadmap.
+
+Only suggest logical future improvements related to the project.
+
+═══════════════════════════════════════
+SECTION 12: CONTRIBUTORS
+═══════════════════════════════════════
+
+Create a Contributors section suitable for a team project.
+
+═══════════════════════════════════════
+SECTION 13: LICENSE
+═══════════════════════════════════════
+
+Create a placeholder License section.
+
+═══════════════════════════════════════
+CRITICAL REQUIREMENTS
+═══════════════════════════════════════
+
+1. Analyze the repository before writing.
+2. Do not invent features.
+3. Do not assume functionality.
+4. Verify every claim from the source code.
+5. Use professional GitHub markdown formatting.
+6. Make the README portfolio-quality.
+7. Make the README suitable for recruiters and project evaluators.
+8. Include detailed explanations, not just bullet points.
+9. Generate the final result as a complete README.md ready to commit.
+
+IMPORTANT:
+
+Do NOT mention Replit.
+Do NOT mention Replit AI.
+Do NOT mention Replit Agent.
+Do NOT mention Replit hosting.
+Do NOT mention Replit deployment.
+Do NOT mention Replit workflows.
+Do NOT mention any development platform or IDE.
+
+The README must describe ONLY:
+- The application
+- Architecture
+- Features
+- Technologies
+- Setup instructions
+- Accessibility design
+
+The development environment used to build the project must not be referenced anywhere in the README.
+
+Before generating README.md, fully analyze the repository and verify all information from the actual codebase.
