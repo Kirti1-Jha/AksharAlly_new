@@ -74,7 +74,11 @@ class AccessibilitySettings {
         wordSpacing      = 6.0;
         lineHeight       = 2.2;
         paragraphSpacing = 24.0;
-        colorTheme       = 'pale_blue_navy';
+        // white_black (High Contrast) chosen over pale_blue_navy:
+        // severe readers need maximum contrast — black-on-white is
+        // universally legible and clinically recommended. pale_blue_navy
+        // belongs in the Soft Reading category.
+        colorTheme       = 'white_black';
         break;
       // 'customize': leave values as-is.
     }

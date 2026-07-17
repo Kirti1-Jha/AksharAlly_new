@@ -79,6 +79,11 @@ class _OutputScreenState extends State<OutputScreen> {
   int currentIndex = -1;
   Timer? _timer;
 
+  // ── accessibility overlays ────────────────────────────────────────────────
+  // Initialised lazily in build() once LayoutBuilder provides a real height.
+  double? _focusLineY; // centre of the focus band
+  double? _rulerY;     // top edge of the reading ruler
+
   // ─────────────────────────────────────────────────────────────────────────
   @override
   void initState() {
@@ -198,6 +203,10 @@ class _OutputScreenState extends State<OutputScreen> {
     // Active chip is 'customize' if _isCustomize, else _selectedProfile.
     final activeChip = _isCustomize ? 'customize' : _selectedProfile;
 
+    // Larger Touch Targets: increase chip hit area when the toggle is on.
+    final chipPadH = AccessibilitySettings.largerTouchTargets ? 20.0 : 14.0;
+    final chipPadV = AccessibilitySettings.largerTouchTargets ? 12.0 : 8.0;
+
     Widget chip(String value, {IconData? icon}) {
       final isSelected = activeChip == value;
       final label      = '${value[0].toUpperCase()}${value.substring(1)}';
@@ -205,7 +214,7 @@ class _OutputScreenState extends State<OutputScreen> {
         onTap: () => _onProfileChanged(value),
         child: Container(
           margin:  const EdgeInsets.symmetric(horizontal: 3, vertical: 2),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          padding: EdgeInsets.symmetric(horizontal: chipPadH, vertical: chipPadV),
           decoration: BoxDecoration(
             gradient: isSelected ? AppTheme.brandGradient : null,
             color:        isSelected ? null : Colors.grey.shade200,
@@ -457,6 +466,139 @@ class _OutputScreenState extends State<OutputScreen> {
     );
   }
 
+  // ── Focus Line Mode overlay ───────────────────────────────────────────────
+  //
+  // Dims content above and below a draggable horizontal band.
+  // The dimming rectangles use IgnorePointer so they never block
+  // scrolling or text interaction. Only the drag handle absorbs events.
+  Widget _focusLineOverlay(double bodyHeight) {
+    const bandH = 72.0;
+    final fy    = (_focusLineY ?? bodyHeight * 0.45)
+        .clamp(bandH / 2, bodyHeight - bandH / 2);
+    final bandTop = fy - bandH / 2;
+
+    return Stack(
+      children: [
+        // ── Upper dim ──────────────────────────────────────────────────────
+        Positioned(
+          top: 0, left: 0, right: 0,
+          height: bandTop,
+          child: IgnorePointer(
+            child: Container(color: Colors.black.withOpacity(0.30)),
+          ),
+        ),
+        // ── Lower dim ──────────────────────────────────────────────────────
+        Positioned(
+          top: bandTop + bandH, left: 0, right: 0, bottom: 0,
+          child: IgnorePointer(
+            child: Container(color: Colors.black.withOpacity(0.30)),
+          ),
+        ),
+        // ── Top border of focus band ───────────────────────────────────────
+        Positioned(
+          top: bandTop, left: 0, right: 0, height: 2,
+          child: IgnorePointer(
+            child: Container(
+              color: AppTheme.primaryBlue.withOpacity(0.75)),
+          ),
+        ),
+        // ── Bottom border of focus band ────────────────────────────────────
+        Positioned(
+          top: bandTop + bandH - 2, left: 0, right: 0, height: 2,
+          child: IgnorePointer(
+            child: Container(
+              color: AppTheme.primaryBlue.withOpacity(0.75)),
+          ),
+        ),
+        // ── Drag handle — only interactive element ─────────────────────────
+        Positioned(
+          top:   bandTop + (bandH / 2) - 16,
+          right: 10,
+          child: GestureDetector(
+            behavior:  HitTestBehavior.opaque,
+            onPanUpdate: (d) => setState(() {
+              _focusLineY = (fy + d.delta.dy)
+                  .clamp(bandH / 2, bodyHeight - bandH / 2);
+            }),
+            child: Container(
+              width: 32, height: 32,
+              decoration: BoxDecoration(
+                color: AppTheme.primaryBlue,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color:      Colors.black.withOpacity(0.25),
+                    blurRadius: 4,
+                  ),
+                ],
+              ),
+              child: const Icon(Icons.swap_vert, color: Colors.white, size: 16),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ── Reading Ruler overlay ─────────────────────────────────────────────────
+  //
+  // A thin horizontal guide line the user can drag freely. The line itself
+  // is IgnorePointer so it never blocks scrolling; only the circular handle
+  // on the right absorbs pan events.
+  Widget _readingRulerOverlay(double bodyHeight) {
+    final ry = (_rulerY ?? bodyHeight * 0.3)
+        .clamp(4.0, bodyHeight - 4.0);
+
+    return Stack(
+      children: [
+        // ── Ruler line ─────────────────────────────────────────────────────
+        Positioned(
+          top: ry, left: 0, right: 48, height: 3,
+          child: IgnorePointer(
+            child: Container(
+              decoration: BoxDecoration(
+                color: AppTheme.primaryBlue.withOpacity(0.80),
+                boxShadow: [
+                  BoxShadow(
+                    color:      AppTheme.primaryBlue.withOpacity(0.30),
+                    blurRadius: 4,
+                    offset:     const Offset(0, 2),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        // ── Drag handle ────────────────────────────────────────────────────
+        Positioned(
+          top:   ry - 16,
+          right: 10,
+          child: GestureDetector(
+            behavior:  HitTestBehavior.opaque,
+            onPanUpdate: (d) => setState(() {
+              _rulerY = (ry + d.delta.dy).clamp(4.0, bodyHeight - 4.0);
+            }),
+            child: Container(
+              width: 32, height: 32,
+              decoration: BoxDecoration(
+                color: AppTheme.primaryBlue,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color:      Colors.black.withOpacity(0.25),
+                    blurRadius: 4,
+                  ),
+                ],
+              ),
+              child: const Icon(
+                  Icons.drag_indicator, color: Colors.white, size: 16),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   // ── build ─────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
@@ -488,64 +630,92 @@ class _OutputScreenState extends State<OutputScreen> {
         centerTitle: true,
       ),
 
-      body: Padding(
-        padding: const EdgeInsets.all(AppTheme.spaceMD),
-        child: ListView(
-          children: [
+      // LayoutBuilder gives us the real body height so the overlay
+      // positions (focus band, reading ruler) can be initialised and
+      // clamped correctly.
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          // Lazy initialisation — set once per session, then user can drag.
+          _focusLineY ??= constraints.maxHeight * 0.45;
+          _rulerY     ??= constraints.maxHeight * 0.30;
 
-            // ── PROFILE SELECTOR (mild / moderate / severe / customize) ────
-            _profileSelector(),
+          return Stack(
+            children: [
+              // ── Scrollable reading content ─────────────────────────────
+              Padding(
+                padding: const EdgeInsets.all(AppTheme.spaceMD),
+                child: ListView(
+                  children: [
 
-            const SizedBox(height: AppTheme.spaceSM),
+                    // ── PROFILE SELECTOR ──────────────────────────────────
+                    _profileSelector(),
 
-            // ── FORMATTING INFO BAR (always visible) ──────────────────────
-            _formattingInfoBar(),
+                    const SizedBox(height: AppTheme.spaceSM),
 
-            const SizedBox(height: AppTheme.spaceMD),
+                    // ── FORMATTING INFO BAR ───────────────────────────────
+                    _formattingInfoBar(),
 
-            if (!hasContent) ...[
-              _emptyState(),
-            ] else ...[
-              // ── START / STOP ───────────────────────────────────────────
-              Row(
-                children: [
-                  Expanded(
-                    child: _primaryButton(
-                      "Start",
-                      startReading,
-                      icon: Icons.play_arrow,
-                    ),
-                  ),
-                  const SizedBox(width: AppTheme.spaceSM),
-                  Expanded(
-                    child: _primaryButton(
-                      "Stop",
-                      stopReading,
-                      icon: Icons.stop,
-                    ),
-                  ),
-                ],
-              ),
+                    const SizedBox(height: AppTheme.spaceMD),
 
-              const SizedBox(height: AppTheme.spaceMD),
+                    if (!hasContent) ...[
+                      _emptyState(),
+                    ] else ...[
+                      // ── START / STOP ─────────────────────────────────────
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _primaryButton(
+                              'Start',
+                              startReading,
+                              icon: Icons.play_arrow,
+                            ),
+                          ),
+                          const SizedBox(width: AppTheme.spaceSM),
+                          Expanded(
+                            child: _primaryButton(
+                              'Stop',
+                              stopReading,
+                              icon: Icons.stop,
+                            ),
+                          ),
+                        ],
+                      ),
 
-              // ── AUTO READ SWITCH ───────────────────────────────────────
-              SwitchListTile(
-                title: Text(
-                  "Auto Read",
-                  style: TextStyle(color: getTextColor()),
+                      const SizedBox(height: AppTheme.spaceMD),
+
+                      // ── AUTO READ SWITCH ──────────────────────────────────
+                      SwitchListTile(
+                        title: Text(
+                          'Auto Read',
+                          style: TextStyle(color: getTextColor()),
+                        ),
+                        value:     autoRead,
+                        onChanged: (v) => setState(() => autoRead = v),
+                      ),
+
+                      const SizedBox(height: AppTheme.spaceMD),
+
+                      // ── READING CARD ──────────────────────────────────────
+                      _readingCard(),
+                    ],
+                  ],
                 ),
-                value:     autoRead,
-                onChanged: (v) => setState(() => autoRead = v),
               ),
 
-              const SizedBox(height: AppTheme.spaceMD),
+              // ── Accessibility overlays (above scroll, non-blocking) ─────
+              // Focus Line Mode: dims content above/below a draggable band.
+              // Reduce Motion: overlays appear/disappear instantly (no
+              // animation) — already the case since we use `if` not
+              // AnimatedSwitcher.
+              if (AccessibilitySettings.focusLineMode)
+                _focusLineOverlay(constraints.maxHeight),
 
-              // ── READING CARD ───────────────────────────────────────────
-              _readingCard(),
+              // Reading Ruler: a draggable horizontal guide line.
+              if (AccessibilitySettings.readingRuler)
+                _readingRulerOverlay(constraints.maxHeight),
             ],
-          ],
-        ),
+          );
+        },
       ),
     );
   }

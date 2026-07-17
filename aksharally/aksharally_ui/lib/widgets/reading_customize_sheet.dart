@@ -4,14 +4,13 @@ import '../theme/accessibility_settings.dart';
 
 /// Shows the "Customize Reading Experience" bottom sheet.
 ///
-/// Extracted from ReaderScreen._showCustomizePanel (Phase 3A migration)
-/// with no behavior changes: same sections, same sliders, same color-theme
-/// grid, same accessibility toggles, same "Save as Default" behavior.
+/// All changes are client-side only — they modify [AccessibilitySettings]
+/// live and call [onChanged] so the caller can rebuild its own preview.
+/// [AccessibilitySettings.save] is only called when the user taps
+/// "Save as Default".
 ///
-/// [onChanged] is invoked on every live edit inside the sheet (so the
-/// caller can rebuild its own preview) and once more after the sheet
-/// closes, matching ReaderScreen's original
-/// `if (mounted) setState(() {})` post-close behavior.
+/// [onChanged] is also called once after the sheet closes to let the
+/// caller pick up any unsaved changes.
 Future<void> showReadingCustomizeSheet(
   BuildContext context, {
   required VoidCallback onChanged,
@@ -23,24 +22,25 @@ Future<void> showReadingCustomizeSheet(
     builder: (ctx) {
       return StatefulBuilder(
         builder: (ctx, setSheet) {
-          // update() modifies AccessibilitySettings, repaints the sheet, and
-          // triggers the caller's rebuild so the text preview updates live.
+          // update() — modify AccessibilitySettings, repaint sheet, notify
+          // caller so the reading preview behind the sheet updates live.
           void update(VoidCallback fn) {
             setSheet(fn);
             onChanged();
           }
 
-          final screenH = MediaQuery.of(ctx).size.height;
+          final screenH  = MediaQuery.of(ctx).size.height;
+          final largeTap = AccessibilitySettings.largerTouchTargets;
 
           return Container(
             height: screenH * 0.92,
             decoration: const BoxDecoration(
-              color: Colors.white,
+              color:        Colors.white,
               borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
             ),
             child: Column(
               children: [
-                // Drag handle
+                // ── Drag handle ──────────────────────────────────────────
                 const SizedBox(height: 12),
                 Container(
                   width: 40, height: 4,
@@ -50,69 +50,74 @@ Future<void> showReadingCustomizeSheet(
                   ),
                 ),
                 const SizedBox(height: 8),
-                // Header
+
+                // ── Header ───────────────────────────────────────────────
                 Row(
                   children: [
                     const SizedBox(width: 16),
                     const Icon(Icons.tune, color: Color(0xFF1565C0)),
                     const SizedBox(width: 8),
-                    const Text(
-                      'Customize Reading Experience',
-                      style: TextStyle(
-                        fontSize:   17,
-                        fontWeight: FontWeight.w700,
-                        color:      Color(0xFF1565C0),
+                    const Expanded(
+                      child: Text(
+                        'Customize Reading Experience',
+                        style: TextStyle(
+                          fontSize:   17,
+                          fontWeight: FontWeight.w700,
+                          color:      Color(0xFF1565C0),
+                        ),
                       ),
                     ),
-                    const Spacer(),
                     IconButton(
-                      icon: const Icon(Icons.close),
+                      icon:      const Icon(Icons.close),
                       onPressed: () => Navigator.of(ctx).pop(),
                     ),
                   ],
                 ),
                 const Divider(height: 1),
-                // Scrollable content
+
+                // ── Scrollable content ───────────────────────────────────
                 Expanded(
                   child: ListView(
                     padding: const EdgeInsets.all(16),
                     children: [
 
-                      // ── FONT SELECTION ─────────────────────────────────
+                      // ── FONT FAMILY ─────────────────────────────────────
                       _sectionHeader('Font Family'),
                       const SizedBox(height: 8),
                       Wrap(
-                        spacing: 6, runSpacing: 6,
+                        spacing:    6,
+                        runSpacing: 6,
                         children: AccessibilitySettings.fonts.map((font) {
                           final sel = AccessibilitySettings.fontFamily == font;
-                          final shortLabel = font == 'Atkinson Hyperlegible'
-                              ? 'Atkinson'
-                              : font;
+                          // Shorten labels that would overflow a chip
+                          final label = _fontChipLabel(font);
+                          final padH  = largeTap ? 16.0 : 12.0;
+                          final padV  = largeTap ? 10.0 :  7.0;
                           return GestureDetector(
                             onTap: () => update(
                               () => AccessibilitySettings.fontFamily = font),
                             child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 7),
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: padH, vertical: padV),
                               decoration: BoxDecoration(
-                                color:        sel
+                                color:  sel
                                     ? const Color(0xFF1565C0)
                                     : Colors.grey.shade100,
                                 borderRadius: BorderRadius.circular(10),
-                                border:       Border.all(
+                                border: Border.all(
                                   color: sel
                                       ? const Color(0xFF1565C0)
                                       : Colors.grey.shade300,
                                 ),
                               ),
                               child: Text(
-                                shortLabel,
+                                label,
                                 style: TextStyle(
                                   color:      sel ? Colors.white : Colors.black87,
                                   fontWeight: sel
                                       ? FontWeight.bold
                                       : FontWeight.normal,
-                                  fontSize: 13,
+                                  fontSize: largeTap ? 14 : 13,
                                 ),
                               ),
                             ),
@@ -122,67 +127,62 @@ Future<void> showReadingCustomizeSheet(
 
                       const SizedBox(height: 20),
 
-                      // ── FONT SIZE ─────────────────────────────────────
+                      // ── FONT SIZE ───────────────────────────────────────
                       _sectionHeader(
                         'Font Size  •  '
                         '${AccessibilitySettings.fontSize.toStringAsFixed(0)}px',
                       ),
                       Slider(
                         value:     AccessibilitySettings.fontSize,
-                        min:       14, max: 36,
-                        divisions: 44,
+                        min: 14, max: 36, divisions: 44,
                         onChanged: (v) => update(
                           () => AccessibilitySettings.fontSize = v),
                       ),
 
-                      // ── LETTER SPACING ────────────────────────────────
+                      // ── LETTER SPACING ──────────────────────────────────
                       _sectionHeader(
                         'Letter Spacing  •  '
                         '${AccessibilitySettings.letterSpacing.toStringAsFixed(1)}',
                       ),
                       Slider(
                         value:     AccessibilitySettings.letterSpacing,
-                        min:       0, max: 3.0,
-                        divisions: 30,
+                        min: 0, max: 3.0, divisions: 30,
                         onChanged: (v) => update(
                           () => AccessibilitySettings.letterSpacing = v),
                       ),
 
-                      // ── WORD SPACING ──────────────────────────────────
+                      // ── WORD SPACING ────────────────────────────────────
                       _sectionHeader(
                         'Word Spacing  •  '
                         '${AccessibilitySettings.wordSpacing.toStringAsFixed(1)}',
                       ),
                       Slider(
                         value:     AccessibilitySettings.wordSpacing,
-                        min:       0, max: 8.0,
-                        divisions: 16,
+                        min: 0, max: 8.0, divisions: 16,
                         onChanged: (v) => update(
                           () => AccessibilitySettings.wordSpacing = v),
                       ),
 
-                      // ── LINE HEIGHT ───────────────────────────────────
+                      // ── LINE HEIGHT ─────────────────────────────────────
                       _sectionHeader(
                         'Line Height  •  '
                         '${AccessibilitySettings.lineHeight.toStringAsFixed(1)}×',
                       ),
                       Slider(
                         value:     AccessibilitySettings.lineHeight,
-                        min:       1.0, max: 3.0,
-                        divisions: 20,
+                        min: 1.0, max: 3.0, divisions: 20,
                         onChanged: (v) => update(
                           () => AccessibilitySettings.lineHeight = v),
                       ),
 
-                      // ── PARAGRAPH SPACING ─────────────────────────────
+                      // ── PARAGRAPH SPACING ───────────────────────────────
                       _sectionHeader(
                         'Paragraph Spacing  •  '
                         '${AccessibilitySettings.paragraphSpacing.toStringAsFixed(0)}px',
                       ),
                       Slider(
                         value:     AccessibilitySettings.paragraphSpacing,
-                        min:       8, max: 32,
-                        divisions: 24,
+                        min: 8, max: 32, divisions: 24,
                         onChanged: (v) => update(
                           () => AccessibilitySettings.paragraphSpacing = v),
                       ),
@@ -191,62 +191,20 @@ Future<void> showReadingCustomizeSheet(
                       const Divider(),
                       const SizedBox(height: 8),
 
-                      // ── COLOR THEMES ──────────────────────────────────
+                      // ── COLOR THEMES ────────────────────────────────────
                       _sectionHeader('Color Theme'),
                       const SizedBox(height: 10),
-                      Builder(builder: (ctx2) {
-                        final cardW =
-                            (MediaQuery.of(ctx2).size.width - 48) / 2;
-                        return Wrap(
-                          spacing: 8, runSpacing: 8,
-                          children: AccessibilitySettings.themeLabels.keys
-                              .map((key) {
-                            final bg   = AccessibilitySettings.previewBg(key);
-                            final text =
-                                AccessibilitySettings.previewText(key);
-                            final sel  =
-                                AccessibilitySettings.colorTheme == key;
-                            return GestureDetector(
-                              onTap: () => update(
-                                () => AccessibilitySettings.colorTheme = key),
-                              child: Container(
-                                width:  cardW,
-                                height: 52,
-                                decoration: BoxDecoration(
-                                  color:        bg,
-                                  borderRadius: BorderRadius.circular(10),
-                                  border:       Border.all(
-                                    color: sel
-                                        ? const Color(0xFF1565C0)
-                                        : Colors.grey.shade300,
-                                    width: sel ? 2.5 : 1,
-                                  ),
-                                ),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    if (sel)
-                                      Padding(
-                                        padding: const EdgeInsets.only(right: 4),
-                                        child: Icon(Icons.check,
-                                            color: text, size: 13),
-                                      ),
-                                    Text(
-                                      AccessibilitySettings
-                                          .themeLabels[key]!,
-                                      style: TextStyle(
-                                        color:      text,
-                                        fontSize:   12,
-                                        fontWeight: sel
-                                            ? FontWeight.bold
-                                            : FontWeight.normal,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          }).toList(),
+
+                      // Category → list of theme cards
+                      ...AccessibilitySettings.themeCategories.entries
+                          .map((entry) {
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _categoryHeader(entry.key),
+                            ...entry.value.map((key) =>
+                              _themeCard(key, update)),
+                          ],
                         );
                       }),
 
@@ -254,41 +212,53 @@ Future<void> showReadingCustomizeSheet(
                       const Divider(),
                       const SizedBox(height: 4),
 
-                      // ── ACCESSIBILITY FEATURES ────────────────────────
+                      // ── ACCESSIBILITY FEATURES ──────────────────────────
                       _sectionHeader('Accessibility Features'),
+
+                      // Word Highlighting — always functional
                       _toggle(
                         'Word Highlighting during TTS',
                         AccessibilitySettings.wordHighlighting,
                         (v) => update(
                           () => AccessibilitySettings.wordHighlighting = v),
                       ),
+
+                      // Focus Line Mode — fully implemented in OutputScreen
                       _toggle(
                         'Focus Line Mode',
                         AccessibilitySettings.focusLineMode,
                         (v) => update(
                           () => AccessibilitySettings.focusLineMode = v),
-                        subtitle: 'UI ready — coming soon',
+                        subtitle: 'Dims surrounding text; drag the handle to reposition.',
                       ),
+
+                      // Reading Ruler — fully implemented in OutputScreen
                       _toggle(
                         'Reading Ruler',
                         AccessibilitySettings.readingRuler,
                         (v) => update(
                           () => AccessibilitySettings.readingRuler = v),
-                        subtitle: 'UI ready — coming soon',
+                        subtitle: 'Horizontal guide — drag to track your line.',
                       ),
+
+                      // Syllable Breakdown — implemented in HighlightedTextView
                       _toggle(
                         'Syllable Breakdown',
                         AccessibilitySettings.syllableBreakdown,
                         (v) => update(
                           () => AccessibilitySettings.syllableBreakdown = v),
-                        subtitle: 'UI ready — coming soon',
+                        subtitle: 'Inserts visible breaks into words (e.g. read-ing, im-por-tant).',
                       ),
+
+                      // Larger Touch Targets — applied to chips in OutputScreen
                       _toggle(
                         'Larger Touch Targets',
                         AccessibilitySettings.largerTouchTargets,
                         (v) => update(
                           () => AccessibilitySettings.largerTouchTargets = v),
                       ),
+
+                      // Reduce Motion — removes transitions in reader overlays
                       _toggle(
                         'Reduce Motion / Animations',
                         AccessibilitySettings.reduceMotion,
@@ -298,7 +268,7 @@ Future<void> showReadingCustomizeSheet(
 
                       const SizedBox(height: 20),
 
-                      // ── SAVE BUTTON ───────────────────────────────────
+                      // ── SAVE BUTTON ─────────────────────────────────────
                       ElevatedButton.icon(
                         icon:  const Icon(Icons.save_outlined),
                         label: const Text('Save as Default'),
@@ -327,12 +297,222 @@ Future<void> showReadingCustomizeSheet(
     },
   );
 
-  // After the sheet closes, rebuild so the main screen reflects any changes
-  // the user didn't explicitly save.
+  // After the sheet closes, rebuild so the main screen reflects any
+  // live changes the user made but didn't explicitly save.
   onChanged();
 }
 
-// ── customize panel helpers ───────────────────────────────────────────────
+// ── Theme card ─────────────────────────────────────────────────────────────
+
+Widget _themeCard(String key, void Function(VoidCallback) update) {
+  final sel   = AccessibilitySettings.colorTheme == key;
+  final bg    = AccessibilitySettings.previewBg(key);
+  final tc    = AccessibilitySettings.previewText(key);
+  final label = AccessibilitySettings.themeLabels[key] ?? key;
+  final desc  = AccessibilitySettings.themeDescriptions[key] ?? '';
+  final badge = AccessibilitySettings.themeBadges[key];
+
+  return GestureDetector(
+    onTap: () => update(() => AccessibilitySettings.colorTheme = key),
+    child: Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        border: Border.all(
+          color: sel ? const Color(0xFF1565C0) : Colors.grey.shade200,
+          width: sel ? 2 : 1,
+        ),
+        borderRadius: BorderRadius.circular(12),
+        color:        sel
+            ? const Color(0xFF1565C0).withOpacity(0.06)
+            : Colors.grey.shade50,
+      ),
+      child: Row(
+        children: [
+          // ── Colour preview box ─────────────────────────────────────
+          Container(
+            width: 68, height: 68,
+            decoration: BoxDecoration(
+              color:        bg,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.grey.shade300, width: 0.5),
+            ),
+            padding: const EdgeInsets.all(6),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Aa',
+                  style: TextStyle(
+                    color: tc, fontSize: 18, fontWeight: FontWeight.bold,
+                    height: 1.1,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'AksharAlly',
+                  style: TextStyle(color: tc, fontSize: 7),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(width: 12),
+
+          // ── Info column ────────────────────────────────────────────
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        label,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize:   13,
+                          color:      Colors.black87,
+                        ),
+                      ),
+                    ),
+                    if (sel)
+                      const Icon(Icons.check_circle,
+                          size: 17, color: Color(0xFF1565C0)),
+                  ],
+                ),
+                if (badge != null) ...[
+                  const SizedBox(height: 4),
+                  _badgePill(badge),
+                ],
+                if (desc.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    desc,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color:    Colors.black54,
+                      height:   1.35,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+                // ── Sample preview text ────────────────────────────
+                const SizedBox(height: 6),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 6, vertical: 5),
+                  decoration: BoxDecoration(
+                    color:        bg,
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                        color: Colors.grey.shade200, width: 0.5),
+                  ),
+                  child: Text(
+                    'AksharAlly helps make reading easier. '
+                    'This is a sample reading preview.',
+                    style: TextStyle(
+                      color:    tc,
+                      fontSize: 9,
+                      height:   1.4,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+// ── Category header ────────────────────────────────────────────────────────
+
+Widget _categoryHeader(String category) {
+  final icon = const {
+    'Soft Reading':         Icons.auto_awesome_outlined,
+    'High Contrast':        Icons.contrast,
+    'Extreme Accessibility': Icons.accessibility_new,
+    'Modern Reading':       Icons.nights_stay_outlined,
+  };
+  return Padding(
+    padding: const EdgeInsets.only(top: 14, bottom: 6),
+    child: Row(
+      children: [
+        Icon(
+          icon[category] ?? Icons.palette_outlined,
+          size:  15,
+          color: const Color(0xFF1565C0),
+        ),
+        const SizedBox(width: 6),
+        Text(
+          category,
+          style: const TextStyle(
+            fontSize:   12,
+            fontWeight: FontWeight.w700,
+            color:      Color(0xFF1565C0),
+            letterSpacing: 0.3,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+// ── Badge pill ─────────────────────────────────────────────────────────────
+
+Widget _badgePill(String badge) {
+  Color bg, fg;
+  switch (badge) {
+    case 'Dyslexia Recommended':
+      bg = const Color(0xFFE8F5E9); fg = const Color(0xFF1B5E20); break;
+    case 'High Contrast':
+      bg = const Color(0xFF1565C0); fg = Colors.white; break;
+    case 'Extreme Contrast':
+      bg = const Color(0xFFE65100); fg = Colors.white; break;
+    case 'Study Mode':
+      bg = const Color(0xFFFFF3CD); fg = const Color(0xFF7B4F00); break;
+    case 'Dark Mode':
+      bg = const Color(0xFF263238); fg = Colors.white; break;
+    default:
+      bg = Colors.grey.shade200; fg = Colors.black87;
+  }
+  return Container(
+    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+    decoration: BoxDecoration(
+      color:        bg,
+      borderRadius: BorderRadius.circular(10),
+    ),
+    child: Text(
+      '⭐ $badge',
+      style: TextStyle(
+        fontSize:   9,
+        fontWeight: FontWeight.w700,
+        color:      fg,
+      ),
+    ),
+  );
+}
+
+// ── Font chip label ────────────────────────────────────────────────────────
+
+String _fontChipLabel(String font) {
+  switch (font) {
+    case 'Atkinson Hyperlegible': return 'Atkinson';
+    case 'System Default':        return 'System';
+    default:                      return font;
+  }
+}
+
+// ── Shared helpers ─────────────────────────────────────────────────────────
+
 Widget _sectionHeader(String title) {
   return Padding(
     padding: const EdgeInsets.only(bottom: 2),
@@ -358,7 +538,7 @@ Widget _toggle(
     title: Text(label, style: const TextStyle(fontSize: 14)),
     subtitle: subtitle != null
         ? Text(subtitle,
-            style: const TextStyle(fontSize: 11, color: Colors.grey))
+            style: const TextStyle(fontSize: 11, color: Colors.black54))
         : null,
     value:     value,
     onChanged: onChanged,

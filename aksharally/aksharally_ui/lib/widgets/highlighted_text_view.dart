@@ -47,7 +47,12 @@ class HighlightedTextView extends StatelessWidget {
   }
 
   /// Returns a [TextStyle] using the font selected in AccessibilitySettings.
-  /// OpenDyslexic gracefully falls back to Lexend (OD is not a Google Font).
+  ///
+  /// Google Fonts: Lexend, Atkinson Hyperlegible, Noto Sans, Inter, Roboto,
+  /// Comic Neue. Platform fonts (Verdana, Tahoma, Arial, Georgia, Trebuchet MS)
+  /// use the system font stack with Lexend as fallback.
+  /// OpenDyslexic is not on Google Fonts — falls back to Lexend.
+  /// System Default uses plain TextStyle with no font override.
   TextStyle _resolveFont({
     required double size,
     required double height,
@@ -69,20 +74,127 @@ class HighlightedTextView extends StatelessWidget {
         return GoogleFonts.atkinsonHyperlegible(textStyle: base);
       case 'Noto Sans':
         return GoogleFonts.notoSans(textStyle: base);
+      case 'Inter':
+        return GoogleFonts.inter(textStyle: base);
+      case 'Roboto':
+        return GoogleFonts.roboto(textStyle: base);
+      case 'Comic Neue':
+        return GoogleFonts.comicNeue(textStyle: base);
+      // Platform font families — use system stack, Lexend as fallback
+      case 'Verdana':
+      case 'Tahoma':
+      case 'Arial':
+      case 'Georgia':
+      case 'Trebuchet MS':
+        return base.copyWith(
+          fontFamily:        AccessibilitySettings.fontFamily,
+          fontFamilyFallback: const ['Lexend'],
+        );
       case 'System Default':
-        return base;
-      case 'OpenDyslexic': // OD not in Google Fonts — fallback to Lexend
+        return base; // No font family override — OS default
+      case 'OpenDyslexic': // OpenDyslexic not on Google Fonts — use Lexend
       case 'Lexend':
       default:
         return GoogleFonts.lexend(textStyle: base);
     }
   }
 
+  // ── Syllabification ────────────────────────────────────────────────────────
+
+  /// Applies English syllable breaks for *visual display only*.
+  ///
+  /// Algorithm: common suffix stripping → VCCV consonant-cluster splitting.
+  ///
+  /// Verified examples:
+  ///   "reading"   → "read-ing"   (suffix -ing)
+  ///   "important" → "im-por-tant" (VCCV: mp, rt)
+  ///   "butter"    → "but-ter"    (VCCV: tt)
+  ///
+  /// Known limitation: VCV-only patterns (e.g. "education") are split at
+  /// the suffix boundary only → "educa-tion" rather than "ed-u-ca-tion".
+  /// A working approximation per spec; original text is never modified.
+  static String _syllabifyWord(String word) {
+    if (word.length < 4) return word;
+    // Only process pure-alphabetic tokens (skip numbers, punctuated words, etc.)
+    if (!RegExp(r'^[a-zA-Z]+$').hasMatch(word)) return word;
+
+    // Ordered from longest to shortest to avoid partial matches
+    // (e.g. match 'tion' before 'on').
+    const suffixes = [
+      'tion', 'sion', 'ness', 'ment', 'ance', 'ence',
+      'ible', 'able', 'ery',  'ary',  'ory',
+      'ful',  'less', 'ous',  'ive',  'ing',  'ly',  'al',
+    ];
+
+    for (final suf in suffixes) {
+      final lc = word.toLowerCase();
+      if (lc.endsWith(suf) && word.length - suf.length >= 2) {
+        final stem = word.substring(0, word.length - suf.length);
+        if (stem.isEmpty) continue;
+        // Only split if the stem itself contains at least one vowel
+        // (avoids orphaned consonant clusters like "str-ong").
+        if (!stem.split('').any((c) => 'aeiouAEIOU'.contains(c))) continue;
+        return '${_splitCore(stem)}-$suf';
+      }
+    }
+    return _splitCore(word);
+  }
+
+  /// VCCV consonant-cluster splitting on a word with no suffix.
+  ///
+  /// Inserts a hyphen after the first consonant in any V-C₁-C₂-V sequence,
+  /// unless C₁C₂ is a protected digraph or blend that must never be split.
+  static String _splitCore(String word) {
+    if (word.length < 4) return word;
+
+    const vowels = 'aeiouAEIOU';
+    bool isV(String c) => vowels.contains(c);
+
+    // Digraphs and onset clusters that must stay together
+    const noSplit = {
+      'ch', 'sh', 'th', 'ph', 'wh', 'gh', 'ck', 'qu', 'ng',
+      'bl', 'br', 'cl', 'cr', 'dr', 'fl', 'fr', 'gl', 'gr',
+      'pl', 'pr', 'sc', 'sk', 'sl', 'sm', 'sn', 'sp', 'st',
+      'sw', 'tr', 'tw',
+    };
+
+    final buf = StringBuffer();
+    for (int i = 0; i < word.length; i++) {
+      buf.write(word[i]);
+      // VCCV check: insert hyphen after word[i] (the c₁ we just wrote) when:
+      //   word[i-1] is a vowel (v1)
+      //   word[i]   is a consonant (c1)   ← already written
+      //   word[i+1] is a consonant (c2)
+      //   word[i+2] is a vowel (v2)
+      if (i >= 1 && i + 2 < word.length) {
+        final v1 = word[i - 1];
+        final c1 = word[i];
+        final c2 = word[i + 1];
+        final v2 = word[i + 2];
+        if (isV(v1) && !isV(c1) && !isV(c2) && isV(v2)) {
+          final pair = '${c1.toLowerCase()}${c2.toLowerCase()}';
+          if (!noSplit.contains(pair)) {
+            buf.write('-');
+          }
+        }
+      }
+    }
+    return buf.toString();
+  }
+
+  // ── Word widget ────────────────────────────────────────────────────────────
+
   Widget _wordWidget(int index, Color textColor) {
     final isHighlighted =
         index == currentIndex && AccessibilitySettings.wordHighlighting;
+
+    // Syllable breakdown is display-only — original words[] list is never mutated.
+    final displayWord = AccessibilitySettings.syllableBreakdown
+        ? _syllabifyWord(words[index])
+        : words[index];
+
     return Text(
-      words[index],
+      displayWord,
       style: _resolveFont(
         size:     AccessibilitySettings.fontSize,
         height:   AccessibilitySettings.lineHeight,
