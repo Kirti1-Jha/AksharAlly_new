@@ -186,8 +186,6 @@ class _HomeScreenState extends State<HomeScreen> {
         _statsCard(),
         const SizedBox(height: AppTheme.spaceLG),
         _continueReadingSection(context),
-        const SizedBox(height: AppTheme.spaceLG),
-        _libraryLinkCard(),
       ],
     );
   }
@@ -468,45 +466,4 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ── 5. LIBRARY LINK ───────────────────────────────────────────────────────
-
-  Widget _libraryLinkCard() {
-    final linkBg = _bg.computeLuminance() < 0.3
-        ? const Color(0xFF3A3A3A)
-        : AppTheme.accentCream;
-
-    return InkWell(
-      borderRadius: BorderRadius.circular(AppTheme.radiusMD),
-      onTap: () => setState(() => currentIndex = 1),
-      child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppTheme.spaceMD,
-          vertical:   AppTheme.spaceMD,
-        ),
-        decoration: BoxDecoration(
-          color:        linkBg,
-          borderRadius: BorderRadius.circular(AppTheme.radiusMD),
-        ),
-        child: Row(
-          children: [
-            Icon(Icons.book_outlined, color: AppTheme.primaryBlue),
-            const SizedBox(width: AppTheme.spaceSM),
-            Expanded(
-              child: Text(
-                'Library',
-                style: _ts(15, FontWeight.w700, _txt),
-              ),
-            ),
-            Text(
-              'View All',
-              style: _ts(13, FontWeight.w600, AppTheme.primaryBlue),
-            ),
-            const SizedBox(width: 2),
-            const Icon(Icons.arrow_forward,
-                color: AppTheme.primaryBlue, size: 16),
-          ],
-        ),
-      ),
-    );
-  }
 }

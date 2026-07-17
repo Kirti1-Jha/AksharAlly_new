@@ -438,23 +438,6 @@ class _ReadingScreenState extends State<ReadingScreen> {
           const Divider(height: 1),
           const SizedBox(height: AppTheme.spaceMD),
 
-          // Reading profile
-          Text('Reading Profile', style: AppTheme.labelStyle),
-          const SizedBox(height: AppTheme.spaceSM),
-          _segmentRow(
-            options:  const [
-              ('mild',     'Mild'),
-              ('moderate', 'Moderate'),
-              ('severe',   'Severe'),
-            ],
-            selected: _profile,
-            onSelect: (v) => setState(() => _profile = v),
-          ),
-
-          const SizedBox(height: AppTheme.spaceMD),
-          const Divider(height: 1),
-          const SizedBox(height: AppTheme.spaceMD),
-
           // Processing mode
           Text('Processing Mode', style: AppTheme.labelStyle),
           const SizedBox(height: AppTheme.spaceXS),

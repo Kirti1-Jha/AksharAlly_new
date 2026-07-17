@@ -1,0 +1,759 @@
+# AksharAlly UX Cleanup + Reader Customization Expansion
+# Source of Truth: redesign-work
+
+========================================================
+STOP AND READ FIRST
+========================================================
+
+Use ONLY:
+
+redesign-work
+
+Do NOT use:
+
+main
+
+Do NOT use duplicate folders:
+
+backend/
+aksharally_ui/
+
+ONLY work inside:
+
+aksharally/backend/
+aksharally/aksharally_ui/
+
+========================================================
+ARCHITECTURE RULES (MUST FOLLOW)
+========================================================
+
+AksharAlly currently has two separate accessibility systems.
+
+--------------------------------------------------------
+UI Accessibility System
+--------------------------------------------------------
+
+Managed by:
+
+UIAccessibility
+
+Purpose:
+
+Application-wide UI personalization.
+
+Controls:
+
+- HomeScreen
+- LibraryScreen
+- Accessibility Center
+- App colors
+- App typography
+- Navigation labels
+- General UI appearance
+
+--------------------------------------------------------
+Reader Accessibility System
+--------------------------------------------------------
+
+Managed by:
+
+AccessibilitySettings
+
+Purpose:
+
+Reader content personalization.
+
+Controls:
+
+- OutputScreen
+- HighlightedTextView
+- Reading Customize Sheet
+- Reading profiles
+- Reading themes
+- Reading aids
+
+These systems are intentionally separate.
+
+DO NOT merge them.
+
+========================================================
+PART 1 — HOME SCREEN CLEANUP
+========================================================
+
+PROBLEM
+
+The Home screen currently contains:
+
+Library → View All
+
+card near the bottom.
+
+However, Library already exists in the bottom navigation bar.
+
+Current navigation:
+
+Bottom Navigation
+→ Library
+
+AND
+
+Home Screen
+→ Library Card
+
+Both lead to the same destination.
+
+This is redundant and creates unnecessary visual clutter.
+
+--------------------------------------------------------
+REQUIRED CHANGE
+--------------------------------------------------------
+
+Remove the entire Library card section from HomeScreen.
+
+Remove:
+
+- Library card
+- View All link
+- Any widget used exclusively for that card
+
+Keep:
+
+- New Reading card
+- Reading Statistics card
+- Continue Reading section
+- Bottom navigation
+
+--------------------------------------------------------
+EXPECTED RESULT
+--------------------------------------------------------
+
+Cleaner Home screen.
+
+Less visual clutter.
+
+Library accessed only through bottom navigation.
+
+========================================================
+PART 2 — REMOVE DUPLICATE READING PROFILES
+========================================================
+
+PROBLEM
+
+Reading profiles currently exist in:
+
+ReadingScreen
+
+AND
+
+OutputScreen
+
+Users can select:
+
+- Mild
+- Moderate
+- Severe
+
+in ReadingScreen.
+
+Then they can select them again inside OutputScreen.
+
+This is duplicate functionality.
+
+--------------------------------------------------------
+REQUIRED CHANGE
+--------------------------------------------------------
+
+Remove the reading profile selector completely from ReadingScreen.
+
+Remove:
+
+- Mild profile controls
+- Moderate profile controls
+- Severe profile controls
+
+and any related UI.
+
+--------------------------------------------------------
+DO NOT MODIFY
+--------------------------------------------------------
+
+Do NOT remove profiles from:
+
+OutputScreen
+
+Do NOT modify:
+
+AccessibilitySettings
+reading_customize_sheet.dart
+highlighted_text_view.dart
+
+The profile system must remain fully functional in OutputScreen.
+
+--------------------------------------------------------
+DESIGN GOAL
+--------------------------------------------------------
+
+ReadingScreen
+=
+Prepare Content
+
+OutputScreen
+=
+Read Content
+
+Reading customization belongs only in OutputScreen.
+
+========================================================
+PART 3 — READER CUSTOMIZATION SYSTEM EXPANSION
+========================================================
+
+The Reader Customization Sheet has become one of the most important features of AksharAlly.
+
+The goal is to transform it into a premium dyslexia-focused reading personalization system.
+
+Current customization options are good but still limited.
+
+========================================================
+PART 3A — EXPAND FONT LIBRARY
+========================================================
+
+Keep all existing fonts.
+
+Current fonts:
+
+- OpenDyslexic
+- Lexend
+- Atkinson
+- Noto Sans
+- System Default
+
+Add:
+
+- Inter
+- Roboto
+- Verdana
+- Tahoma
+- Arial
+- Georgia
+- Trebuchet MS
+- Comic Neue
+
+Persist selections through AccessibilitySettings.
+
+========================================================
+PART 3B — EXPAND READING THEME LIBRARY
+========================================================
+
+Current themes are too focused on cream and soft backgrounds.
+
+Accessibility is highly personal.
+
+Some users need:
+
+- low glare
+- high contrast
+- dark themes
+- extreme contrast themes
+
+The system should support all of them.
+
+--------------------------------------------------------
+CATEGORY 1 — SOFT READING THEMES
+--------------------------------------------------------
+
+Cream + Black
+
+Background:
+#F5F1E6
+
+Text:
+#111111
+
+Badge:
+⭐ Dyslexia Recommended
+
+Description:
+High readability with reduced glare.
+
+--------------------------------
+
+Cream + Navy
+
+Background:
+#F5F1E6
+
+Text:
+#0A2342
+
+Description:
+Strong contrast without harsh black text.
+
+--------------------------------
+
+Soft Yellow + Black
+
+Background:
+#FFF8C6
+
+Text:
+#111111
+
+Description:
+Reduces eye strain and improves focus.
+
+--------------------------------
+
+Pale Blue + Navy
+
+Background:
+#DCEEFF
+
+Text:
+#001F54
+
+Description:
+Helps visual tracking and letter distinction.
+
+--------------------------------
+
+Pale Green + Dark Gray
+
+Background:
+#E8F5E9
+
+Text:
+#222222
+
+Description:
+Comfortable for long reading sessions.
+
+--------------------------------
+
+Lavender + Dark Purple
+
+Background:
+#F2E8FF
+
+Text:
+#4A148C
+
+Description:
+Calming contrast with softer tones.
+
+========================================================
+CATEGORY 2 — HIGH CONTRAST THEMES
+========================================================
+
+White + Black
+
+Background:
+#FFFFFF
+
+Text:
+#000000
+
+Badge:
+⭐ High Contrast
+
+Description:
+Maximum readability.
+
+--------------------------------
+
+Black + White
+
+Background:
+#000000
+
+Text:
+#FFFFFF
+
+Description:
+Strong contrast for dark reading.
+
+--------------------------------
+
+White + Navy
+
+Background:
+#FFFFFF
+
+Text:
+#0A2342
+
+Description:
+Cleaner than pure black.
+
+--------------------------------
+
+Navy + White
+
+Background:
+#0A2342
+
+Text:
+#FFFFFF
+
+Description:
+Dark reading with crisp text.
+
+--------------------------------
+
+Dark Gray + White
+
+Background:
+#222222
+
+Text:
+#FFFFFF
+
+Description:
+Reduced glare dark theme.
+
+========================================================
+CATEGORY 3 — EXTREME ACCESSIBILITY THEMES
+========================================================
+
+Yellow + Black
+
+Background:
+#FFFF00
+
+Text:
+#000000
+
+Badge:
+⭐ Extreme Contrast
+
+Description:
+Maximum foreground/background separation.
+
+--------------------------------
+
+Black + Yellow
+
+Background:
+#000000
+
+Text:
+#FFFF00
+
+Description:
+Frequently preferred by some visually impaired readers.
+
+--------------------------------
+
+Cyan + Black
+
+Background:
+#D9FFFF
+
+Text:
+#000000
+
+Description:
+Bright high-visibility theme.
+
+--------------------------------
+
+Black + Cyan
+
+Background:
+#000000
+
+Text:
+#00FFFF
+
+Description:
+Strong visual distinction.
+
+--------------------------------
+
+Dark Blue + Yellow
+
+Background:
+#001F54
+
+Text:
+#FFFF00
+
+Description:
+Maximum letter differentiation.
+
+========================================================
+CATEGORY 4 — MODERN READING THEMES
+========================================================
+
+Sepia
+
+Background:
+#F4ECD8
+
+Text:
+#5B4636
+
+Badge:
+⭐ Study Mode
+
+Description:
+Book-like reading experience.
+
+--------------------------------
+
+Kindle Dark
+
+Background:
+#1B1B1B
+
+Text:
+#E6E6E6
+
+Badge:
+⭐ Dark Mode
+
+Description:
+Comfortable long-session reading.
+
+--------------------------------
+
+Slate
+
+Background:
+#2C3440
+
+Text:
+#F5F5F5
+
+Description:
+Modern low-glare dark theme.
+
+--------------------------------
+
+Graphite
+
+Background:
+#3A3A3A
+
+Text:
+#FFFFFF
+
+Description:
+Balanced dark reading mode.
+
+--------------------------------
+
+Midnight
+
+Background:
+#121212
+
+Text:
+#F5F5F5
+
+Description:
+Pure dark accessibility theme.
+
+========================================================
+PART 3C — IMPROVE THEME SELECTION UI
+========================================================
+
+Current color bars are not sufficient.
+
+Theme cards should display:
+
+- Theme Name
+- Theme Description
+- Badge (if applicable)
+- Sample Preview
+
+Example preview text:
+
+"AksharAlly helps make reading easier.
+This is a sample reading preview."
+
+Render preview using the actual theme colors.
+
+Group themes by category:
+
+- Soft Reading
+- High Contrast
+- Extreme Accessibility
+- Modern Reading
+
+========================================================
+PART 3D — IMPLEMENT COMING SOON FEATURES
+========================================================
+
+The following controls already exist in the UI but are not functional.
+
+Make them fully operational.
+
+--------------------------------------------------------
+1. Focus Line Mode
+--------------------------------------------------------
+
+When enabled:
+
+- Highlight the active reading line
+- Dim surrounding lines
+- Follow reading position
+- Work during scrolling
+- Work with all themes
+
+--------------------------------------------------------
+2. Reading Ruler
+--------------------------------------------------------
+
+When enabled:
+
+- Display a horizontal reading guide
+- User can drag it
+- Follow touch or mouse movement
+- Stay above text
+- Improve line tracking
+
+--------------------------------------------------------
+3. Syllable Breakdown
+--------------------------------------------------------
+
+When enabled:
+
+Examples:
+
+reading
+→ read-ing
+
+important
+→ im-por-tant
+
+education
+→ ed-u-ca-tion
+
+Apply only to rendered text.
+
+Do not modify original content.
+
+Support English first.
+
+If Hindi implementation is practical, include a simple version.
+
+--------------------------------------------------------
+4. Larger Touch Targets
+--------------------------------------------------------
+
+When enabled:
+
+- Larger buttons
+- Larger chips
+- Larger sliders
+- Larger tap targets
+
+Must remain visually clean.
+
+--------------------------------------------------------
+5. Reduce Motion / Animations
+--------------------------------------------------------
+
+When enabled:
+
+- Remove unnecessary animations
+- Reduce transitions
+- Reduce motion effects
+
+Keep functionality unchanged.
+
+========================================================
+PART 3E — READER THEME PREVIEWS
+========================================================
+
+Every theme should display:
+
+Theme Name
+
+Description
+
+Sample Preview Text
+
+Badge (if applicable)
+
+The preview should accurately represent how the reading screen will look.
+
+========================================================
+DO NOT MODIFY
+========================================================
+
+Do NOT modify:
+
+UIAccessibility
+Accessibility Center
+HomeScreen accessibility logic
+LibraryScreen accessibility logic
+
+Only modify:
+
+Reader customization system
+
+and the HomeScreen cleanup requested above.
+
+========================================================
+PRE-CODE VALIDATION
+========================================================
+
+Before writing code provide:
+
+1. Files to modify
+
+2. Files that will not be modified
+
+3. Confirmation that:
+
+- OutputScreen remains the reading experience screen
+- ReadingScreen remains the input screen
+- UIAccessibility remains separate
+- AccessibilitySettings remains separate
+
+Then proceed.
+
+========================================================
+FINAL VERIFICATION
+========================================================
+
+Provide:
+
+- Files modified
+- Features implemented
+- Fonts added
+- Themes added
+- Coming Soon features implemented
+- HomeScreen cleanup completed
+- ReadingScreen cleanup completed
+
+Verify:
+
+✅ Library card removed
+
+✅ Bottom navigation still works
+
+✅ Reading profiles removed from ReadingScreen
+
+✅ Reading profiles still work in OutputScreen
+
+✅ Focus Line Mode works
+
+✅ Reading Ruler works
+
+✅ Syllable Breakdown works
+
+✅ Larger Touch Targets works
+
+✅ Reduce Motion works
+
+✅ Theme previews added
+
+✅ Theme categories added
+
+✅ Reader customization remains separate from UIAccessibility
+
+✅ No overflow warnings
+
+✅ No regressions
