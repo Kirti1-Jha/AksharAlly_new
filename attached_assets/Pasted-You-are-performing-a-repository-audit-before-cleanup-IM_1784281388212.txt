@@ -1,0 +1,94 @@
+You are performing a repository audit before cleanup.
+
+IMPORTANT CONTEXT:
+The repository contains a main project folder named `aksharally/`.
+
+I believe that all active development files are located inside `aksharally/`, including:
+
+* Backend code
+* Flutter frontend
+* Assets
+* Configuration files
+* Documentation currently being used
+
+However, there appear to be duplicate or redundant folders/files outside the `aksharally/` directory that may have been accidentally created during previous edits.
+
+Your task is to VERIFY this assumption before deleting anything.
+
+## Phase 1: Repository Analysis
+
+1. Generate a complete tree of the repository.
+2. Identify every file and folder located OUTSIDE `aksharally/`.
+3. Categorize them as:
+
+   * Source code
+   * Configuration
+   * Assets
+   * Documentation
+   * Build/generated files
+   * Duplicate copies
+
+## Phase 2: Dependency Verification
+
+For every item outside `aksharally/`:
+
+Check whether it is referenced by:
+
+* Flutter project files
+* pubspec.yaml
+* import statements
+* relative paths
+* build scripts
+* CI/CD files
+* backend code
+* documentation
+* assets loading
+
+Determine whether deleting it would break:
+
+* Flutter builds
+* Backend execution
+* Asset loading
+* Authentication
+* OCR
+* TTS
+* Accessibility features
+* Any other application functionality
+
+## Phase 3: Duplicate Detection
+
+Compare every source file outside `aksharally/` against files inside `aksharally/`.
+
+For each duplicate:
+
+* Show both paths.
+* State whether contents are identical.
+* State which copy appears to be the actively used version.
+* State whether the external copy is safe to remove.
+
+## Phase 4: Safety Report
+
+Create a table with:
+
+| Path | Purpose | Referenced Anywhere? | Safe To Delete? | Reason |
+
+Be extremely conservative.
+
+If there is even a small possibility a file is needed, mark it:
+"REVIEW MANUALLY"
+
+Do NOT delete anything yet.
+
+## Phase 5: Cleanup Recommendation
+
+At the end provide:
+
+1. Files/folders definitely safe to delete.
+2. Files/folders that require manual review.
+3. Files/folders that must be kept.
+4. A confidence score for the cleanup.
+
+Only after the audit is complete and all items are verified should you recommend deletion.
+
+Do not modify, move, or delete any files during this audit.
+Read the repository first and provide evidence for every conclusion.
