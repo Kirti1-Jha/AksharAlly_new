@@ -698,7 +698,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
                             () => AccessibilitySettings.wordHighlighting = v),
                         ),
                         _toggle(
-                          'Focus Line Mode',
+                          'Focus Window',
                           AccessibilitySettings.focusLineMode,
                           (v) => update(
                             () => AccessibilitySettings.focusLineMode = v),
@@ -712,7 +712,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
                           subtitle: 'UI ready — coming soon',
                         ),
                         _toggle(
-                          'Syllable Breakdown',
+                          'Syllable Breakdown (Experimental)',
                           AccessibilitySettings.syllableBreakdown,
                           (v) => update(
                             () => AccessibilitySettings.syllableBreakdown = v),

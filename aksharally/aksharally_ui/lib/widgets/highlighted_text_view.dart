@@ -51,7 +51,7 @@ class HighlightedTextView extends StatelessWidget {
   /// Google Fonts: Lexend, Atkinson Hyperlegible, Noto Sans, Inter, Roboto,
   /// Comic Neue. Platform fonts (Verdana, Tahoma, Arial, Georgia, Trebuchet MS)
   /// use the system font stack with Lexend as fallback.
-  /// OpenDyslexic is not on Google Fonts — falls back to Lexend.
+  /// OpenDyslexic uses the bundled TTF asset (registered in pubspec.yaml).
   /// System Default uses plain TextStyle with no font override.
   TextStyle _resolveFont({
     required double size,
@@ -92,7 +92,9 @@ class HighlightedTextView extends StatelessWidget {
         );
       case 'System Default':
         return base; // No font family override — OS default
-      case 'OpenDyslexic': // OpenDyslexic not on Google Fonts — use Lexend
+      case 'OpenDyslexic':
+        // Bundled asset font — registered in pubspec.yaml under family: OpenDyslexic
+        return base.copyWith(fontFamily: 'OpenDyslexic');
       case 'Lexend':
       default:
         return GoogleFonts.lexend(textStyle: base);

@@ -223,9 +223,9 @@ Future<void> showReadingCustomizeSheet(
                           () => AccessibilitySettings.wordHighlighting = v),
                       ),
 
-                      // Focus Line Mode — fully implemented in OutputScreen
+                      // Focus Window — fully implemented in OutputScreen
                       _toggle(
-                        'Focus Line Mode',
+                        'Focus Window',
                         AccessibilitySettings.focusLineMode,
                         (v) => update(
                           () => AccessibilitySettings.focusLineMode = v),
@@ -241,9 +241,9 @@ Future<void> showReadingCustomizeSheet(
                         subtitle: 'Horizontal guide — drag to track your line.',
                       ),
 
-                      // Syllable Breakdown — implemented in HighlightedTextView
+                      // Syllable Breakdown (Experimental) — implemented in HighlightedTextView
                       _toggle(
-                        'Syllable Breakdown',
+                        'Syllable Breakdown (Experimental)',
                         AccessibilitySettings.syllableBreakdown,
                         (v) => update(
                           () => AccessibilitySettings.syllableBreakdown = v),
