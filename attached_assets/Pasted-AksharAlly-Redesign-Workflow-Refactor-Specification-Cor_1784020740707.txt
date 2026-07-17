@@ -1,0 +1,520 @@
+AksharAlly Redesign & Workflow Refactor Specification
+Core Product Principle
+
+AksharAlly supports TWO separate workflows.
+
+1. Format Only
+Purpose
+
+Improve readability without changing meaning.
+
+Actions include:
+
+Better line breaks
+Better spacing
+Chunking long paragraphs
+Dyslexia-friendly presentation
+Reader-friendly layout
+Must NOT
+Rewrite sentences
+Change vocabulary
+Translate text
+Simplify meaning
+Format Only Implementation
+
+Format Only must NOT call Gemini.
+
+For Format Only mode:
+
+OCR/Image Upload
+
+Image → OCR → Reader
+
+File Upload
+
+Document → Text Extraction → Reader
+
+Typed Text
+
+Text → Reader
+
+Apply only presentation formatting:
+
+Paragraph chunking
+Line breaks
+Dyslexia-friendly spacing
+Reader layout improvements
+
+Do NOT:
+
+Rewrite sentences
+Change vocabulary
+Translate content
+Simplify meaning
+
+This mode should be implemented entirely in Flutter and should not invoke AI processing.
+
+2. Simplify + Format
+Purpose
+
+Make complex content easier to understand.
+
+Actions include:
+
+Sentence simplification
+Easier vocabulary
+Shorter sentence structures
+
+After simplification, apply the same dyslexia-friendly formatting used in Format Only mode.
+
+This mode may use the existing Gemini-based backend pipeline.
+
+Language Preservation Rule
+
+Formatting must preserve the original language.
+
+English input must remain English.
+
+Hindi input must remain Hindi.
+
+Format Only must never translate content.
+
+Simplify + Format may simplify language but must never change the selected language.
+
+No automatic translation should occur anywhere in the workflow.
+
+API Contract Protection
+
+Do not rename:
+
+Existing endpoints
+Existing request fields
+Existing response fields
+
+Do not modify backend routes unless explicitly required.
+
+The redesign should primarily affect the Flutter UI layer.
+
+Any backend change must be justified and reported before implementation.
+
+Architecture Protection Rules
+
+Do NOT:
+
+Delete files
+Remove routes
+Remove widgets
+Remove services
+Remove backend modules
+Refactor project architecture
+Change folder structure
+Rename files
+Rename classes
+Rename APIs
+
+unless explicitly instructed.
+
+Focus on implementing the redesign requirements while preserving the current architecture.
+
+Critical Requirement
+
+Do not remove or break any currently working functionality.
+
+The following features must continue working exactly as they do today:
+
+Firebase Authentication
+OCR extraction
+PDF upload processing
+DOCX upload processing
+Gemini integration
+Library save/load
+Reader screen
+Word highlighting
+TTS controls
+Existing API integration
+Language selection
+Existing navigation flows
+
+If a redesign risks breaking an existing feature, preserve the current implementation and only refactor the UI layer.
+
+New Reading Screen
+
+Replace the current workflow selection screens with a unified reading workflow.
+
+Top segmented selector:
+
+Scan
+Type
+Upload
+Scan Mode
+
+Supports:
+
+Camera
+Gallery
+Flow
+
+Image → OCR → Format Only (default) → Reader
+
+Users may optionally switch to:
+
+Simplify + Format
+
+Scan Mode Requirements
+
+Camera option must open the device camera using ImageSource.camera.
+
+Gallery option must open image selection.
+
+Both flows must continue to support OCR processing.
+
+Do not remove existing OCR functionality.
+
+Upload Mode
+
+Supports:
+
+PDF
+DOCX
+TXT
+Flow
+
+Document → Text Extraction → Format Only (default) → Reader
+
+Users may optionally switch to:
+
+Simplify + Format
+
+Type Mode
+
+Supports direct text entry.
+
+Flow
+
+Typed Text → Format Only
+
+or
+
+Typed Text → Simplify + Format
+
+Processing Controls
+
+Below the input area show:
+
+Language
+English
+हिन्दी
+Severity
+Mild
+Moderate
+Severe
+Processing Mode
+
+○ Format Only
+
+○ Simplify + Format
+
+Single action button:
+
+[ Continue ]
+
+Behavior
+If Format Only is selected
+
+Use the client-side formatting workflow.
+
+Do not call Gemini.
+
+Do not invoke simplification APIs.
+
+Navigate directly to Reader.
+
+If Simplify + Format is selected
+
+Use the existing Gemini simplification pipeline.
+
+Then apply dyslexia-friendly formatting.
+
+Navigate to Reader.
+
+Reader Screen Preservation Requirements
+
+The redesign may improve the UI but must not remove any existing reader functionality.
+
+The following reader capabilities must remain operational:
+
+TTS playback
+Pause
+Resume
+Stop
+Word highlighting
+Current word tracking
+Language selection
+Font size controls
+Dyslexia-friendly rendering
+Existing reading controls
+
+If functionality conflicts with UI changes, preserve functionality first.
+
+Library Redesign
+
+Library becomes the reading history.
+
+Every successful reading is automatically saved.
+
+Remove manual save buttons.
+
+Add
+Search Bar
+
+Search through reading history.
+
+Filter Chips
+All
+Scans
+Files
+Typed
+New Field
+
+Add:
+
+sourceType
+
+Allowed values:
+
+scan
+file
+typed
+unknown
+Card Design
+
+Each card should show:
+
+Source icon
+Title
+One-line preview
+Relative timestamp
+Language tag
+Open Item Behavior
+
+Opening a library item should:
+
+Open Reader directly
+Load saved content
+Never call the API again
+Delete Support
+
+Add either:
+
+Swipe to delete
+
+OR
+
+Long press delete
+Backward Compatibility
+
+Existing LibraryItem records may not contain sourceType.
+
+When loading legacy entries:
+
+Default sourceType to:
+
+unknown
+
+Show a generic document icon.
+
+Do not crash.
+
+Do not discard existing data.
+
+All previously saved readings must remain accessible after the update.
+
+Home Dashboard Redesign
+
+Modern accessible dashboard.
+
+Improve:
+
+Visual hierarchy
+Accessibility
+Card design
+Typography
+Spacing
+Navigation clarity
+
+Retain all existing functionality.
+
+Do not remove any working user flows.
+
+Settings Screen Redesign
+
+Improve:
+
+Accessibility
+Readability
+Theme consistency
+Language settings visibility
+TTS settings visibility
+
+Retain all existing settings functionality.
+
+Hindi TTS Improvements
+
+Current Hindi reading experience should be improved.
+
+Requirements:
+
+Use Hindi voice when Hindi is selected.
+Preserve existing English TTS behavior.
+Ensure Hindi text is spoken correctly.
+Do not break word highlighting.
+Do not break playback controls.
+Existing Feature Preservation Checklist
+
+Before completing any phase verify:
+
+✓ Login works
+
+✓ Signup works
+
+✓ OCR works
+
+✓ Image upload works
+
+✓ Camera capture works
+
+✓ PDF upload works
+
+✓ DOCX upload works
+
+✓ Format Only works
+
+✓ Simplify + Format works
+
+✓ English content remains English
+
+✓ Hindi content remains Hindi
+
+✓ Library works
+
+✓ Reader works
+
+✓ TTS works
+
+✓ Word highlighting works
+
+✓ Settings work
+
+✓ Existing API integrations work
+
+Implementation Order
+
+Implement strictly in phases.
+
+Do not continue without approval.
+
+Phase 1
+Theme System
+
+Implement:
+
+AppTheme
+Colors
+Typography
+Global styling
+Accessibility improvements
+
+Before stopping:
+
+List modified files.
+Explain all changes.
+Provide screenshots if available.
+Wait for approval.
+Phase 2
+New Reading Screen
+
+Implement unified workflow.
+
+Before stopping:
+
+List modified files.
+Explain all changes.
+Provide screenshots if available.
+Wait for approval.
+Phase 3
+Home Dashboard
+
+Before stopping:
+
+List modified files.
+Explain all changes.
+Provide screenshots if available.
+Wait for approval.
+Phase 4
+Library Redesign
+
+Before stopping:
+
+List modified files.
+Explain all changes.
+Provide screenshots if available.
+Wait for approval.
+Phase 5
+Settings Rebuild
+
+Before stopping:
+
+List modified files.
+Explain all changes.
+Provide screenshots if available.
+Wait for approval.
+Phase 6
+Camera Flow Fix
+
+Implement:
+
+Working camera capture
+Working gallery selection
+OCR compatibility
+
+Before stopping:
+
+List modified files.
+Explain all changes.
+Provide screenshots if available.
+Wait for approval.
+Phase 7
+Hindi TTS Improvements
+
+Implement Hindi voice support while preserving existing functionality.
+
+Before stopping:
+
+List modified files.
+Explain all changes.
+Provide screenshots if available.
+Wait for approval.
+Final Rule
+
+Before modifying code in any phase:
+
+Explain the implementation plan.
+Identify files that will be modified.
+Explain why each file must change.
+
+After implementation:
+
+Report all modified files.
+Explain every change made.
+Confirm that existing functionality remains intact.
+Wait for approval before proceeding to the next phase.
+
+Do not skip phases.
+
+Do not continue automatically.
+
+Do not perform architectural refactors.
+
+Do not remove existing working functionality.
+
+Preserve functionality first, redesign second.

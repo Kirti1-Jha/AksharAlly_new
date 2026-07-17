@@ -15,7 +15,8 @@ API_KEY = os.getenv("GEMINI_API_KEY")
 if not API_KEY:
     print("Warning: GEMINI_API_KEY not found - Gemini features will be disabled")
 
-# ✅ Create client lazily so missing key doesn't crash startup
+# ✅ Create client ONCE (important) — only if a key is available, so the
+# server can still start (with simplification disabled) when it's not set.
 client = genai.Client(api_key=API_KEY) if API_KEY else None
 
 

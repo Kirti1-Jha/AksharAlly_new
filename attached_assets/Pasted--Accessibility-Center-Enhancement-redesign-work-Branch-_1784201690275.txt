@@ -1,0 +1,691 @@
+# Accessibility Center Enhancement — redesign-work Branch
+
+## STOP AND READ FIRST
+
+Use ONLY the `redesign-work` branch as the source of truth.
+
+Do NOT use `main`.
+
+Do NOT use legacy architecture from `main`.
+
+You previously analyzed the repository and confirmed that:
+
+- redesign-work is the canonical implementation
+- OutputScreen is the dedicated reading screen
+- ReadingScreen is the dedicated input screen
+- Accessibility Center is powered by UIAccessibility
+- Reader customization is powered by AccessibilitySettings
+- These systems are intentionally separate
+
+All work must be based on the redesign-work architecture.
+
+---
+
+# REPOSITORY STRUCTURE WARNING
+
+The repository contains duplicate/stale copies of the frontend and backend outside the main project folder.
+
+These duplicates are NOT the source of truth.
+
+IGNORE COMPLETELY:
+
+backend/
+aksharally_ui/
+
+These are stale copies.
+
+ONLY use:
+
+aksharally/backend/
+aksharally/aksharally_ui/
+
+Do NOT:
+
+- modify files in backend/
+- modify files in aksharally_ui/
+- copy code from those duplicate folders
+- analyze those duplicate folders
+- generate patches for those duplicate folders
+
+All implementation decisions must be based exclusively on:
+
+redesign-work
++
+aksharally/backend/
++
+aksharally/aksharally_ui/
+
+If any file you intend to modify exists outside:
+
+aksharally/backend/
+
+or
+
+aksharally/aksharally_ui/
+
+STOP and report it.
+
+Do not continue.
+
+---
+
+# PRE-CODE VALIDATION (MANDATORY)
+
+Before writing code, provide:
+
+1. Branch being used
+
+2. Files you plan to modify
+
+3. Confirmation that every file is inside:
+
+aksharally/backend/
+
+or
+
+aksharally/aksharally_ui/
+
+4. Confirmation that:
+
+backend/
+aksharally_ui/
+
+will NOT be modified
+
+5. Confirmation that:
+
+OutputScreen
+AccessibilitySettings
+HighlightedTextView
+reading_customize_sheet.dart
+
+will NOT be modified
+
+Only after this validation should implementation begin.
+
+---
+
+# ARCHITECTURE RULES
+
+## UI Accessibility Layer
+
+Managed by:
+
+UIAccessibility
+
+Purpose:
+
+Application-wide UI personalization
+
+Controls:
+
+- HomeScreen
+- LibraryScreen
+- Accessibility Center
+- Navigation labels
+- Application typography
+- Cards
+- Headers
+- UI colors
+- General UI appearance
+
+Likely files:
+
+- ui_accessibility.dart
+- settings_screen.dart
+- home_screen.dart
+- library_screen.dart
+- main.dart
+
+---
+
+## Reader Accessibility Layer
+
+Managed by:
+
+AccessibilitySettings
+
+Purpose:
+
+Reader content personalization
+
+Controls:
+
+- OutputScreen
+- HighlightedTextView
+- Reading Customize Sheet
+- OCR output rendering
+- Simplified text rendering
+
+Files:
+
+- output_screen.dart
+- highlighted_text_view.dart
+- reading_customize_sheet.dart
+- accessibility_settings.dart
+
+---
+
+# DO NOT MODIFY
+
+Do NOT modify:
+
+- OutputScreen
+- AccessibilitySettings
+- HighlightedTextView
+- reading_customize_sheet.dart
+- OCR pipeline
+- simplification pipeline
+- ReadingScreen processing flow
+- Library persistence system
+- Continue Reading logic
+- Reader rendering logic
+
+The Reader customization system must remain completely separate from the UI accessibility system.
+
+Do NOT merge these systems.
+
+Do NOT move settings between these systems.
+
+---
+
+# IMPLEMENTATION GOAL
+
+The Accessibility Center is already functional.
+
+The Preview → Apply workflow is working correctly.
+
+The goal is to transform it into a premium, research-backed dyslexia-focused personalization system.
+
+The Reader customization system must remain untouched.
+
+Only improve the UI Accessibility system.
+
+---
+
+# ISSUE 1 — SETTINGS SCREEN TEXT IS NOT FOLLOWING ACCESSIBILITY COLORS
+
+## Problem
+
+The following text remains white regardless of selected theme:
+
+Accessibility Center
+
+Customise how AksharAlly looks — preview changes before applying.
+
+When Cream or other light backgrounds are selected, these become difficult to read.
+
+This is an accessibility issue.
+
+---
+
+## Required Audit
+
+Search for:
+
+Colors.white
+
+AppTheme.textOnPrimary
+
+const TextStyle(color:
+
+Color(0xFFFFFFFF)
+
+Especially inside:
+
+- settings_screen.dart
+- home_screen.dart
+- library_screen.dart
+
+Audit:
+
+- Titles
+- Subtitles
+- Descriptions
+- Labels
+- Helper text
+- Card titles
+- Section headings
+
+---
+
+## Required Fix
+
+Replace hardcoded colors with:
+
+UIAccessibility.textColor
+
+or
+
+Theme.of(context)
+
+depending on architecture.
+
+---
+
+## Expected Result
+
+Changing text color updates:
+
+- Accessibility Center title
+- Accessibility Center subtitle
+- Section titles
+- Section descriptions
+- Labels
+- Helper text
+- Accessibility explanations
+- Card text
+
+No text should remain permanently white.
+
+---
+
+# ISSUE 2 — EXPAND ACCESSIBILITY THEME LIBRARY
+
+Current themes are too limited.
+
+Add the following professionally curated accessibility themes.
+
+---
+
+## Theme 1
+
+Name:
+
+Cream + Black
+
+Background:
+
+#F5F1E6
+
+Text:
+
+#111111
+
+Description:
+
+High readability with reduced glare.
+
+Badge:
+
+⭐ Most Popular
+
+---
+
+## Theme 2
+
+Name:
+
+Soft Yellow + Black
+
+Background:
+
+#FFF8C6
+
+Text:
+
+#111111
+
+Description:
+
+Reduces eye strain and improves focus.
+
+---
+
+## Theme 3
+
+Name:
+
+Pale Blue + Navy
+
+Background:
+
+#DCEEFF
+
+Text:
+
+#001F54
+
+Description:
+
+Helps visual tracking and letter distinction.
+
+---
+
+## Theme 4
+
+Name:
+
+Pale Green + Dark Gray
+
+Background:
+
+#E8F5E9
+
+Text:
+
+#222222
+
+Description:
+
+Comfortable for long reading sessions.
+
+---
+
+## Theme 5
+
+Name:
+
+Peach + Black
+
+Background:
+
+#FFE5D0
+
+Text:
+
+#111111
+
+Description:
+
+Warm tone with strong contrast.
+
+---
+
+## Theme 6
+
+Name:
+
+White + Black
+
+Background:
+
+#FFFFFF
+
+Text:
+
+#000000
+
+Description:
+
+Maximum contrast.
+
+Badge:
+
+⭐ High Contrast
+
+---
+
+## Theme 7
+
+Name:
+
+Dark Mode Accessibility
+
+Background:
+
+#121212
+
+Text:
+
+#F5F5F5
+
+Description:
+
+Comfortable for low-light environments.
+
+---
+
+# ADDITIONAL PREMIUM THEMES
+
+Cream + Navy
+
+Background: #F5F1E6
+
+Text: #0A2342
+
+---
+
+Cream + Dark Green
+
+Background: #F5F1E6
+
+Text: #1B4332
+
+---
+
+Cream + Burgundy
+
+Background: #F5F1E6
+
+Text: #6A040F
+
+---
+
+Soft Yellow + Purple
+
+Background: #FFF8C6
+
+Text: #4C1D95
+
+---
+
+# ISSUE 3 — IMPROVE THEME CARD GUIDANCE
+
+Users currently only see color swatches.
+
+This is insufficient.
+
+Each theme card must display:
+
+1. Theme Name
+
+Example:
+
+Cream + Black
+
+2. Description
+
+Example:
+
+High readability with reduced glare.
+
+3. Mini App Preview
+
+Show:
+
+AksharAlly
+
+Continue Reading
+
+Library
+
+Settings
+
+inside the theme card.
+
+Render the preview using that theme's colors.
+
+The preview should resemble a miniature version of the app.
+
+---
+
+# ISSUE 4 — ACCESSIBILITY BADGES
+
+Add badges.
+
+Supported badges:
+
+⭐ Most Popular
+
+⭐ Dyslexia Recommended
+
+⭐ High Contrast
+
+Assignments:
+
+Most Popular
+
+→ Cream + Black
+
+Dyslexia Recommended
+
+→ Theme representing Lexend + Cream + Dark Gray
+
+High Contrast
+
+→ White + Black
+
+Badges should be visually subtle and professional.
+
+---
+
+# ISSUE 5 — CONTRAST PROTECTION
+
+Users can currently create:
+
+Black background + black text
+
+White background + white text
+
+and other low-contrast combinations.
+
+---
+
+## Required Enhancement
+
+Add contrast validation.
+
+When text and background colors are too similar, display:
+
+⚠ Low contrast combination detected.
+This may reduce readability.
+
+Do NOT block the user.
+
+Do NOT disable Apply.
+
+Only show a warning.
+
+---
+
+## Preferred Behavior
+
+Warning appears:
+
+- beneath custom color controls
+- inside preview area
+- updates live
+
+---
+
+# ISSUE 6 — PREMIUM VISUAL HIERARCHY
+
+Accessibility Center is becoming one of AksharAlly's key differentiators.
+
+It should feel polished.
+
+Improve:
+
+## Spacing
+
+Increase separation between major sections.
+
+## Section Titles
+
+Increase prominence.
+
+## Section Descriptions
+
+Add concise helper descriptions where useful.
+
+## Typography
+
+Ensure ALL text respects UIAccessibility settings.
+
+## Cards
+
+Maintain consistent heights.
+
+## Layout
+
+Remove overflow warnings.
+
+Prevent clipped content.
+
+Ensure responsiveness.
+
+---
+
+# FINAL VERIFICATION
+
+After implementation provide:
+
+## Files Modified
+
+List every file changed.
+
+---
+
+## Accessibility Compliance
+
+Confirm:
+
+- No permanently white text remains
+- All Accessibility Center text follows UIAccessibility colors
+- Theme descriptions remain readable
+
+---
+
+## Theme Library
+
+Confirm:
+
+- New themes added
+- Descriptions added
+- Theme previews added
+- Premium themes added
+
+---
+
+## Contrast Protection
+
+Confirm:
+
+- Warning appears
+- Warning updates live
+- User is not blocked
+
+---
+
+## Accessibility Badges
+
+Confirm:
+
+- Most Popular badge added
+- Dyslexia Recommended badge added
+- High Contrast badge added
+
+---
+
+## Layout
+
+Confirm:
+
+- No overflow warnings
+- Consistent card sizing
+- Improved spacing
+
+---
+
+## Reader Separation Verification
+
+Explicitly verify:
+
+- OutputScreen unchanged
+- OCR flow unchanged
+- Simplification flow unchanged
+- AccessibilitySettings unchanged
+- Reader customization remains independent
+
+Before writing code, first provide your implementation plan and file list, then proceed with implementation.

@@ -1,53 +1,26 @@
-# AksharAlly Backend
+# AksharAlly
 
-An accessibility platform for dyslexic users. This repo contains a **Flask Python backend** and a **Flutter mobile app** (in `aksharally_ui/`).
+## Overview
+AksharAlly is an accessibility platform for dyslexic users, with two parts in this repo:
+
+- **`aksharally/backend`** — Python/Flask API (OCR, dyslexia-friendly text formatting, optional AI text simplification). This is the only part currently set up to run on Replit.
+- **`aksharally/aksharally_ui`** — Flutter mobile app client. Not run on Replit (Flutter isn't previewable here); use it locally/Android Studio/Xcode if needed.
+
+There are also duplicate top-level `backend/` and `aksharally_ui/` folders left over from the import — these are unused leftovers and should be ignored, not modified.
 
 ## Running the backend
+- Workflow "Start application" runs `cd aksharally/backend && python3 app.py`, serving on port 5000.
+- API docs (Swagger UI) are at `/docs`; root `/` redirects there. Health check at `/health`.
+- Dependencies are managed via `uv`/`pyproject.toml` at the project root (not pip directly), even though `aksharally/backend/requirements.txt` also lists them for reference.
 
-The active backend lives in `aksharally/backend/`. Start it with:
+### Optional features (degrade gracefully if unset)
+- **AI text simplification** (`/api/simplify-text`, Gemini) needs a `GEMINI_API_KEY` secret. Without it, the endpoint returns the original text unchanged instead of simplifying it.
+- **Firebase** (`modules/firebase_service.py`) needs a `firebase_key.json` service-account file in `aksharally/backend/`. Without it, Firebase-backed features (e.g. auth routes) are disabled for the session.
 
-```
-cd aksharally/backend && python3 app.py
-```
-
-The server runs on port 5000. Visit `/docs` for the interactive Swagger UI, or `/health` for a status check.
-
-## Stack
-
-- **Flask** — HTTP server
-- **Google Gemini** (`gemini-2.5-flash`) — AI text simplification for dyslexia
-- **Tesseract + pytesseract** — OCR (EasyOCR is an optional fallback; not installed)
-- **Firebase Admin** — auth and Firestore (disabled unless `firebase_key.json` is present)
-- **Flasgger** — Swagger/OpenAPI docs at `/docs`
-
-## Key endpoints
-
-| Endpoint | Purpose |
-|---|---|
-| `GET /health` | Health check |
-| `GET /docs` | Swagger UI |
-| `POST /api/format-text` | Extract + reformat text for dyslexia readability (no AI) |
-| `POST /api/simplify-text` | AI text simplification via Gemini |
-| `POST /api/process-input` | Raw multi-source extraction (text, image, PDF, DOCX) |
-| `POST /process/ocr` | Legacy OCR endpoint |
-| `POST /process/simplify` | Legacy simplification endpoint |
-| `POST /process/pipeline` | Legacy OCR + simplify combo |
-| `POST /auth/register` | Firebase user registration |
-| `POST /auth/verify` | Firebase token verification |
-
-## Required secrets
-
-| Secret | Purpose |
-|---|---|
-| `GEMINI_API_KEY` | Google Gemini API — text simplification |
-| `firebase_key.json` | Firebase service account file — auth & Firestore (optional; features gracefully disabled if absent) |
-
-## Notes
-
-- Firebase is disabled if `firebase_key.json` is not present in `aksharally/backend/` — other endpoints still work.
-- EasyOCR is not installed (large download); Tesseract OCR is used instead.
-- There are two backend copies in the repo (`aksharally/backend/` and `backend/`). The active one is `aksharally/backend/`.
+## Recent fixes (2026-07-15)
+- Root `pyproject.toml` had a stray `easyocr = [{ index = "pytorch-cpu", ... }]` source mapping that pointed `easyocr` at the PyTorch wheel index (which doesn't host it), and `requires-python` allowed hypothetical future Python versions incompatible with `easyocr`. Fixed both so `uv add` can resolve dependencies.
+- `modules/simplifier.py` created the Gemini client unconditionally at import time, crashing the whole app on startup when `GEMINI_API_KEY` was missing. Now the client is only created when a key is present; simplification silently falls back to returning original text otherwise (existing behavior in `process_text`).
 
 ## User preferences
-
-- Keep the existing project structure — do not migrate or restructure.
+- Active branch: `redesign-work`.
+- Only work on `aksharally/backend`; ignore the duplicate top-level `backend/` and `aksharally_ui/` folders and do not restructure the project automatically.

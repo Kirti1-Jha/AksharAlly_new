@@ -1,0 +1,482 @@
+# AksharAlly Reader Customization Expansion (CONTINUE FROM INTERRUPTED IMPLEMENTATION)
+# Source of Truth: redesign-work
+
+========================================================
+IMPORTANT CONTEXT
+========================================================
+
+This task was previously started but interrupted due to Replit quota limits.
+
+DO NOT restart from scratch.
+
+DO NOT re-implement completed work.
+
+Continue ONLY from the recovery report below.
+
+Already completed:
+
+✅ home_screen.dart
+- Library card removed
+- View All link removed
+
+✅ reading_screen.dart
+- Mild / Moderate / Severe selector removed
+
+✅ accessibility_settings.dart
+- Font library expanded
+- 21 reading themes added
+- Theme categories added
+- Theme descriptions added
+- Theme badges added
+
+These files are finished.
+
+Do NOT redo them.
+
+========================================================
+FILES THAT STILL REQUIRE WORK
+========================================================
+
+ONLY continue work in:
+
+aksharally/aksharally_ui/lib/widgets/highlighted_text_view.dart
+
+aksharally/aksharally_ui/lib/widgets/reading_customize_sheet.dart
+
+aksharally/aksharally_ui/lib/screens/output_screen.dart
+
+========================================================
+ARCHITECTURE RULES
+========================================================
+
+ReadingScreen
+=
+Input / Preparation
+
+OutputScreen
+=
+Reading Experience
+
+Accessibility Center
+=
+UI Accessibility
+
+Reading Customize Sheet
+=
+Reader Accessibility
+
+These systems must remain separate.
+
+Do NOT modify:
+
+UIAccessibility
+Accessibility Center
+HomeScreen
+LibraryScreen
+
+========================================================
+PRE-CODE VALIDATION
+========================================================
+
+Before writing code:
+
+1. Confirm you are continuing from the recovery report.
+2. List files you will modify.
+3. Confirm completed files will not be touched.
+4. Confirm OutputScreen remains the reading experience screen.
+5. Confirm ReadingScreen remains the preparation screen.
+
+Then proceed.
+
+========================================================
+PART 1 — FONT IMPLEMENTATION
+========================================================
+
+The font list has already been expanded inside AccessibilitySettings.
+
+Now make every font actually work.
+
+========================================================
+SUPPORTED FONTS
+========================================================
+
+Existing:
+
+- OpenDyslexic
+- Lexend
+- Atkinson Hyperlegible
+- Noto Sans
+- System Default
+
+New:
+
+- Inter
+- Roboto
+- Comic Neue
+- Verdana
+- Tahoma
+- Arial
+- Georgia
+- Trebuchet MS
+
+========================================================
+REQUIREMENTS
+========================================================
+
+Update font resolution logic.
+
+Every font option must render correctly.
+
+Persist through AccessibilitySettings.
+
+Ensure switching fonts updates the reading content immediately.
+
+========================================================
+PART 2 — READER THEME SYSTEM REDESIGN
+========================================================
+
+The current theme selector is still too primitive.
+
+The new theme library already exists in AccessibilitySettings.
+
+Now redesign the UI.
+
+========================================================
+THEME ORGANIZATION
+========================================================
+
+Group themes into categories:
+
+--------------------------------------------------------
+Soft Reading Themes
+--------------------------------------------------------
+
+Cream + Black
+Cream + Navy
+Soft Yellow + Black
+Pale Blue + Navy
+Pale Green + Dark Gray
+Lavender + Dark Purple
+
+--------------------------------------------------------
+High Contrast Themes
+--------------------------------------------------------
+
+White + Black
+Black + White
+White + Navy
+Navy + White
+Dark Gray + White
+
+--------------------------------------------------------
+Extreme Accessibility Themes
+--------------------------------------------------------
+
+Yellow + Black
+Black + Yellow
+Cyan + Black
+Black + Cyan
+Dark Blue + Yellow
+
+--------------------------------------------------------
+Modern Reading Themes
+--------------------------------------------------------
+
+Sepia
+Kindle Dark
+Slate
+Graphite
+Midnight
+
+========================================================
+THEME CARD REQUIREMENTS
+========================================================
+
+Each theme card must contain:
+
+Theme Name
+
+Description
+
+Badge (if available)
+
+Sample Preview
+
+Example preview:
+
+"AksharAlly helps make reading easier.
+This is a sample reading preview."
+
+Render preview using actual theme colors.
+
+========================================================
+BADGES
+========================================================
+
+Supported:
+
+⭐ Dyslexia Recommended
+
+⭐ High Contrast
+
+⭐ Extreme Contrast
+
+⭐ Study Mode
+
+⭐ Dark Mode
+
+Display badges clearly but professionally.
+
+========================================================
+PART 3 — IMPLEMENT FOCUS LINE MODE
+========================================================
+
+This feature currently says:
+
+"UI ready — coming soon"
+
+Make it fully functional.
+
+========================================================
+BEHAVIOR
+========================================================
+
+When enabled:
+
+- Current reading line is highlighted.
+- Lines above and below are dimmed.
+- Focus area follows reading position.
+- Works while scrolling.
+- Works with every theme.
+- Can be toggled on/off instantly.
+
+This should feel like a real reading aid.
+
+Not a placeholder.
+
+========================================================
+PART 4 — IMPLEMENT READING RULER
+========================================================
+
+This feature currently says:
+
+"UI ready — coming soon"
+
+Make it fully functional.
+
+========================================================
+BEHAVIOR
+========================================================
+
+When enabled:
+
+- Horizontal reading guide appears.
+- User can drag it.
+- User can reposition freely.
+- Works with mouse and touch.
+- Remains visible while reading.
+- Does not block text interaction.
+
+This should behave like a real dyslexia reading ruler.
+
+========================================================
+PART 5 — IMPLEMENT SYLLABLE BREAKDOWN
+========================================================
+
+This feature currently says:
+
+"UI ready — coming soon"
+
+Make it fully functional.
+
+========================================================
+IMPORTANT
+========================================================
+
+Do NOT implement a fake version.
+
+Do NOT simply remove the label.
+
+Do NOT insert random hyphens.
+
+========================================================
+IMPLEMENTATION EXPECTATION
+========================================================
+
+English examples:
+
+reading
+→ read-ing
+
+important
+→ im-por-tant
+
+education
+→ ed-u-ca-tion
+
+Apply only to rendered output.
+
+Never modify stored text.
+
+Original OCR text must remain untouched.
+
+Original simplified text must remain untouched.
+
+Only the visual presentation changes.
+
+========================================================
+LIMITATIONS
+========================================================
+
+If perfect linguistic syllabification is not practical:
+
+Implement the best rule-based version possible.
+
+Document limitations clearly.
+
+A working approximation is preferred over a fake implementation.
+
+========================================================
+PART 6 — IMPLEMENT LARGER TOUCH TARGETS
+========================================================
+
+This feature currently says:
+
+"UI ready — coming soon"
+
+Make it fully functional.
+
+========================================================
+BEHAVIOR
+========================================================
+
+When enabled:
+
+- Buttons become easier to tap.
+- Profile chips become larger.
+- Slider handles become larger.
+- Toggle targets become larger.
+- Reading controls become easier to use.
+
+Maintain clean layout.
+
+Avoid oversized UI.
+
+========================================================
+PART 7 — IMPLEMENT REDUCE MOTION
+========================================================
+
+This feature currently says:
+
+"UI ready — coming soon"
+
+Make it fully functional.
+
+========================================================
+BEHAVIOR
+========================================================
+
+When enabled:
+
+- Reduce animations.
+- Reduce transitions.
+- Remove unnecessary movement.
+- Preserve functionality.
+
+This should benefit motion-sensitive users.
+
+========================================================
+PART 8 — REVIEW PROFILE PRESET MAPPINGS
+========================================================
+
+Current implementation:
+
+mild
+→ cream_black
+
+moderate
+→ soft_yellow_black
+
+severe
+→ pale_blue_navy
+
+Before keeping these mappings:
+
+Evaluate whether they are genuinely appropriate.
+
+Consider:
+
+- severe readers may prefer higher contrast
+- black/yellow
+- white/black
+- black/white
+
+If a better mapping exists:
+
+Recommend it.
+
+Do NOT blindly keep the current mapping.
+
+Explain reasoning.
+
+========================================================
+QUALITY REQUIREMENT
+========================================================
+
+Do NOT implement placeholder versions.
+
+Do NOT simply remove "coming soon".
+
+Every feature must:
+
+- be visible
+- be testable
+- provide real user benefit
+
+========================================================
+FINAL VERIFICATION REPORT
+========================================================
+
+After implementation provide:
+
+1. Files modified
+
+2. Features completed
+
+3. Fonts implemented
+
+4. Theme UI redesign completed
+
+5. Focus Line Mode behavior
+
+6. Reading Ruler behavior
+
+7. Syllable Breakdown behavior
+
+8. Larger Touch Targets behavior
+
+9. Reduce Motion behavior
+
+10. Recommended profile mappings
+
+11. Known limitations
+
+12. Confirmation that:
+
+✅ HomeScreen cleanup remains intact
+
+✅ ReadingScreen cleanup remains intact
+
+✅ OutputScreen remains reading-focused
+
+✅ ReadingScreen remains preparation-focused
+
+✅ Accessibility Center unchanged
+
+✅ UIAccessibility unchanged
+
+✅ Reader customization remains separate from UIAccessibility
+
+Do not stop after planning.
+
+Provide the plan, then implement.

@@ -19,7 +19,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 version: 1.0.0+1
 
 environment:
-  sdk: ^3.10.8
+  sdk: ">=3.8.0 <4.0.0"
 
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
@@ -30,8 +30,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  
-  #Firebase
+
+  # Firebase
   firebase_core: ^2.30.0
   firebase_auth: ^4.17.0
 
@@ -40,11 +40,12 @@ dependencies:
   cupertino_icons: ^1.0.8
   flutter_tts: ^3.8.5
   file_picker: ^8.0.0
-  
+  google_fonts: ^6.2.1
+  shared_preferences: ^2.3.2
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
-
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
   # activated in the `analysis_options.yaml` file located at the root of your
@@ -58,10 +59,14 @@ dev_dependencies:
 # The following section is specific to Flutter packages.
 flutter:
 
-  # The following line ensures that the Material Icons font is
-  # included with your application, so that you can use the icons in
-  # the material Icons class.
   uses-material-design: true
+
+  fonts:
+    - family: OpenDyslexic
+      fonts:
+        - asset: assets/fonts/OpenDyslexic/OpenDyslexic3-Regular.ttf
+        - asset: assets/fonts/OpenDyslexic/OpenDyslexic3-Bold.ttf
+          weight: 700
 
   # To add assets to your application, add an assets section, like this:
   # assets:
@@ -93,5 +98,3 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
-
-  
