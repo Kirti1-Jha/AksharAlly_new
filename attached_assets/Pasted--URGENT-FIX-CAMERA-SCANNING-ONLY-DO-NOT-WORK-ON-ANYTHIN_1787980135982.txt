@@ -1,0 +1,531 @@
+# URGENT: FIX CAMERA SCANNING ONLY — DO NOT WORK ON ANYTHING ELSE
+
+I need you to completely **scratch/forget whatever approach, fix, implementation, or changes you were previously attempting for the camera scanning feature**.
+
+Do NOT continue from your previous solution if it is not working. Start fresh by investigating the existing camera scanning flow from the beginning.
+
+## PRIMARY TASK
+
+**ONLY focus on fixing the camera scanning/scanning-from-camera feature.**
+
+Do not modify, redesign, refactor, or experiment with unrelated features of the application.
+
+Do not work on:
+
+* UI redesigns unrelated to camera scanning
+* Authentication
+* Login/signup
+* Settings
+* Library
+* TTS
+* Other existing features
+* Unrelated backend functionality
+* Unrelated frontend functionality
+* New features that I did not request
+
+The ONLY goal right now is:
+
+> **When the user opens the camera, captures/scans an image containing text, the application must successfully process that image and produce an accurate, well-structured textual result.**
+
+---
+
+# STEP 1 — INVESTIGATE THE CURRENT CAMERA FLOW
+
+Before changing anything, trace the COMPLETE existing camera scanning flow.
+
+Find:
+
+1. Where the camera is opened.
+2. How the image is captured.
+3. Where the captured image is stored/passed.
+4. How the image is sent to the backend, if applicable.
+5. Which OCR function/service processes it.
+6. How OCR results are returned.
+7. How the OCR result is passed to formatting/simplification.
+8. How the final result is displayed to the user.
+
+Identify exactly where the current implementation is failing.
+
+Do not blindly add another camera package or create a parallel implementation.
+
+Work with the existing architecture wherever possible.
+
+---
+
+# STEP 2 — ACTUALLY FIX THE CAMERA SCANNING
+
+The camera scanning feature currently does not work properly at all.
+
+Fix the actual root cause.
+
+The expected flow should be:
+
+**Open Camera → Capture Image → Image Successfully Obtained → OCR Processing → Structured Text Extraction → Formatting/Simplification → Clear Final Output**
+
+Make sure there are no silent failures.
+
+If something fails, the application should provide a meaningful error instead of appearing to do nothing.
+
+Check:
+
+* Camera permissions
+* Camera initialization
+* Image capture
+* Image file/path handling
+* Image upload/transfer
+* Backend request
+* API endpoint
+* Request format
+* Image decoding
+* OCR processing
+* OCR response
+* Frontend response handling
+* Loading/error states
+
+Do not assume the camera itself is the only problem. Trace the entire pipeline.
+
+---
+
+# STEP 3 — OCR MUST PRESERVE INFORMATION ACCURATELY
+
+This is extremely important.
+
+The camera feature is intended to scan real-world documents/images such as:
+
+* Books
+* Notes
+* Printed pages
+* Worksheets
+* Documents
+* Menus
+* Posters
+* Tables
+* Forms
+* Lists
+* Multi-column content
+* Images containing mixed text and numbers
+
+The OCR result must preserve the **actual information** in the image.
+
+Do NOT aggressively simplify or rewrite the information during OCR.
+
+For example, if the image says:
+
+| Item  | Quantity | Price |
+| ----- | -------- | ----- |
+| Apple | 2        | ₹100  |
+| Mango | 3        | ₹150  |
+
+The system must NOT turn this into something vague such as:
+
+"Apples and mangoes are available at different prices."
+
+The actual information must be retained.
+
+---
+
+# STEP 4 — TABLE DETECTION AND PRESERVATION
+
+If the scanned image contains a table, the system must recognize that it is a table and preserve its structure.
+
+Do NOT extract table contents as a random sequence of words.
+
+Bad output:
+
+Apple 2 ₹100 Mango 3 ₹150
+
+Good output:
+
+| Item  | Quantity | Price |
+| ----- | -------- | ----- |
+| Apple | 2        | ₹100  |
+| Mango | 3        | ₹150  |
+
+If Markdown tables are the most reliable way to represent the table in the existing UI, use Markdown tables.
+
+If the application's UI has another suitable table representation, use that instead.
+
+The important requirement is:
+
+**Rows, columns, headings, values, and their relationships must remain understandable.**
+
+The table should remain readable even after formatting/simplification.
+
+---
+
+# STEP 5 — CLUTTERED RESTAURANT MENUS
+
+A particularly important use case is a **cluttered restaurant/menu image**.
+
+Menus may contain:
+
+* Multiple columns
+* Food categories
+* Item names
+* Prices
+* Descriptions
+* Vegetarian/non-vegetarian indicators
+* Multiple prices
+* Items aligned visually rather than sequentially
+* Different font sizes
+* Sections
+* Decorative elements
+* Images
+* Several unrelated blocks of text
+
+Do NOT simply read the image from top-left to bottom-right and dump the OCR text.
+
+That can produce completely jumbled output.
+
+Instead, preserve the logical structure.
+
+For example, if the image contains:
+
+STARTERS
+
+Paneer Tikka ........ ₹220
+Veg Manchurian ...... ₹180
+
+MAIN COURSE
+
+Paneer Butter Masala  ₹250
+Dal Tadka ............ ₹180
+
+The output should retain the categories and relationships:
+
+## Starters
+
+| Item           | Price |
+| -------------- | ----: |
+| Paneer Tikka   |  ₹220 |
+| Veg Manchurian |  ₹180 |
+
+## Main Course
+
+| Item                 | Price |
+| -------------------- | ----: |
+| Paneer Butter Masala |  ₹250 |
+| Dal Tadka            |  ₹180 |
+
+Do NOT randomly mix prices with unrelated food items.
+
+---
+
+# STEP 6 — PRESERVE READING ORDER AND LAYOUT
+
+For complex images, OCR should consider **document layout**, not just individual words.
+
+The system should attempt to determine:
+
+* Reading order
+* Paragraph boundaries
+* Headings
+* Subheadings
+* Columns
+* Tables
+* Lists
+* Key-value relationships
+* Menu categories
+* Item/price relationships
+* Separate blocks of information
+
+The final output should represent the logical structure of the original image.
+
+If the source has two columns, do not arbitrarily merge lines from both columns.
+
+If the source has separate sections, preserve those sections.
+
+If there is a heading, keep it as a heading.
+
+If there is a list, keep it as a list.
+
+If there is a table, keep it as a table.
+
+---
+
+# STEP 7 — FORMATTING/SIMPLIFICATION MUST NOT DESTROY STRUCTURE
+
+This is another major requirement.
+
+AksharAlly is supposed to make content easier to read.
+
+However:
+
+**Simplifying text does NOT mean destroying its original information structure.**
+
+The formatting/simplification stage must NOT:
+
+* Shuffle information
+* Merge unrelated lines
+* Separate values from their labels
+* Mix table rows
+* Mix table columns
+* Move prices to different items
+* Remove important numbers
+* Remove important headings
+* Randomly reorder content
+* Turn structured information into a paragraph
+* Produce visually jumbled output
+
+For example, if OCR produces:
+
+## Starters
+
+| Item           | Price |
+| -------------- | ----: |
+| Paneer Tikka   |  ₹220 |
+| Veg Manchurian |  ₹180 |
+
+The formatted/simplified output must retain this structure.
+
+It can make the text more readable, but it must not destroy the relationship between:
+
+**Item → Description → Price**
+
+or:
+
+**Column heading → Cell value**
+
+---
+
+# STEP 8 — SEPARATE OCR FROM SIMPLIFICATION
+
+Do not make the OCR stage responsible for aggressively rewriting content.
+
+Think of the pipeline as:
+
+### 1. IMAGE
+
+↓
+
+### 2. OCR + LAYOUT ANALYSIS
+
+Extract the information accurately while preserving structure.
+
+↓
+
+### 3. STRUCTURED REPRESENTATION
+
+Identify paragraphs, headings, lists, tables, menu sections, etc.
+
+↓
+
+### 4. SIMPLIFICATION / DYSLEXIA-FRIENDLY FORMATTING
+
+Make the content easier to read while preserving all important information and structure.
+
+↓
+
+### 5. FINAL DISPLAY
+
+Render the result clearly.
+
+The simplification layer must receive structured information whenever possible instead of receiving an already-jumbled block of OCR text.
+
+---
+
+# STEP 9 — DO NOT LOSE NUMBERS OR SPECIAL CHARACTERS
+
+Pay special attention to:
+
+* Prices
+* ₹
+* ₹100 / ₹1,200 etc.
+* Decimal values
+* Percentages
+* Dates
+* Times
+* Phone numbers
+* Quantities
+* Measurements
+* Units
+* Symbols
+* Bullet points
+* Numbered lists
+
+These must not be accidentally removed or changed during formatting.
+
+For example:
+
+₹250
+
+must not become:
+
+250
+
+if the currency symbol is present in the original image.
+
+Similarly:
+
+2.5 kg
+
+must not become:
+
+25 kg
+
+---
+
+# STEP 10 — HANDLE DEVANAGARI + ENGLISH
+
+AksharAlly is designed for Devanagari-based languages as well as English.
+
+The camera OCR pipeline should therefore continue to correctly handle:
+
+* Hindi
+* Marathi
+* English
+* Mixed Hindi/English
+* Mixed Marathi/English
+* Devanagari + numbers
+* Devanagari + English menus/documents
+
+Do not break existing language support while fixing the camera.
+
+---
+
+# STEP 11 — IMAGE PREPROCESSING
+
+If necessary, improve preprocessing before OCR.
+
+Consider the existing implementation and use appropriate preprocessing such as:
+
+* Resolution handling
+* Scaling
+* Grayscale conversion
+* Contrast enhancement
+* Noise reduction
+* Thresholding
+* Deskewing
+* Cropping
+* Orientation correction
+
+But do NOT blindly apply aggressive preprocessing that removes characters or damages table lines.
+
+The goal is **accurate OCR**, not just visually processed images.
+
+---
+
+# STEP 12 — TEST WITH REALISTIC CASES
+
+Do not consider the task complete simply because the camera opens.
+
+Test the entire pipeline with multiple image types:
+
+### Test 1
+
+Simple paragraph.
+
+### Test 2
+
+English document.
+
+### Test 3
+
+Hindi/Devanagari document.
+
+### Test 4
+
+Mixed English + Devanagari.
+
+### Test 5
+
+Simple table.
+
+### Test 6
+
+Table containing numbers and prices.
+
+### Test 7
+
+Multi-column document.
+
+### Test 8
+
+Cluttered restaurant menu.
+
+### Test 9
+
+Menu with multiple categories and prices.
+
+### Test 10
+
+Image containing headings + paragraphs + lists + tables.
+
+For every test, verify:
+
+**Image → OCR → structure → formatting → final display**
+
+---
+
+# STEP 13 — DO NOT "FIX" IT BY HIDING THE PROBLEM
+
+Do not:
+
+* Hardcode sample OCR text
+* Return fake results
+* Use placeholder text
+* Pretend the camera worked
+* Display a previously stored result
+* Create mock OCR output
+* Remove difficult images from processing
+* Silently ignore OCR errors
+
+I need the actual camera scanning pipeline to work.
+
+---
+
+# STEP 14 — MINIMIZE CHANGES
+
+Only change files/code that are necessary to fix this feature.
+
+Do not refactor the entire project.
+
+Do not rewrite unrelated modules.
+
+Do not change existing UI unnecessarily.
+
+Do not introduce unnecessary dependencies if the current stack can solve the problem.
+
+Before modifying anything, understand the existing architecture.
+
+---
+
+# DEFINITION OF DONE
+
+I will consider this task successful ONLY when:
+
+1. The camera opens successfully.
+2. The user can capture an image.
+3. The captured image actually reaches the OCR pipeline.
+4. OCR successfully extracts its contents.
+5. The information is accurate.
+6. Tables remain tables.
+7. Menu sections remain properly separated.
+8. Columns are not randomly mixed.
+9. Prices remain associated with the correct items.
+10. Numbers and symbols are preserved.
+11. Hindi/Marathi/Devanagari text remains readable.
+12. Mixed-language content works.
+13. The formatting/simplification stage does NOT jumble the OCR result.
+14. The final UI presents the extracted content in a clean, readable structure.
+15. Errors are shown clearly instead of the feature appearing to do nothing.
+
+---
+
+# MOST IMPORTANT INSTRUCTION
+
+**STOP WORKING ON EVERYTHING ELSE.**
+
+Forget the previous camera-scanning approach if it is not working.
+
+Do not spend time making unrelated improvements.
+
+Do not add unrelated features.
+
+Do not redesign the application.
+
+Do not change things just because you think they could be better.
+
+**Focus exclusively on getting CAMERA → IMAGE → OCR → STRUCTURED CONTENT → FORMATTED OUTPUT working correctly and reliably.**
+
+First inspect the existing implementation and identify the actual failure point. Then fix it systematically and test the complete pipeline.

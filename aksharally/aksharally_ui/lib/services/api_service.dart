@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
@@ -10,13 +11,15 @@ class ApiService {
   /// 🌐 BASE URL
   /// ================================
 
-  // ✅ REAL PHONE (same WiFi)
-
-  static const String baseUrl = "http://192.168.0.102:5000";
-
-
-  // ✅ ANDROID EMULATOR
-  // static const String baseUrl = "http://10.0.2.2:5000";
+  /// The Replit HTTPS URL is reachable from a physical phone and emulator.
+  ///
+  /// Local builds can point at another server without editing source:
+  /// flutter run --dart-define=API_BASE_URL=http://10.0.2.2:5000
+  static const String baseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue:
+        'https://3a0a4a87-af80-41d6-861b-e481bfbbe1dd-00-1t5vx5n7rb0xr.sisko.replit.dev',
+  );
 
 
   /// ================================
@@ -48,7 +51,7 @@ class ApiService {
         await http.MultipartFile.fromPath('file', file.path),
       );
 
-      final streamed  = await request.send().timeout(const Duration(seconds: 30));
+      final streamed  = await request.send().timeout(const Duration(seconds: 60));
       final response  = await http.Response.fromStream(streamed);
 
       print("📥 Status: ${response.statusCode}");
@@ -62,9 +65,23 @@ class ApiService {
         throw Exception(data['error'] ?? "Unknown backend error");
       }
 
+    } on TimeoutException {
+      throw Exception(
+        'The image took too long to process. Please try a clearer or smaller image.',
+      );
+    } on SocketException {
+      throw Exception(
+        'Could not reach the OCR server. Check your connection and try again.',
+      );
+    } on FileSystemException {
+      throw Exception('The captured image is no longer available. Please scan it again.');
+    } on FormatException {
+      throw Exception('The OCR server returned an invalid response. Please try again.');
+    } on Exception {
+      rethrow;
     } catch (e) {
       print("❌ FILE API ERROR: $e");
-      throw Exception('Connection failed: $e');
+      throw Exception('Unable to process the image: $e');
     }
   }
 

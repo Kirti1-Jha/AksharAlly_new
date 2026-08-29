@@ -30,7 +30,7 @@ def format_text_endpoint():
       - in: query
         name: language
         type: string
-        enum: [en, hi]
+         enum: [en, hi, mr]
         default: en
         description: OCR language for image/PDF input
       - in: formData

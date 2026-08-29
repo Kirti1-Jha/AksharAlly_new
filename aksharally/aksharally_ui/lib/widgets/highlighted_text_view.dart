@@ -32,18 +32,37 @@ class HighlightedTextView extends StatelessWidget {
 
   /// Marks paragraph breaks in the words list (never spoken by TTS).
   static const String paragraphMarker = '¶';
+  /// Marks a single source line break so OCR rows and menu items stay
+  /// visually separate in the reading view.
+  static const String lineBreakMarker = '↵';
 
-  /// Splits raw text into a word list, converting `\n\n` into a paragraph
-  /// marker and collapsing single `\n` into a space. Ported verbatim from
-  /// ReaderScreen._splitToWords.
+  /// Splits raw text into words while retaining paragraph and line breaks.
+  ///
+  /// Single line breaks are meaningful for OCR output: they can separate
+  /// table rows, menu items, headings, and columns. They are kept as markers
+  /// rather than silently collapsed into spaces.
   static List<String> splitToWords(String text) {
-    return text
-        .replaceAll('\r\n', '\n')
-        .replaceAll('\n\n', ' $paragraphMarker ')
-        .replaceAll('\n', ' ')
-        .split(' ')
-        .where((w) => w.isNotEmpty)
-        .toList();
+    final normalized = text.replaceAll('\r\n', '\n');
+    final words = <String>[];
+    final paragraphs = normalized.split('\n\n');
+
+    for (var paragraphIndex = 0;
+        paragraphIndex < paragraphs.length;
+        paragraphIndex++) {
+      final lines = paragraphs[paragraphIndex].split('\n');
+      for (var lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+        words.addAll(
+          lines[lineIndex].split(' ').where((word) => word.isNotEmpty),
+        );
+        if (lineIndex < lines.length - 1) {
+          words.add(lineBreakMarker);
+        }
+      }
+      if (paragraphIndex < paragraphs.length - 1) {
+        words.add(paragraphMarker);
+      }
+    }
+    return words;
   }
 
   /// Returns a [TextStyle] using the font selected in AccessibilitySettings.
@@ -246,6 +265,9 @@ class HighlightedTextView extends StatelessWidget {
       if (words[i] == paragraphMarker) {
         flush();
         sections.add(SizedBox(height: pSpacing));
+      } else if (words[i] == lineBreakMarker) {
+        flush();
+        sections.add(const SizedBox(height: 4));
       } else {
         currentParagraph.add(_wordWidget(i, textColor));
       }

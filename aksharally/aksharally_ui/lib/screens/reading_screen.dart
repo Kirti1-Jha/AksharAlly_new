@@ -66,18 +66,29 @@ class _ReadingScreenState extends State<ReadingScreen> {
   Future<void> _pickImage(ImageSource source) async {
     try {
       final XFile? xf = await _picker.pickImage(
-        source:       source,
-        imageQuality: 85,
+        source: source,
+        // Keep the camera's full-resolution capture. JPEG compression here
+        // can remove small characters, punctuation, prices, and table lines.
+        preferredCameraDevice: CameraDevice.rear,
       );
       if (xf == null) return;
+
+      final file = File(xf.path);
+      if (!await file.exists()) {
+        throw Exception('The camera did not return a readable image.');
+      }
+      if (await file.length() == 0) {
+        throw Exception('The captured image is empty. Please scan it again.');
+      }
+
       setState(() {
-        _pickedFile     = File(xf.path);
+        _pickedFile     = file;
         _pickedFileName = xf.name;
         _error          = null;
       });
     } catch (e) {
-      setState(() => _error =
-          'Could not open ${source == ImageSource.camera ? "camera" : "gallery"}.');
+      if (!mounted) return;
+      setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
     }
   }
 
@@ -164,6 +175,9 @@ class _ReadingScreenState extends State<ReadingScreen> {
 
     // ── Image or file ───────────────────────────────────────────────────────
     final file = _pickedFile!;
+    if (!await file.exists() || await file.length() == 0) {
+      throw Exception('The selected image is no longer available. Please scan it again.');
+    }
 
     if (_mode == _ProcessMode.formatOnly) {
       // OCR + dyslexia formatting (no Gemini).
@@ -429,7 +443,11 @@ class _ReadingScreenState extends State<ReadingScreen> {
           Text('Language', style: AppTheme.labelStyle),
           const SizedBox(height: AppTheme.spaceSM),
           _segmentRow(
-            options:  const [('en', 'English'), ('hi', 'हिन्दी')],
+            options:  const [
+              ('en', 'English'),
+              ('hi', 'हिन्दी'),
+              ('mr', 'मराठी'),
+            ],
             selected: _language,
             onSelect: (v) => setState(() => _language = v),
           ),

@@ -142,6 +142,29 @@ def _build_formatted(sentences: list[str], sentences_per_chunk: int,
     return '\n\n'.join(chunks)
 
 
+def _preserve_layout(raw_text: str) -> str:
+    """
+    Preserve line-based OCR layout.
+
+    OCR lines can represent table rows, menu items, headings, or separate
+    columns. Flattening them into sentences makes those relationships
+    impossible to recover, so multiline extraction is kept line-by-line.
+    """
+    lines = raw_text.strip().splitlines()
+    output = []
+    previous_blank = False
+    for line in lines:
+        cleaned = line.rstrip()
+        if not cleaned.strip():
+            if output and not previous_blank:
+                output.append('')
+            previous_blank = True
+            continue
+        output.append(cleaned)
+        previous_blank = False
+    return '\n'.join(output).strip()
+
+
 def format_text(raw_text: str, profile_name: str = DEFAULT_PROFILE) -> dict:
     """
     Apply dyslexia-friendly formatting to raw extracted text.
@@ -163,12 +186,20 @@ def format_text(raw_text: str, profile_name: str = DEFAULT_PROFILE) -> dict:
     sentences_per_chunk = profile["sentencesPerChunk"]
     words_per_line      = profile["wordsPerLine"]
 
-    sentences = _split_sentences(raw_text)
-
-    if not sentences:
-        formatted = raw_text.strip()
+    if '\n' in raw_text.strip():
+        # Keep OCR/document structure intact. Typography settings are still
+        # returned below for the Flutter renderer.
+        formatted = _preserve_layout(raw_text)
     else:
-        formatted = _build_formatted(sentences, sentences_per_chunk, words_per_line)
+        sentences = _split_sentences(raw_text)
+        if not sentences:
+            formatted = raw_text.strip()
+        else:
+            formatted = _build_formatted(
+                sentences,
+                sentences_per_chunk,
+                words_per_line,
+            )
 
     word_count      = len(raw_text.split())           # count from original, not formatted
     char_count      = len(raw_text)
