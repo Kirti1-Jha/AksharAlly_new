@@ -3,6 +3,7 @@ import '../theme/app_theme.dart';
 import '../theme/app_settings.dart';
 import '../theme/ui_accessibility.dart';
 import '../services/library_storage.dart';
+import '../services/auth_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -34,6 +35,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   // Language applies immediately (OCR-only, not a UI preview setting)
   String _language = AppSettings.language;
+  final AuthService _auth = AuthService();
 
   // ── Pending mutate helper (preview-only — does NOT touch UIAccessibility) ──
   void _preview(void Function() mutate) {
@@ -1309,6 +1311,69 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  Future<void> _confirmLogout() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Log out?'),
+        content: const Text('Are you sure you want to log out of AksharAlly?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Log Out'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    try {
+      await _auth.logout();
+      if (!mounted) return;
+      Navigator.pushNamedAndRemoveUntil(
+        context,
+        '/login',
+        (route) => false,
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Unable to log out right now. Please try again.'),
+        ),
+      );
+    }
+  }
+
+  Widget _logoutSection() {
+    return _sectionCard(
+      title: 'Account',
+      description: 'Manage your current AksharAlly session.',
+      child: SizedBox(
+        width: double.infinity,
+        child: OutlinedButton.icon(
+          onPressed: _confirmLogout,
+          icon: const Icon(Icons.logout),
+          label: const Text('Log Out'),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: Colors.red,
+            side: const BorderSide(color: Colors.red),
+            padding: const EdgeInsets.symmetric(vertical: 13),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppTheme.radiusMD),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   // ════════════════════════════════════════════════════════════════════════════
   // BUILD
   // ════════════════════════════════════════════════════════════════════════════
@@ -1349,6 +1414,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _toggleSection(),
         _livePreviewSection(),
         _readingHistorySection(),
+        _logoutSection(),
 
         const SizedBox(height: AppTheme.spaceXL),
       ],
