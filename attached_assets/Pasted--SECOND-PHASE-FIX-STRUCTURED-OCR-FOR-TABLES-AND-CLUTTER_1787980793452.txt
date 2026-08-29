@@ -1,0 +1,741 @@
+# SECOND PHASE — FIX STRUCTURED OCR FOR TABLES AND CLUTTERED MENUS
+
+The previous investigation was useful. We now know the basic camera → upload → OCR pipeline is connected.
+
+However, **DO NOT consider the camera feature finished.**
+
+The validation explicitly found that tables and cluttered menus are still being extracted incorrectly.
+
+I want you to work ONLY on these remaining camera-scanning problems.
+
+## IMPORTANT: DO NOT START OVER WITH THE CAMERA
+
+Do NOT undo the previous camera connectivity fixes.
+
+Do NOT change unrelated features.
+
+Do NOT redesign the application.
+
+Do NOT work on authentication, settings, library, TTS, login, signup, or unrelated screens.
+
+Keep the existing working camera capture/upload connection.
+
+The goal now is:
+
+> **Accurately extract structured information from photographed documents, especially tables and cluttered menus, and preserve that structure through OCR → formatting/simplification → final UI.**
+
+---
+
+# 1. THE CURRENT PROBLEM
+
+Your previous validation already established:
+
+* Basic paragraph OCR works.
+* Camera image reaches the backend.
+* Line breaks can now survive the pipeline.
+* But grid/table OCR is unreliable.
+* Table columns are not reliably associated.
+* Empty cells cause ambiguity.
+* ₹ can be misread.
+* Menu prices can become detached from menu items.
+* The Simplify + Format branch can destroy structure.
+* `HighlightedTextView` preserves lines but does not actually represent tables.
+
+Therefore, **do not solve this by simply adding more newline characters.**
+
+The problem is structural.
+
+---
+
+# 2. CHANGE THE OCR PIPELINE FROM "TEXT ONLY" TO "STRUCTURE-AWARE"
+
+Inspect the current OCR implementation and determine the best way to preserve positional information from OCR.
+
+The OCR stage should retain, whenever the OCR engine provides it:
+
+* Recognized text
+* Bounding box
+* X position
+* Y position
+* Width
+* Height
+* Confidence
+* Reading order
+
+Do NOT immediately convert all OCR detections into:
+
+`" ".join(...)`
+
+or another flat string.
+
+Once positional information is discarded, it becomes extremely difficult to reconstruct tables and multi-column layouts.
+
+Preserve the OCR regions internally until layout analysis is complete.
+
+---
+
+# 3. TABLE DETECTION
+
+Implement proper table-aware processing.
+
+When the image appears to contain a table, determine:
+
+* Where the table begins and ends.
+* Number of rows.
+* Number of columns.
+* Header row, if present.
+* Which OCR detection belongs to which cell.
+* Empty cells.
+* Numeric/currency cells.
+
+Use the existing project architecture and dependencies where possible.
+
+If OpenCV/table-line detection is appropriate, use it.
+
+If the existing OCR engine's bounding boxes can be used to reconstruct cells, use those.
+
+If grid lines are present, do not allow the OCR engine to simply treat the table as unrelated text regions.
+
+The final internal representation should preserve something conceptually like:
+
+```text
+TABLE
+  Row 1:
+    Column 1: Item
+    Column 2: Quantity
+    Column 3: Price
+
+  Row 2:
+    Column 1: Apple
+    Column 2: 2
+    Column 3: ₹100
+
+  Row 3:
+    Column 1: Mango
+    Column 2: 3
+    Column 3: ₹150
+```
+
+Do NOT flatten this prematurely.
+
+---
+
+# 4. EMPTY CELLS MUST BE PRESERVED
+
+This is important.
+
+Suppose the original table is:
+
+| Item  | Quantity | Price   |
+| ----- | -------- | ------- |
+| Apple | 2        | ₹100    |
+| Mango |          | ₹150    |
+| Rice  | 5 kg     | ₹320.50 |
+
+The empty Quantity cell in the Mango row must remain empty.
+
+Do NOT shift ₹150 into the Quantity column.
+
+Do NOT assume that because a cell has no OCR text, the next detected value belongs to that column.
+
+The positional relationship between cells is more important than simply concatenating OCR words.
+
+---
+
+# 5. MULTI-COLUMN DOCUMENTS
+
+The same principle must apply to documents with multiple columns.
+
+For example:
+
+COLUMN 1:
+
+* Item A
+* Item B
+* Item C
+
+COLUMN 2:
+
+* Item D
+* Item E
+* Item F
+
+Do NOT read:
+
+A → D → B → E → C → F
+
+unless that is genuinely the document's reading order.
+
+Use bounding-box positions and layout analysis to determine logical reading order.
+
+---
+
+# 6. CLUTTERED RESTAURANT MENUS
+
+This is one of the most important real-world use cases for AksharAlly.
+
+A menu may contain:
+
+* Section headings
+* Food names
+* Descriptions
+* Prices
+* Multiple columns
+* Decorative elements
+* Vegetarian/non-vegetarian symbols
+* Different font sizes
+* Images
+* Large spacing
+* Dotted lines between items and prices
+
+The system must understand spatial relationships.
+
+For example, if the image visually represents:
+
+STARTERS
+
+Paneer Tikka ................ ₹220
+Veg Manchurian ............. ₹180
+
+MAIN COURSE
+
+Paneer Butter Masala ....... ₹250
+Dal Tadka .................. ₹180
+
+the extracted structure should remain:
+
+```text
+STARTERS
+Paneer Tikka — ₹220
+Veg Manchurian — ₹180
+
+MAIN COURSE
+Paneer Butter Masala — ₹250
+Dal Tadka — ₹180
+```
+
+It should NOT become:
+
+```text
+STARTERS
+Paneer Tikka
+₹220
+Veg Manchurian
+₹180
+MAIN COURSE
+Paneer Butter Masala
+₹250
+Dal Tadka
+₹180
+```
+
+if the system can determine the item-price relationship from their spatial positions.
+
+And absolutely do NOT produce:
+
+```text
+Paneer Tikka ₹180
+Veg Manchurian ₹250
+...
+```
+
+because of incorrect positional association.
+
+---
+
+# 7. ITEM → PRICE ASSOCIATION
+
+For menus, use the spatial layout to associate prices with the correct items.
+
+Prices are often:
+
+* Far to the right of item names.
+* Separated by dots.
+* In another aligned column.
+* On the same horizontal line.
+* Sometimes on a second line.
+
+Use bounding boxes and relative X/Y positions rather than OCR sequence alone.
+
+The goal is:
+
+**Item + Description + Price = one logical menu item**
+
+when the image supports that relationship.
+
+---
+
+# 8. CURRENCY HANDLING
+
+The previous validation showed cases where:
+
+`₹220`
+
+became:
+
+`%220`
+
+or the currency symbol disappeared.
+
+Investigate why this is happening.
+
+Do NOT simply blindly replace every `%` with `₹`.
+
+That could corrupt legitimate percentages.
+
+Instead:
+
+* Inspect OCR confidence.
+* Inspect the OCR language configuration.
+* Inspect preprocessing.
+* Determine whether the symbol is being misrecognized because of image quality, preprocessing, or OCR configuration.
+* Apply a context-aware correction only when it is safe.
+
+For example, if a detected token is immediately associated with a menu price and the OCR result is `%220`, investigate whether it is a likely currency-symbol recognition error.
+
+Do not hallucinate currency symbols where they do not exist.
+
+Also preserve:
+
+* ₹
+* Rs
+* INR
+* decimal prices
+* commas in prices
+* quantities
+* percentages
+* units
+
+accurately.
+
+---
+
+# 9. DO NOT DESTROY STRUCTURE DURING FORMATTING
+
+The current formatter is safer than before, but the structured-document problem must be solved properly.
+
+The formatter must understand that the OCR output can contain different content types:
+
+```text
+PARAGRAPH
+HEADING
+LIST
+TABLE
+MENU_SECTION
+MENU_ITEM
+```
+
+Do not treat everything as plain prose.
+
+For example:
+
+```text
+TABLE
+```
+
+must remain a table.
+
+```text
+MENU_SECTION
+```
+
+must remain a section.
+
+```text
+MENU_ITEM
+```
+
+must remain a menu item.
+
+---
+
+# 10. FIX THE SIMPLIFY + FORMAT BRANCH
+
+This is mandatory.
+
+The current validation found that the Simplify + Format branch sends OCR text to Gemini and asks it to rewrite it as simplified prose.
+
+That is unsafe for structured content.
+
+Change this behavior.
+
+The simplifier must follow this rule:
+
+> **Simplify the language, but never destroy the information structure.**
+
+For ordinary paragraphs:
+
+* Break long sentences.
+* Make them easier to read.
+* Preserve meaning.
+
+For headings:
+
+* Keep them as headings.
+
+For lists:
+
+* Keep them as lists.
+
+For tables:
+
+* Keep rows and columns.
+
+For menus:
+
+* Keep sections and item-price relationships.
+
+For numbers:
+
+* Preserve them exactly.
+
+For prices:
+
+* Preserve the correct item-price relationship.
+
+For names:
+
+* Do not replace proper names with vague alternatives.
+
+---
+
+# 11. NEVER ASK GEMINI TO "JUST RETURN SIMPLIFIED PROSE"
+
+Do not use a generic instruction such as:
+
+"Rewrite this text in simple prose."
+
+That is precisely what can destroy tables and menus.
+
+If Gemini is used for simplification, provide it with structured content and explicitly require the structure to be returned.
+
+For example, conceptually:
+
+```text
+{
+  "type": "table",
+  "headers": [...],
+  "rows": [...]
+}
+```
+
+or:
+
+```text
+{
+  "type": "menu",
+  "sections": [
+    {
+      "name": "Starters",
+      "items": [
+        {
+          "name": "Paneer Tikka",
+          "description": "...",
+          "price": "₹220"
+        }
+      ]
+    }
+  ]
+}
+```
+
+Use the format that best fits the existing architecture.
+
+The important thing is that **the relationship between pieces of information must survive simplification.**
+
+---
+
+# 12. DO NOT LET THE UI PRETEND A TABLE IS NORMAL TEXT
+
+The validation found that `HighlightedTextView` uses word-level widgets and therefore cannot preserve true column alignment.
+
+Fix this camera-output rendering problem.
+
+Do not depend on repeated spaces to visually simulate a table.
+
+If the backend identifies a table, the frontend should render an actual structured table.
+
+For example:
+
+| Item  | Quantity | Price |
+| ----- | -------: | ----: |
+| Apple |        2 |  ₹100 |
+| Mango |        3 |  ₹150 |
+
+The exact UI styling should match the existing AksharAlly design.
+
+Do NOT redesign the entire reader.
+
+Only add the minimum rendering capability required to correctly display structured camera OCR results.
+
+---
+
+# 13. ACCESSIBILITY / DYSLEXIA-FRIENDLY DESIGN MUST REMAIN
+
+The structured output should still follow AksharAlly's readability goals.
+
+Tables should be:
+
+* Clearly separated.
+* Easy to scan.
+* Properly spaced.
+* Not overly dense.
+* Readable with the existing font/settings.
+* Compatible with the existing highlighting/TTS behavior as far as reasonably possible.
+
+Do not sacrifice the dyslexia-friendly presentation just to make tables technically work.
+
+---
+
+# 14. IMPORTANT: DO NOT LOSE THE ORIGINAL OCR
+
+Keep the original OCR/structured extraction available.
+
+Ideally the pipeline should conceptually have:
+
+```text
+IMAGE
+ ↓
+OCR DETECTIONS + BOUNDING BOXES
+ ↓
+LAYOUT ANALYSIS
+ ↓
+STRUCTURED CONTENT
+ ↓
+OPTIONAL SIMPLIFICATION
+ ↓
+DISPLAY MODEL
+ ↓
+UI
+```
+
+Do not make the simplified text the only representation.
+
+This will make it possible to display accurate structured information even if simplification is disabled.
+
+---
+
+# 15. TEST WITH ACTUAL REPRESENTATIVE IMAGES
+
+Create or use representative test images for:
+
+### Test A — Normal paragraph
+
+Expected:
+
+* Correct reading order.
+* Correct line breaks.
+
+### Test B — Simple table
+
+```text
+Item | Quantity | Price
+Apple | 2 | ₹100
+Mango | 3 | ₹150
+```
+
+Expected:
+
+* Correct rows.
+* Correct columns.
+
+### Test C — Table with empty cell
+
+```text
+Item | Quantity | Price
+Apple | 2 | ₹100
+Mango | EMPTY | ₹150
+Rice | 5 kg | ₹320.50
+```
+
+Expected:
+
+* ₹150 stays with Mango.
+* Empty Quantity remains empty.
+
+### Test D — Multi-column document
+
+Expected:
+
+* Columns are not randomly interleaved.
+
+### Test E — Restaurant menu
+
+Expected:
+
+* Section headings preserved.
+* Item names preserved.
+* Descriptions preserved.
+* Prices associated with correct items.
+
+### Test F — Hindi document
+
+Expected:
+
+* Devanagari preserved.
+
+### Test G — Marathi document
+
+Expected:
+
+* Devanagari preserved.
+
+### Test H — Mixed English + Devanagari
+
+Expected:
+
+* Both scripts preserved.
+
+---
+
+# 16. TEST BOTH MODES
+
+For structured images, test:
+
+### Format Only
+
+Expected:
+OCR structure → readable formatting
+
+### Simplify + Format
+
+Expected:
+OCR structure → language simplification → SAME structure
+
+The second mode must NOT produce a worse structure than Format Only.
+
+---
+
+# 17. DO NOT CLAIM SUCCESS BASED ONLY ON HTTP 200
+
+A successful API response does NOT mean OCR is correct.
+
+For each structured test, inspect the actual output.
+
+Compare:
+
+**Original image**
+
+against:
+
+**OCR structured result**
+
+against:
+
+**Formatted result**
+
+against:
+
+**Simplified result**
+
+against:
+
+**Final UI representation**
+
+---
+
+# 18. DEVICE TESTING
+
+After implementing the fixes, if Flutter/device access is available, run the actual app.
+
+If it is NOT available:
+
+DO NOT pretend that the camera has been verified on a real phone.
+
+Instead clearly report:
+
+* What was verified programmatically.
+* What could not be verified.
+* Exactly what I need to test manually on my phone.
+
+---
+
+# 19. MINIMIZE CHANGES
+
+Only modify files required for:
+
+* Camera OCR
+* OCR layout analysis
+* Table/menu structure extraction
+* Structured formatting
+* Simplification preservation
+* Camera-result rendering
+
+Do NOT modify unrelated application functionality.
+
+---
+
+# DEFINITION OF DONE
+
+This task is NOT complete until the following are addressed:
+
+### Camera
+
+* Camera capture/upload continues to work.
+
+### OCR
+
+* OCR preserves positional information.
+* Tables are not flattened into random text.
+* Multi-column documents preserve reading order.
+* Menu items and prices remain associated.
+
+### Structure
+
+* Tables preserve rows and columns.
+* Empty cells do not shift values.
+* Menu sections remain separated.
+* Headings remain headings.
+* Lists remain lists.
+
+### Accuracy
+
+* Numbers are preserved.
+* Prices are preserved.
+* Currency symbols are handled correctly.
+* Hindi/Marathi/English content is preserved.
+
+### Simplification
+
+* Simplification makes text easier to read.
+* Simplification NEVER destroys structure.
+* Tables remain tables.
+* Menu item-price relationships remain intact.
+
+### UI
+
+* Structured tables are rendered as actual structured tables.
+* The UI does not depend on spaces for column alignment.
+* Existing dyslexia-friendly styling remains intact.
+
+### Testing
+
+* Test realistic tables.
+* Test empty cells.
+* Test cluttered menus.
+* Test both Format Only and Simplify + Format.
+* Clearly distinguish automated verification from real-device verification.
+
+---
+
+# FINAL INSTRUCTION
+
+**DO NOT WORK ON ANYTHING ELSE.**
+
+Do not redesign AksharAlly.
+
+Do not add unrelated features.
+
+Do not change authentication, settings, library, TTS, or unrelated screens.
+
+Do not simply add more line breaks.
+
+The core problem now is:
+
+> **The camera OCR needs to understand and preserve the STRUCTURE and RELATIONSHIPS of the information in the image.**
+
+Fix that first.
+
+Then ensure formatting, simplification, and the UI preserve that structure.
+
+Only after that should the camera scanning feature be considered ready for real-phone testing.
