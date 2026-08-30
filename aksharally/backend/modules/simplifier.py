@@ -23,7 +23,7 @@ client = genai.Client(api_key=API_KEY) if API_KEY else None
 
 
 def _structure_shape_matches(original, candidate):
-    """Reject AI output that changes layout or numeric facts."""
+    """Reject AI output that changes layout or OCR facts."""
     if not isinstance(candidate, dict) or candidate.get("type") != "document":
         return False
     original_blocks = original.get("blocks", [])
@@ -66,9 +66,16 @@ def _structure_shape_matches(original, candidate):
             if before.get("columns", []) != after.get("columns", []):
                 return False
 
-    before_numbers = re.findall(r"\d[\d,.]*", json.dumps(original, ensure_ascii=False))
-    after_numbers = re.findall(r"\d[\d,.]*", json.dumps(candidate, ensure_ascii=False))
-    return all(after_numbers.count(number) >= before_numbers.count(number) for number in set(before_numbers))
+    before_numbers = re.findall(
+        r"\d[\d,.]*", json.dumps(original, ensure_ascii=False)
+    )
+    after_numbers = re.findall(
+        r"\d[\d,.]*", json.dumps(candidate, ensure_ascii=False)
+    )
+    # Counts alone allow a model to reorder or replace values. Exact sequence
+    # matching protects dates, prices, quantities, identifiers, and numbers in
+    # prose while still allowing descriptive wording to be simplified.
+    return before_numbers == after_numbers
 
 
 def process_structured_content(structure, language="en"):

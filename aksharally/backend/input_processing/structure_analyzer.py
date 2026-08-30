@@ -12,31 +12,10 @@ _PRICE_TOKEN = re.compile(
     r"^(?:₹|Rs\.?|INR|%|X|x|¥|Y)?\s*[0-9][0-9,]*(?:\.[0-9]+)?$",
     re.IGNORECASE,
 )
-_PRICE_PARTS = re.compile(
-    r"^(₹|Rs\.?|INR|%|X|x|¥|Y)?\s*([0-9][0-9,]*(?:\.[0-9]+)?)$",
-    re.IGNORECASE,
-)
 
 
 def _text(words):
     return " ".join(word["text"] for word in sorted(words, key=lambda item: item["left"])).strip()
-
-
-def _normalise_price(value, price_context=False):
-    """Repair common currency glyph OCR errors only in a price context."""
-    value = re.sub(r"\s+", " ", value.strip())
-    match = _PRICE_PARTS.match(value)
-    if not match:
-        return value
-    symbol, number = match.groups()
-    if symbol and symbol.lower() in {"rs", "inr"}:
-        return f"{symbol} {number}".replace("Rs ", "Rs. ")
-    if price_context:
-        # Tesseract often reads the Devanagari rupee glyph as %, X, or ¥.
-        # A price column/menu price is enough context to repair that one token;
-        # ordinary percentages elsewhere are intentionally left unchanged.
-        return f"₹{number}"
-    return value
 
 
 def _line_groups(detections):
@@ -98,15 +77,6 @@ def _table_block(detections, grid):
     if not rows:
         return None
     header_text = " ".join(rows[0]).lower()
-    price_columns = {
-        index for index, value in enumerate(rows[0])
-        if any(keyword in value.lower() for keyword in ("price", "amount", "cost", "rate", "मूल्य", "किंमत"))
-    }
-    for row in rows[1:]:
-        for index in price_columns:
-            if index < len(row) and row[index]:
-                row[index] = _normalise_price(row[index], price_context=True)
-
     return {
         "type": "table",
         "headers": rows[0],
@@ -165,15 +135,6 @@ def _aligned_table_block(detections):
     if len(rows) < 3:
         return None
     headers = rows[0]
-    price_columns = {
-        index for index, value in enumerate(headers)
-        if any(keyword in value.lower() for keyword in ("price", "amount", "cost", "rate", "मूल्य", "किंमत"))
-    }
-    for row in rows[1:]:
-        for index in price_columns:
-            if row[index]:
-                row[index] = _normalise_price(row[index], price_context=True)
-
     return {
         "type": "table",
         "headers": headers,
@@ -225,7 +186,9 @@ def _menu_block(detections, image_width):
             line = column_lines[index]
             prices = _price_words(line["words"])
             if _is_heading(line["text"]) and not prices:
-                current = {"type": "menu_section", "title": line["text"].title(), "items": []}
+                # Presentation can style a heading without changing its
+                # casing, punctuation, or Devanagari text.
+                current = {"type": "menu_section", "title": line["text"], "items": []}
                 sections.append(current)
                 index += 1
                 continue
@@ -241,7 +204,9 @@ def _menu_block(detections, image_width):
             item = {
                 "name": _text(name_words) or line["text"],
                 "description": "",
-                "price": _normalise_price(price_text, price_context=True) if price_text else "",
+                # Currency glyphs and price text are OCR facts. Keep them
+                # exactly as detected in the source image.
+                "price": price_text,
             }
             if index + 1 < len(column_lines):
                 following = column_lines[index + 1]

@@ -1,0 +1,298 @@
+I am continuing development of my existing project, AksharAlly.
+
+IMPORTANT: This is an existing project with substantial work already completed, including work from before this Replit account's previous usage limit. DO NOT assume the latest commit represents the entire project. DO NOT rebuild features from scratch and DO NOT remove or replace existing functionality without a clear reason.
+
+FIRST: AUDIT THE EXISTING PROJECT
+Before making ANY code changes:
+
+1. Inspect the current repository structure.
+2. Inspect the current Git branch and working tree.
+3. Review the recent Git history and diffs, especially the commits leading up to the current HEAD.
+4. Understand what each major commit added/fixed.
+5. Inspect the current implementations of:
+   - OCR
+   - image/camera selection
+   - positional OCR detection
+   - structured document reconstruction
+   - table reconstruction/rendering
+   - text simplification
+   - OutputScreen
+   - ReaderScreen
+   - accessibility settings
+   - customization sheet
+   - font handling
+   - Devanagari support
+6. Identify which previous features are already working, partially implemented, or unfinished.
+7. Do not modify anything during this audit.
+
+The Git history visible in this project includes important work such as:
+
+- 4003c9b — add Devanagari reading support and protect structured OCR output
+- 151e79b — fix OCR extraction and image selection
+- 1212481 — implement structured content display and backend text simplification
+- 8ca5407 — improve structured OCR for tables and cluttered documents
+- f8a9175 — add camera assets
+- 3990c79 — fix camera scanning and integrate text processing improvements
+- 47a5d7e — merge main into redesign-work
+- ecb73f3 — add OpenDyslexic font/documentation fix
+- Earlier commits also contain accessibility/customization work.
+
+Treat ALL of these as intentional project work.
+
+IMPORTANT EXISTING ACCESSIBILITY/DEVANAGARI WORK
+
+The current project includes separate font categories.
+
+English fonts include:
+- OpenDyslexic
+- Lexend
+- Atkinson Hyperlegible
+- Noto Sans
+- Inter
+- Roboto
+- Comic Neue
+- Verdana
+- Tahoma
+- Arial
+- Georgia
+- Trebuchet MS
+
+Devanagari fonts include:
+- Mukta
+- Noto Sans Devanagari
+- Hind
+- Baloo 2
+- Tiro Devanagari Hindi
+
+There is also Unicode-based Devanagari script detection using U+0900–U+097F, language-aware font recommendations, live Hindi/Marathi previews, and Devanagari fallback handling.
+
+PRESERVE THESE FEATURES.
+
+The accessibility/customization work may also include:
+- dyslexia-friendly font selection
+- font previews
+- reading test examples
+- letter spacing
+- word spacing
+- line spacing
+- paragraph spacing
+- themes
+- contrast warnings
+- mini previews
+- accessibility badges
+- focus line/focus window functionality
+- syllable breakdown
+- ruler
+- larger text controls
+- customization profiles
+
+Do not remove or regress these features.
+
+CURRENT MAIN PROBLEM
+
+The OCR extraction itself is now producing accurate text.
+
+However, the formatted/structured output is still not accurate enough.
+
+For example, the original OCR can contain the correct text from a document, but the formatted output may:
+- alter words
+- corrupt words
+- lose characters
+- incorrectly reconstruct table cells
+- place text in the wrong cell
+- produce excessively large tables
+- make tables wider than the phone screen
+- make structured documents difficult to read
+
+The original OCR shown to the user should be treated as the source of truth.
+
+The structured/formatted output should improve readability WITHOUT changing the actual OCR content.
+
+NEXT TASK
+
+After the audit, continue development specifically around ACCURATE STRUCTURED PRESENTATION.
+
+Requirements:
+
+1. PRESERVE OCR TEXT EXACTLY
+
+For structured content:
+- Do not rewrite OCR words.
+- Do not paraphrase table headers.
+- Do not paraphrase table cells.
+- Do not change menu item names.
+- Do not change prices.
+- Do not change dates, numbers, labels, or identifiers.
+- Preserve column contents and order.
+- Preserve empty cells when the positional structure indicates that a cell exists.
+
+If simplification is supported, it must NEVER modify factual/structural OCR content.
+
+Only content that is explicitly intended to be simplified, such as a descriptive paragraph/menu description, may be simplified.
+
+2. SEPARATE CONTENT FROM PRESENTATION
+
+The structured reconstruction layer should determine:
+- what text belongs together
+- rows
+- columns
+- headers
+- cells
+- paragraphs
+- sections
+- menu items
+- descriptions
+- prices
+
+The presentation layer should then decide how that structure is displayed on a phone.
+
+Do not use presentation formatting as a reason to modify the OCR text.
+
+3. PHONE-FRIENDLY TABLES
+
+Tables must be designed for a mobile screen.
+
+For ordinary tables:
+- fit them to the available screen width whenever reasonably possible
+- use readable text
+- wrap long cell text instead of allowing it to make the entire table unnecessarily wide
+- maintain row/column relationships
+- keep headers visually distinguishable
+- preserve all cells
+
+Only use horizontal scrolling when the table genuinely cannot be represented clearly within the available width.
+
+Do not automatically make every table horizontally scrollable.
+
+4. LARGE DOCUMENTS
+
+If the structured output is large:
+- display it on the dedicated OutputScreen
+- allow vertical scrolling
+- avoid forcing the entire document into the ReaderScreen viewport
+- ensure the user can comfortably read long documents
+- keep the original OCR accessible separately
+
+5. TABLE SCALING
+
+Do NOT solve the table problem simply by shrinking the entire table's font to an unreadable size.
+
+Instead:
+- calculate/estimate available screen width
+- distribute column widths intelligently
+- wrap text inside cells
+- use reasonable minimum/maximum widths
+- allow horizontal scrolling only when necessary
+
+6. STRUCTURED DOCUMENT TYPES
+
+The implementation should handle, where already supported:
+- normal paragraphs
+- headings
+- tables
+- menu-like documents
+- forms
+- mixed text + tables
+- cluttered documents
+
+Do not introduce a completely new architecture if the current positional reconstruction already provides these structures.
+
+Build on the existing implementation.
+
+7. ACCURACY VALIDATION
+
+Before accepting structured output, validate it against the OCR source.
+
+At minimum, verify that:
+- table headers remain unchanged
+- table cell text remains unchanged
+- menu names remain unchanged
+- menu prices remain unchanged
+- important numbers remain unchanged
+- ordering is preserved
+- no OCR text is silently invented
+
+If the structured model produces an invalid transformation, fall back to the original structured/OCR representation rather than displaying corrupted text.
+
+8. DO NOT BREAK OCR
+
+The OCR extraction pipeline is currently working and must NOT be unnecessarily modified.
+
+Do not change:
+- OCR recognition logic
+- camera scanning
+- image selection
+- preprocessing
+- authentication
+- unrelated backend routes
+
+unless your audit proves that a specific change is genuinely required.
+
+9. DO NOT BREAK DEVANAGARI
+
+Hindi and Marathi support is important.
+
+Make sure:
+- Devanagari text remains unchanged during structure reconstruction
+- Devanagari characters are not accidentally normalized into incorrect text
+- Hindi/Marathi fonts continue working
+- English and Devanagari font categories remain separate
+- existing font fallback behavior remains intact
+
+10. DO NOT BREAK ACCESSIBILITY FEATURES
+
+All existing accessibility/customization functionality must continue to work.
+
+Do not remove existing controls simply to make the new output layout easier.
+
+11. TEST BEFORE FINISHING
+
+After implementation:
+
+- run Python syntax checks
+- run available Flutter/Dart checks
+- check for obvious compile errors
+- inspect the Git diff
+- verify that only relevant files changed
+- test the structured-output validation logic
+- test table rendering with:
+  a. a small 2–3 column table
+  b. a wider 4+ column table
+  c. long text inside cells
+  d. missing/empty cells
+  e. mixed English + Devanagari content
+  f. a large document
+
+If Flutter/Dart is unavailable in the environment, explicitly report that rather than pretending the checks passed.
+
+12. GIT SAFETY
+
+Do NOT reset, revert, squash, or delete previous commits.
+
+Do NOT discard previous work.
+
+Do NOT modify unrelated files.
+
+Before committing, show me:
+- files changed
+- what was changed
+- what existing functionality was preserved
+- tests/checks performed
+- any remaining limitations
+
+Only commit after the implementation and verification are complete.
+
+MOST IMPORTANT PRINCIPLE:
+
+AksharAlly's OCR text is the source of truth.
+
+The purpose of formatting is to make the OCR easier to read — NOT to "correct", rewrite, paraphrase, or regenerate the OCR.
+
+If there is a conflict between:
+OCR accuracy
+and
+AI-generated formatting,
+
+ALWAYS preserve the OCR text.
+
+Start with the repository/Git audit now. Do not make code changes until the audit is complete.
