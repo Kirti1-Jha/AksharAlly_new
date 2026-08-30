@@ -134,6 +134,70 @@ class SectionStructureTests(unittest.TestCase):
 
         self.assertEqual(structure["blocks"][0]["type"], "paragraph")
 
+    def test_genuine_bordered_grid_remains_a_table(self):
+        detections = [
+            _word("Item", 30, 12, width=45),
+            _word("Quantity", 210, 12, width=70),
+            _word("Price", 370, 12, width=45),
+            _word("Apples", 30, 52, width=55),
+            _word("2", 210, 52, width=12),
+            _word("₹100", 370, 52, width=40),
+            _word("Oranges", 30, 92, width=65),
+            _word("3", 210, 92, width=12),
+            _word("₹150", 370, 92, width=40),
+        ]
+        grid = {"xLines": [0, 150, 300, 500], "yLines": [0, 40, 80, 130]}
+
+        structure = analyze_structure((130, 500, 3), detections, grid, "")
+
+        self.assertEqual(structure["blocks"][0]["type"], "table")
+        self.assertEqual(structure["blocks"][0]["headers"], ["Item", "Quantity", "Price"])
+        self.assertEqual(
+            structure["blocks"][0]["rows"],
+            [["Apples", "2", "₹100"], ["Oranges", "3", "₹150"]],
+        )
+
+    def test_borderless_table_requires_repeated_multi_cell_rows(self):
+        detections = [
+            _word("Item", 30, 12, width=45),
+            _word("Quantity", 210, 12, width=70),
+            _word("Price", 370, 12, width=45),
+            _word("Apples", 30, 52, width=55),
+            _word("2", 210, 52, width=12),
+            _word("₹100", 370, 52, width=40),
+            _word("Oranges", 30, 92, width=65),
+            _word("3", 210, 92, width=12),
+            _word("₹150", 370, 92, width=40),
+        ]
+
+        structure = analyze_structure((130, 500, 3), detections, None, "")
+
+        self.assertEqual(structure["blocks"][0]["type"], "table")
+
+    def test_normal_paragraph_stays_readable_text(self):
+        detections = [
+            _word("This", 20, 20),
+            _word("is", 70, 20, width=15),
+            _word("ordinary", 100, 20, width=70),
+            _word("paragraph", 180, 20, width=75),
+            _word("text", 20, 55, width=35),
+            _word("with", 65, 55, width=40),
+            _word("no", 115, 55, width=22),
+            _word("table", 145, 55, width=45),
+        ]
+
+        structure = analyze_structure(
+            (100, 400, 3),
+            detections,
+            None,
+            "This is ordinary paragraph text\nwith no table",
+        )
+
+        self.assertEqual(structure["blocks"], [{
+            "type": "paragraph",
+            "text": "This is ordinary paragraph text\nwith no table",
+        }])
+
 
 if __name__ == "__main__":
     unittest.main()

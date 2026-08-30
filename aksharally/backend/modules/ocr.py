@@ -150,6 +150,24 @@ def _detect_table_grid(gray):
     y_lines = _group_line_positions(horizontal, axis=1)
     if len(x_lines) < 3 or len(y_lines) < 3:
         return None
+
+    # Require the rules to meet repeatedly. Independent page decorations can
+    # produce several horizontal and vertical strokes without forming cells.
+    intersection_hits = 0
+    for x_line in x_lines:
+        for y_line in y_lines:
+            y_start = max(0, y_line - 1)
+            y_end = min(gray.shape[0], y_line + 2)
+            x_start = max(0, x_line - 1)
+            x_end = min(gray.shape[1], x_line + 2)
+            if (
+                vertical[y_start:y_end, x_start:x_end].any()
+                and horizontal[y_start:y_end, x_start:x_end].any()
+            ):
+                intersection_hits += 1
+    if intersection_hits < max(4, len(x_lines) * len(y_lines) * 0.5):
+        return None
+
     return {
         "xLines": x_lines,
         "yLines": y_lines,

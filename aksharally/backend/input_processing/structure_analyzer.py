@@ -116,7 +116,12 @@ def _table_block(detections, grid):
 
 
 def _aligned_table_block(detections):
-    """Recover borderless tables from repeated header x positions."""
+    """Recover borderless tables from repeated, multi-cell rows.
+
+    Text that happens to contain words such as "price" is not enough to be a
+    table. A borderless table must have a plausible header plus at least two
+    subsequent rows with multiple consistently occupied columns.
+    """
     lines = _line_groups(detections)
     header_index = next(
         (
@@ -148,8 +153,7 @@ def _aligned_table_block(detections):
         float("inf"),
     ]
 
-    rows = []
-    for line in lines[header_index:]:
+    def cells_for_line(line):
         cells = [[] for _ in anchors]
         for word in line["words"]:
             center_x = word["left"] + word["width"] / 2
@@ -158,15 +162,49 @@ def _aligned_table_block(detections):
                 if boundaries[index] <= center_x < boundaries[index + 1]
             )
             cells[column].append(word)
-        rows.append([_text(cell) for cell in cells])
+        return cells
 
-    if len(rows) < 3:
+    header_cells = cells_for_line(lines[header_index])
+    if sum(bool(cell) for cell in header_cells) < 2:
         return None
-    headers = rows[0]
+
+    body_rows = []
+    line_heights = [
+        max(1, line["bottom"] - line["top"])
+        for line in lines
+    ]
+    typical_height = sorted(line_heights)[len(line_heights) // 2]
+    max_row_gap = max(70, typical_height * 3.5)
+    previous_line = lines[header_index]
+    for line in lines[header_index + 1:]:
+        if line["top"] - previous_line["bottom"] > max_row_gap:
+            break
+        cells = cells_for_line(line)
+        occupied = [index for index, cell in enumerate(cells) if cell]
+        if len(occupied) >= 2:
+            body_rows.append(cells)
+        elif body_rows:
+            # A later paragraph should not be absorbed into the table after
+            # the repeated row pattern has ended.
+            break
+        previous_line = line
+
+    if len(body_rows) < 2:
+        return None
+
+    repeated_columns = sum(
+        sum(bool(row[index]) for row in body_rows) >= 2
+        for index in range(len(anchors))
+    )
+    if repeated_columns < 2:
+        return None
+
+    rows = [[_text(cell) for cell in row] for row in body_rows]
+    headers = [_text(cell) for cell in header_cells]
     return {
         "type": "table",
         "headers": headers,
-        "rows": rows[1:],
+        "rows": rows,
         "columnCount": len(headers),
         "hasEmptyCells": any(not cell for row in rows for cell in row),
         "headerText": " ".join(headers).lower(),
