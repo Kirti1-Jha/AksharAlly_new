@@ -8,6 +8,7 @@ import '../models/format_result.dart';
 import '../services/tts_service.dart';
 import '../theme/accessibility_settings.dart';
 import '../widgets/highlighted_text_view.dart';
+import '../widgets/structured_content_view.dart';
 import '../widgets/reading_customize_sheet.dart';
 
 /// OutputScreen — DISPLAY / READING screen only.
@@ -68,6 +69,7 @@ class _OutputScreenState extends State<OutputScreen> {
   // _isCustomize tracks whether the 'Customize' chip is visually active.
   String _selectedProfile = 'moderate';
   bool   _isCustomize     = false;
+  bool   _showOriginalOcr = false;
   FormatResult? _formatResult;
 
   // ── TTS ───────────────────────────────────────────────────────────────────
@@ -438,6 +440,13 @@ class _OutputScreenState extends State<OutputScreen> {
 
   // ── reading card — the formatted/simplified content ───────────────────────
   Widget _readingCard() {
+    final structuredBlocks =
+        _formatResult?.structuredContent?['blocks'] as List?;
+    final hasStructuredLayout = structuredBlocks?.any((block) =>
+            block is Map && block['type'] != 'paragraph') ??
+        false;
+    final originalText = _formatResult?.originalText;
+
     return Container(
       padding: const EdgeInsets.all(AppTheme.spaceMD),
       decoration: BoxDecoration(
@@ -457,10 +466,50 @@ class _OutputScreenState extends State<OutputScreen> {
           color:        getBackgroundColor(),
           borderRadius: BorderRadius.circular(AppTheme.radiusSM),
         ),
-        child: HighlightedTextView(
-          text:         simplifiedText,
-          words:        words,
-          currentIndex: currentIndex,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (hasStructuredLayout)
+              StructuredContentView(
+                content: _formatResult!.structuredContent!,
+              )
+            else
+              HighlightedTextView(
+                text: simplifiedText,
+                words: words,
+                currentIndex: currentIndex,
+              ),
+            if (originalText != null && originalText.trim().isNotEmpty) ...[
+              const SizedBox(height: AppTheme.spaceMD),
+              ExpansionTile(
+                tilePadding: EdgeInsets.zero,
+                childrenPadding: const EdgeInsets.only(bottom: 4),
+                title: Text(
+                  'View original OCR',
+                  style: TextStyle(
+                    color: AppTheme.primaryBlue,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                initiallyExpanded: _showOriginalOcr,
+                onExpansionChanged: (expanded) =>
+                    setState(() => _showOriginalOcr = expanded),
+                children: [
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: SelectableText(
+                      originalText,
+                      style: TextStyle(
+                        color: getTextColor().withOpacity(0.82),
+                        fontSize: 15,
+                        height: 1.5,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ],
         ),
       ),
     );

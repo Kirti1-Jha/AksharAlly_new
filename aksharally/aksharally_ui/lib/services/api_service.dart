@@ -127,4 +127,52 @@ class ApiService {
       throw Exception("Connection failed: $e");
     }
   }
+
+  /// Simplifies a table/menu/column model without allowing Gemini to flatten
+  /// it into prose. The server validates the returned shape and falls back to
+  /// the original model when the AI response is unsafe.
+  static Future<StructuredSimplifyResult> simplifyStructuredText(
+    String text,
+    Map<String, dynamic> structuredContent, {
+    String? language,
+  }) async {
+    final uri = Uri.parse('$baseUrl/process/text-format');
+    final lang = language ?? AppSettings.language;
+    try {
+      final response = await http.post(
+        uri,
+        headers: {"Content-Type": "application/json"},
+        body: json.encode({
+          "text": text,
+          "language": lang,
+          "structured_content": structuredContent,
+        }),
+      ).timeout(const Duration(seconds: 30));
+
+      final data = json.decode(response.body) as Map<String, dynamic>;
+      if (response.statusCode == 200 && data['success'] == true) {
+        final returned = data['structured_content'];
+        return StructuredSimplifyResult(
+          formattedText: data['formatted_text'] as String? ?? text,
+          structuredContent: returned is Map
+              ? Map<String, dynamic>.from(returned)
+              : structuredContent,
+        );
+      }
+      throw Exception(data['error'] ?? "Structured simplification failed");
+    } catch (e) {
+      print("❌ STRUCTURED TEXT API ERROR: $e");
+      throw Exception("Connection failed: $e");
+    }
+  }
+}
+
+class StructuredSimplifyResult {
+  final String formattedText;
+  final Map<String, dynamic> structuredContent;
+
+  const StructuredSimplifyResult({
+    required this.formattedText,
+    required this.structuredContent,
+  });
 }

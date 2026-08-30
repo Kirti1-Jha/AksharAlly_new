@@ -190,14 +190,32 @@ class _ReadingScreenState extends State<ReadingScreen> {
       return;
     }
 
-    // Simplify + Format: OCR → raw text → Gemini → reader.
-    // Pipeline: OCR → Simplify → Format (display rendering in reader).
+    // Simplify + Format: retain structured OCR. Gemini can simplify prose
+    // fields, but must not flatten tables or menus into a paragraph.
     final formatResult = await ApiService.processImage(
       file,
       language: _language,
       profile:  _profile,
     );
-    // rawText = originalText ?? processedText (safe fallback per FormatResult)
+    final blocks = formatResult.structuredContent?['blocks'] as List?;
+    final hasStructuredLayout = blocks?.any((block) =>
+            block is Map && block['type'] != 'paragraph') ??
+        false;
+    if (hasStructuredLayout) {
+      final simplified = await ApiService.simplifyStructuredText(
+        formatResult.rawText,
+        formatResult.structuredContent!,
+        language: _language,
+      );
+      _push(OutputScreen(
+        initialFormatResult: formatResult.copyWith(
+          processedText: simplified.formattedText,
+          structuredContent: simplified.structuredContent,
+        ),
+      ));
+      return;
+    }
+
     final simplified = await ApiService.simplifyText(
       formatResult.rawText,
       language: _language,

@@ -1,5 +1,6 @@
 from flask import Blueprint, request, jsonify
-from modules.simplifier import process_text
+from modules.simplifier import process_text, process_structured_content
+from input_processing.structure_analyzer import render_structure
 
 simplify_bp = Blueprint("simplify", __name__)
 
@@ -65,10 +66,16 @@ def process_simplify():
 
     original_text = data["text"]
     language = data.get("language", "en")
-    formatted_text = process_text(original_text, language)
+    structured_content = data.get("structured_content")
+    if isinstance(structured_content, dict):
+        structured_content = process_structured_content(structured_content, language)
+        formatted_text = render_structure(structured_content)
+    else:
+        formatted_text = process_text(original_text, language)
 
     return jsonify({
         "success": True,
         "original_text": original_text,
-        "formatted_text": formatted_text
+        "formatted_text": formatted_text,
+        **({"structured_content": structured_content} if isinstance(structured_content, dict) else {}),
     })

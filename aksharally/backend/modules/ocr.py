@@ -121,7 +121,7 @@ def _layout_text_from_tesseract(image, language):
 def _group_line_positions(mask, axis, threshold_ratio=0.35):
     """Find contiguous x/y positions occupied by strong table lines."""
     projection = mask.sum(axis=axis)
-    limit = (mask.shape[1 - axis] * 255) * threshold_ratio
+    limit = (mask.shape[axis] * 255) * threshold_ratio
     occupied = projection > limit
     groups = []
     start = None
@@ -225,24 +225,46 @@ def _layout_text_from_easyocr(results):
     return "\n".join(rendered).strip()
 
 
-def extract_text(image_input, language="en"):
+def extract_document(image_input, language="en"):
+    """Extract text and a structure-aware display model from an image."""
     if isinstance(image_input, np.ndarray):
         image_np = image_input
     else:
         image = Image.open(image_input).convert("RGB")
         image_np = np.array(image)
 
-    if EASYOCR_AVAILABLE:
-        # Use EasyOCR's box result shape so visual lines can be rebuilt.
-        results = reader.readtext(image_np, detail=1, paragraph=False)
-        return _layout_text_from_easyocr(results)
-
-    # Run Tesseract on the original grayscale image first. It preserves
-    # document lines and table rows better than adaptive thresholding.
     gray = cv2.cvtColor(image_np, cv2.COLOR_RGB2GRAY)
-    text = _layout_text_from_tesseract(gray, language)
-    if text:
-        return text
+    grid = _detect_table_grid(gray)
 
-    # Low-contrast captures get a second, conservative preprocessing pass.
-    return _layout_text_from_tesseract(preprocess_image(image_np), language)
+    # Tesseract is used for grids so the cell coordinates and empty cells
+    # remain available. EasyOCR remains a useful fallback for ordinary
+    # camera captures where its detector is installed.
+    if EASYOCR_AVAILABLE and not grid and (language or "en").lower() == "en":
+        detections = _easyocr_detections(
+            reader.readtext(image_np, detail=1, paragraph=False)
+        )
+    else:
+        ocr_image = _remove_table_lines(gray, grid) if grid else gray
+        detections = _tesseract_detections(ocr_image, language, psm=6 if grid else 3)
+
+    if not detections:
+        detections = _tesseract_detections(preprocess_image(image_np), language)
+
+    rendered_text = _render_detections(detections)
+    from input_processing.structure_analyzer import analyze_structure
+
+    structure = analyze_structure(
+        image_np.shape,
+        detections,
+        {"xLines": grid["xLines"], "yLines": grid["yLines"]} if grid else None,
+        rendered_text,
+    )
+    return {
+        "text": rendered_text,
+        "detections": detections,
+        "structure": structure,
+    }
+
+
+def extract_text(image_input, language="en"):
+    return extract_document(image_input, language)["text"]
