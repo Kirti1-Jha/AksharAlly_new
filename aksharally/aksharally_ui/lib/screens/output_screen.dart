@@ -265,7 +265,8 @@ class _OutputScreenState extends State<OutputScreen> {
       AccessibilitySettings.profile = 'customize';
       await showReadingCustomizeSheet(
         context,
-        onChanged: () { if (mounted) setState(() {}); },
+        onChanged:    () { if (mounted) setState(() {}); },
+        detectedText: words.join(' '),
       );
       return;
     }

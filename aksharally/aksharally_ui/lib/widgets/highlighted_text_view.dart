@@ -99,6 +99,32 @@ class HighlightedTextView extends StatelessWidget {
         return GoogleFonts.roboto(textStyle: base);
       case 'Comic Neue':
         return GoogleFonts.comicNeue(textStyle: base);
+      // ── Devanagari fonts — Hindi & Marathi ────────────────────────────────
+      case 'Mukta':
+        // Clean Devanagari letterforms selected for strong readability.
+        return GoogleFonts.mukta(textStyle: base).copyWith(
+          fontFamilyFallback: const ['Noto Sans Devanagari'],
+        );
+      case 'Noto Sans Devanagari':
+        // Broad Unicode coverage and reliable Devanagari rendering.
+        return GoogleFonts.notoSansDevanagari(textStyle: base).copyWith(
+          fontFamilyFallback: const ['Mukta'],
+        );
+      case 'Hind':
+        // Designed for Hindi interfaces and screen readability.
+        return GoogleFonts.hind(textStyle: base).copyWith(
+          fontFamilyFallback: const ['Mukta', 'Noto Sans Devanagari'],
+        );
+      case 'Baloo 2':
+        // Friendly rounded shapes for younger or beginner readers.
+        return GoogleFonts.baloo2(textStyle: base).copyWith(
+          fontFamilyFallback: const ['Mukta', 'Noto Sans Devanagari'],
+        );
+      case 'Tiro Devanagari Hindi':
+        // Comfortable long-form reading for sustained attention.
+        return GoogleFonts.tiroDevanagariHindi(textStyle: base).copyWith(
+          fontFamilyFallback: const ['Mukta', 'Noto Sans Devanagari'],
+        );
       // Platform font families — use system stack, Lexend as fallback
       case 'Verdana':
       case 'Tahoma':

@@ -65,35 +65,72 @@ class StructuredContentView extends StatelessWidget {
     final columnCount = headers.length;
     if (columnCount == 0) return const SizedBox.shrink();
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Table(
-        defaultColumnWidth: const IntrinsicColumnWidth(),
-        border: TableBorder.all(
-          color: AppTheme.primaryBlue.withOpacity(0.35),
-          width: 1,
-        ),
-        defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-        children: [
-          TableRow(
-            decoration: BoxDecoration(
-              color: AppTheme.primaryBlue.withOpacity(0.10),
-            ),
-            children: headers
-                .map((header) => _tableCell(header, isHeader: true))
-                .toList(),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final columnValues = List.generate(
+          columnCount,
+          (column) => [
+            headers[column],
+            for (final row in rows)
+              column < row.length ? row[column] : '',
+          ],
+        );
+        // A conservative estimate keeps ordinary 2–4 column tables inside
+        // the phone viewport while retaining horizontal scrolling for truly
+        // wide tables or very long unbreakable values.
+        final estimatedWidth = columnValues.fold<double>(
+          0,
+          (total, values) =>
+              total + 28 + values.fold<int>(
+                0,
+                (maxLength, value) =>
+                    value.length > maxLength ? value.length : maxLength,
+              ) * 8.0,
+        );
+        final needsHorizontalScroll =
+            estimatedWidth > constraints.maxWidth || columnCount > 4;
+
+        final table = Table(
+          columnWidths: needsHorizontalScroll
+              ? null
+              : {
+                  for (var index = 0; index < columnCount; index++)
+                    index: const FlexColumnWidth(),
+                },
+          defaultColumnWidth: const IntrinsicColumnWidth(),
+          border: TableBorder.all(
+            color: AppTheme.primaryBlue.withOpacity(0.35),
+            width: 1,
           ),
-          for (final row in rows)
+          defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+          children: [
             TableRow(
-              children: List.generate(
-                columnCount,
-                (index) => _tableCell(
-                  index < row.length ? row[index] : '',
+              decoration: BoxDecoration(
+                color: AppTheme.primaryBlue.withOpacity(0.10),
+              ),
+              children: headers
+                  .map((header) => _tableCell(header, isHeader: true))
+                  .toList(),
+            ),
+            for (final row in rows)
+              TableRow(
+                children: List.generate(
+                  columnCount,
+                  (index) => _tableCell(
+                    index < row.length ? row[index] : '',
+                  ),
                 ),
               ),
-            ),
-        ],
-      ),
+          ],
+        );
+
+        return needsHorizontalScroll
+            ? SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: table,
+              )
+            : table;
+      },
     );
   }
 

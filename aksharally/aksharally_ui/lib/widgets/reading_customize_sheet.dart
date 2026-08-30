@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../theme/accessibility_settings.dart';
 
@@ -14,6 +15,7 @@ import '../theme/accessibility_settings.dart';
 Future<void> showReadingCustomizeSheet(
   BuildContext context, {
   required VoidCallback onChanged,
+  String detectedText = '',
 }) async {
   await showModalBottomSheet(
     context:            context,
@@ -84,46 +86,27 @@ Future<void> showReadingCustomizeSheet(
                       // ── FONT FAMILY ─────────────────────────────────────
                       _sectionHeader('Font Family'),
                       const SizedBox(height: 8),
-                      Wrap(
-                        spacing:    6,
-                        runSpacing: 6,
-                        children: AccessibilitySettings.fonts.map((font) {
-                          final sel = AccessibilitySettings.fontFamily == font;
-                          // Shorten labels that would overflow a chip
-                          final label = _fontChipLabel(font);
-                          final padH  = largeTap ? 16.0 : 12.0;
-                          final padV  = largeTap ? 10.0 :  7.0;
-                          return GestureDetector(
-                            onTap: () => update(
-                              () => AccessibilitySettings.fontFamily = font),
-                            child: Container(
-                              padding: EdgeInsets.symmetric(
-                                  horizontal: padH, vertical: padV),
-                              decoration: BoxDecoration(
-                                color:  sel
-                                    ? const Color(0xFF1565C0)
-                                    : Colors.grey.shade100,
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(
-                                  color: sel
-                                      ? const Color(0xFF1565C0)
-                                      : Colors.grey.shade300,
-                                ),
-                              ),
-                              child: Text(
-                                label,
-                                style: TextStyle(
-                                  color:      sel ? Colors.white : Colors.black87,
-                                  fontWeight: sel
-                                      ? FontWeight.bold
-                                      : FontWeight.normal,
-                                  fontSize: largeTap ? 14 : 13,
-                                ),
-                              ),
-                            ),
-                          );
-                        }).toList(),
+                      _fontCategory(
+                        'English Reading Fonts',
+                        AccessibilitySettings.englishFonts,
+                        update,
+                        largeTap: largeTap,
+                        recommended: !AccessibilitySettings
+                            .isPrimarilyDevanagari(detectedText),
+                        recommendedLabel: 'Recommended for English',
                       ),
+                      const SizedBox(height: 14),
+                      _fontCategory(
+                        'Hindi & Marathi Fonts',
+                        AccessibilitySettings.devanagariFonts,
+                        update,
+                        largeTap: largeTap,
+                        recommended: AccessibilitySettings
+                            .isPrimarilyDevanagari(detectedText),
+                        recommendedLabel: 'Recommended for Hindi & Marathi',
+                      ),
+                      const SizedBox(height: 14),
+                      _readingTestPanel(),
 
                       const SizedBox(height: 20),
 
@@ -509,6 +492,230 @@ String _fontChipLabel(String font) {
     case 'System Default':        return 'System';
     default:                      return font;
   }
+}
+
+// ── Language-aware font sections and previews ───────────────────────────────
+
+Widget _fontCategory(
+  String title,
+  List<String> fonts,
+  void Function(VoidCallback) update, {
+  required bool largeTap,
+  required bool recommended,
+  required String recommendedLabel,
+}) {
+  final isDevanagari = title == 'Hindi & Marathi Fonts';
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Padding(
+        padding: const EdgeInsets.only(bottom: 6),
+        child: Text(
+          title,
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF1565C0),
+          ),
+        ),
+      ),
+      Wrap(
+        spacing: 6,
+        runSpacing: 6,
+        children: fonts.map((font) {
+          final selected = AccessibilitySettings.fontFamily == font;
+          final label = _fontChipLabel(font);
+          final padH = largeTap ? 14.0 : 10.0;
+          final padV = largeTap ? 9.0 : 6.0;
+          return GestureDetector(
+            onTap: () => update(
+              () => AccessibilitySettings.fontFamily = font,
+            ),
+            child: Container(
+              constraints: const BoxConstraints(minWidth: 92),
+              padding: EdgeInsets.symmetric(horizontal: padH, vertical: padV),
+              decoration: BoxDecoration(
+                color: selected
+                    ? const Color(0xFF1565C0)
+                    : Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: selected
+                      ? const Color(0xFF1565C0)
+                      : Colors.grey.shade300,
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: TextStyle(
+                      color: selected ? Colors.white : Colors.black87,
+                      fontWeight:
+                          selected ? FontWeight.bold : FontWeight.normal,
+                      fontSize: largeTap ? 13 : 12,
+                    ),
+                  ),
+                  if (recommended) ...[
+                    const SizedBox(height: 3),
+                    _fontBadge(
+                      recommendedLabel,
+                      selected ? Colors.white : const Color(0xFF1B5E20),
+                      selected
+                          ? Colors.white.withOpacity(0.18)
+                          : const Color(0xFFE8F5E9),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+      const SizedBox(height: 8),
+      Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF5F8FC),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: const Color(0xFFE0E8F2)),
+        ),
+        child: Text(
+          isDevanagari
+              ? 'हिंदी और मराठी पढ़ना अब आसान है।'
+              : 'The quick brown fox jumps over the lazy dog.',
+          style: _fontPreviewStyle(
+            AccessibilitySettings.fontFamily,
+            fontSize: isDevanagari ? 18 : 15,
+            height: 1.35,
+          ),
+        ),
+      ),
+    ],
+  );
+}
+
+Widget _fontBadge(String label, Color foreground, Color background) {
+  return Container(
+    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+    decoration: BoxDecoration(
+      color: background,
+      borderRadius: BorderRadius.circular(8),
+    ),
+    child: Text(
+      '⭐ $label',
+      style: TextStyle(
+        color: foreground,
+        fontSize: 8,
+        fontWeight: FontWeight.w700,
+      ),
+    ),
+  );
+}
+
+TextStyle _fontPreviewStyle(
+  String font, {
+  required double fontSize,
+  required double height,
+}) {
+  final base = TextStyle(fontSize: fontSize, height: height);
+  switch (font) {
+    case 'OpenDyslexic':
+      return base.copyWith(fontFamily: 'OpenDyslexic');
+    case 'Lexend':
+      return GoogleFonts.lexend(textStyle: base);
+    case 'Atkinson Hyperlegible':
+      return GoogleFonts.atkinsonHyperlegible(textStyle: base);
+    case 'Noto Sans':
+      return GoogleFonts.notoSans(textStyle: base);
+    case 'Inter':
+      return GoogleFonts.inter(textStyle: base);
+    case 'Roboto':
+      return GoogleFonts.roboto(textStyle: base);
+    case 'Comic Neue':
+      return GoogleFonts.comicNeue(textStyle: base);
+    case 'Mukta':
+      return GoogleFonts.mukta(textStyle: base).copyWith(
+        fontFamilyFallback: const ['Noto Sans Devanagari'],
+      );
+    case 'Noto Sans Devanagari':
+      return GoogleFonts.notoSansDevanagari(textStyle: base).copyWith(
+        fontFamilyFallback: const ['Mukta'],
+      );
+    case 'Hind':
+      return GoogleFonts.hind(textStyle: base).copyWith(
+        fontFamilyFallback: const ['Mukta', 'Noto Sans Devanagari'],
+      );
+    case 'Baloo 2':
+      return GoogleFonts.baloo2(textStyle: base).copyWith(
+        fontFamilyFallback: const ['Mukta', 'Noto Sans Devanagari'],
+      );
+    case 'Tiro Devanagari Hindi':
+      return GoogleFonts.tiroDevanagariHindi(textStyle: base).copyWith(
+        fontFamilyFallback: const ['Mukta', 'Noto Sans Devanagari'],
+      );
+    case 'System Default':
+      return base;
+    default:
+      return base.copyWith(
+        fontFamily: font,
+        fontFamilyFallback: const ['Lexend'],
+      );
+  }
+}
+
+Widget _readingTestPanel() {
+  return Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(12),
+    decoration: BoxDecoration(
+      color: const Color(0xFFFFFBF0),
+      borderRadius: BorderRadius.circular(10),
+      border: Border.all(color: const Color(0xFFE9DFC7)),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Reading Test Preview',
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF555555),
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'The quick brown fox jumps over the lazy dog.',
+          style: _fontPreviewStyle(
+            AccessibilitySettings.fontFamily,
+            fontSize: 15,
+            height: 1.35,
+          ),
+        ),
+        const SizedBox(height: 5),
+        Text(
+          'तेज़ भूरी लोमड़ी आलसी कुत्ते के ऊपर कूदती है।',
+          style: _fontPreviewStyle(
+            AccessibilitySettings.fontFamily,
+            fontSize: 18,
+            height: 1.45,
+          ),
+        ),
+        const SizedBox(height: 5),
+        Text(
+          'जलद तपकिरी कोल्हा आळशी कुत्र्यावर उडी मारतो.',
+          style: _fontPreviewStyle(
+            AccessibilitySettings.fontFamily,
+            fontSize: 18,
+            height: 1.45,
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 // ── Shared helpers ─────────────────────────────────────────────────────────

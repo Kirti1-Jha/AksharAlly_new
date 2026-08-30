@@ -40,8 +40,30 @@ def _structure_shape_matches(original, candidate):
                 return False
             if any(len(row) != len(before.get("headers", [])) for row in after.get("rows", [])):
                 return False
+            # Table cells are positional OCR output, not prose. Rewriting even
+            # one header or cell can silently change the document's facts.
+            if before.get("headers", []) != after.get("headers", []):
+                return False
+            if before.get("rows", []) != after.get("rows", []):
+                return False
         if before.get("type") == "menu_section":
             if len(before.get("items", [])) != len(after.get("items", [])):
+                return False
+            # Menu names and prices are OCR facts. Descriptions are the only
+            # fields that may be simplified.
+            if before.get("title", "") != after.get("title", ""):
+                return False
+            for before_item, after_item in zip(
+                before.get("items", []), after.get("items", [])
+            ):
+                if before_item.get("name", "") != after_item.get("name", ""):
+                    return False
+                if before_item.get("price", "") != after_item.get("price", ""):
+                    return False
+        if before.get("type") == "columns":
+            # Positional columns are also layout-bearing OCR text. Preserve
+            # every line while allowing no reordering or accidental loss.
+            if before.get("columns", []) != after.get("columns", []):
                 return False
 
     before_numbers = re.findall(r"\d[\d,.]*", json.dumps(original, ensure_ascii=False))

@@ -85,21 +85,47 @@ class AccessibilitySettings {
   }
 
   // ── Font families ─────────────────────────────────────────────────────────
-  static const List<String> fonts = [
-    'OpenDyslexic',           // Gracefully falls back to Lexend (not in Google Fonts)
-    'Lexend',
-    'Atkinson Hyperlegible',  // GoogleFonts.atkinsonHyperlegible
-    'Noto Sans',              // GoogleFonts.notoSans
-    'Inter',                  // GoogleFonts.inter
-    'Roboto',                 // GoogleFonts.roboto
-    'Comic Neue',             // GoogleFonts.comicNeue
-    'Verdana',                // Platform font
-    'Tahoma',                 // Platform font
-    'Arial',                  // Platform font
-    'Georgia',                // Platform font
-    'Trebuchet MS',           // Platform font
-    'System Default',         // Plain TextStyle, no Google Font
+  /// Accessibility fonts designed primarily for Latin / English reading.
+  static const List<String> englishFonts = [
+    'OpenDyslexic',           // Bundled TTF asset — dyslexia-friendly letterforms
+    'Lexend',                 // GoogleFonts.lexend — reduced visual stress
+    'Atkinson Hyperlegible',  // GoogleFonts.atkinsonHyperlegible — letterform clarity
+    'Noto Sans',              // GoogleFonts.notoSans — broad Unicode coverage
+    'Inter',                  // GoogleFonts.inter — clean screen typography
+    'Roboto',                 // GoogleFonts.roboto — widely legible on screens
+    'Comic Neue',             // GoogleFonts.comicNeue — friendly letterforms
+    'Verdana',                // Platform font — wide letterforms
+    'Tahoma',                 // Platform font — compact and clear
+    'Arial',                  // Platform font — familiar and legible
+    'Georgia',                // Platform font — serif for longer reading
+    'Trebuchet MS',           // Platform font — humanist sans-serif
   ];
+
+  /// Devanagari-script fonts selected for Hindi and Marathi reading.
+  static const List<String> devanagariFonts = [
+    'Mukta',                 // Clean Devanagari letterforms and strong readability
+    'Noto Sans Devanagari',  // Broad Unicode support and reliable rendering
+    'Hind',                  // Designed for Hindi interfaces and screen readability
+    'Baloo 2',               // Friendly rounded shapes for younger readers
+    'Tiro Devanagari Hindi', // Comfortable long-form reading
+  ];
+
+  /// Combined list retained for existing reader code and persistence
+  /// compatibility. The customize sheet displays the two categories above.
+  static const List<String> fonts = [
+    ...englishFonts,
+    ...devanagariFonts,
+    'System Default',         // Plain TextStyle, no font override
+  ];
+
+  /// Returns true when the content contains more Devanagari than Latin
+  /// letters. Punctuation, spaces, and numbers are intentionally ignored.
+  static bool isPrimarilyDevanagari(String text) {
+    final devanagariCount =
+        RegExp(r'[\u0900-\u097F]').allMatches(text).length;
+    final latinCount = RegExp(r'[A-Za-z]').allMatches(text).length;
+    return devanagariCount > latinCount;
+  }
 
   // ── Color themes — 21 themes across 4 categories ─────────────────────────
 
