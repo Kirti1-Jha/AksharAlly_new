@@ -65,6 +65,14 @@ def _structure_shape_matches(original, candidate):
             # every line while allowing no reordering or accidental loss.
             if before.get("columns", []) != after.get("columns", []):
                 return False
+        if before.get("type") == "section":
+            # Section titles and line counts define the heading/content
+            # relationship. Prose lines may be simplified, but Gemini cannot
+            # move a line under another heading or drop it.
+            if before.get("title", "") != after.get("title", ""):
+                return False
+            if len(before.get("lines", [])) != len(after.get("lines", [])):
+                return False
 
     before_numbers = re.findall(
         r"\d[\d,.]*", json.dumps(original, ensure_ascii=False)
@@ -88,9 +96,11 @@ def process_structured_content(structure, language="en"):
     prompt = f"""
 Simplify the language in this document for a dyslexic reader. Return JSON only.
 Keep the exact JSON schema, block order, table dimensions, menu item count,
-all numbers, quantities, prices, currency symbols, percentages, names, and
-Devanagari text. Only simplify prose fields such as descriptions or paragraph
-text. Never turn a table or menu into prose. Language: {language}.
+section titles, section line counts, all numbers, quantities, prices, currency
+symbols, percentages, names, and Devanagari text. Only simplify prose fields
+such as descriptions, section lines, or paragraph text. Never turn a table,
+menu, or section into a different block type. Never move text between sections.
+Language: {language}.
 
 DOCUMENT JSON:
 {json.dumps(structure, ensure_ascii=False)}

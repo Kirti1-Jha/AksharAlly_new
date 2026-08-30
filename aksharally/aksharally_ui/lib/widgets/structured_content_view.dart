@@ -47,6 +47,8 @@ class StructuredContentView extends StatelessWidget {
         return _buildMenuSection(block);
       case 'columns':
         return _buildColumns(block);
+      case 'section':
+        return _buildSection(block);
       default:
         return Text(block['text'] as String? ?? '', style: _bodyStyle);
     }
@@ -239,6 +241,33 @@ class StructuredContentView extends StatelessWidget {
               padding: const EdgeInsets.only(bottom: 8),
               child: Text(line, style: _bodyStyle),
             ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildSection(Map<String, dynamic> block) {
+    final lines = (block['lines'] as List?)
+            ?.map((line) => line?.toString() ?? '')
+            .where((line) => line.isNotEmpty)
+            .toList() ??
+        const <String>[];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          block['title']?.toString() ?? '',
+          style: _bodyStyle.copyWith(
+            color: AppTheme.primaryBlue,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 0.4,
+          ),
+        ),
+        const SizedBox(height: 8),
+        for (var index = 0; index < lines.length; index++) ...[
+          if (index > 0) const SizedBox(height: 6),
+          Text(lines[index], style: _bodyStyle),
         ],
       ],
     );
