@@ -18,7 +18,7 @@ class ApiService {
   static const String baseUrl = String.fromEnvironment(
     'API_BASE_URL',
     defaultValue:
-        'https://3a0a4a87-af80-41d6-861b-e481bfbbe1dd-00-1t5vx5n7rb0xr.sisko.replit.dev',
+        'http://192.168.0.104:5000',
   );
 
 

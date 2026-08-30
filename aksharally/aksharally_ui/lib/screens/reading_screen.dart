@@ -53,7 +53,47 @@ class _ReadingScreenState extends State<ReadingScreen> {
   void initState() {
     super.initState();
     _tab = widget.initialTab;
+
+    // Recover an image if Android recreated MainActivity
+    // while the camera/gallery picker was open.
+    _retrieveLostImage();
   }
+
+  Future<void> _retrieveLostImage() async {
+  try {
+    final LostDataResponse response = await _picker.retrieveLostData();
+
+    if (response.isEmpty) return;
+
+    if (response.files != null && response.files!.isNotEmpty) {
+      final XFile xf = response.files!.first;
+      final file = File(xf.path);
+
+      if (!await file.exists()) return;
+      if (await file.length() == 0) return;
+
+      if (!mounted) return;
+
+      setState(() {
+        _pickedFile = file;
+        _pickedFileName = xf.name;
+        _error = null;
+      });
+    } else if (response.exception != null) {
+      if (!mounted) return;
+
+      setState(() {
+        _error = response.exception.toString();
+      });
+    }
+  } catch (e) {
+    if (!mounted) return;
+
+    setState(() {
+      _error = e.toString().replaceFirst('Exception: ', '');
+    });
+  }
+}
 
   @override
   void dispose() {
