@@ -1,0 +1,72 @@
+I am continuing development of my Flutter project AksharAlly.
+
+The current version has an important working checkpoint:
+
+1. Image/gallery selection is working.
+2. OCR is extracting the source text accurately.
+3. The "View original OCR" section displays the extracted text correctly.
+4. The current structured/formatted output is NOT reliable yet.
+5. Large formatted content and tables do not fit properly on the phone screen.
+
+DO NOT change or break the existing image picker, OCR extraction, API communication, authentication, or original OCR display.
+
+The NEXT task is to improve the OUTPUT/READER presentation and structured reconstruction.
+
+Requirements:
+
+A. Preserve the original OCR text exactly.
+   - The original OCR output must remain available as the source of truth.
+   - Do not modify, "correct", paraphrase, summarize, or hallucinate words in the original OCR.
+
+B. Separate OCR extraction from formatting.
+   - OCR should produce the raw text/detections.
+   - Formatting should be a separate presentation/reconstruction layer.
+   - If the structured reconstruction is uncertain, prefer preserving the original text rather than inventing or changing words.
+
+C. For large documents:
+   - Open the formatted result in a dedicated reader/output screen instead of forcing everything into the current screen.
+   - The output screen should be vertically scrollable.
+   - It should work properly on a phone-sized display.
+   - Text should wrap naturally.
+   - Nothing should overflow horizontally.
+
+D. For tables:
+   - Reconstruct tables using the OCR positional information rather than simply putting OCR lines into rows/columns.
+   - Fit tables to the available screen width.
+   - Allow horizontal scrolling ONLY when genuinely necessary.
+   - Keep columns aligned.
+   - Preserve all detected words/numbers accurately.
+   - Do not crop table content.
+
+E. Important:
+   The current formatted output is producing inaccurate text even though the original OCR is accurate.
+
+Therefore, DO NOT attempt to improve formatting by changing OCR recognition.
+Instead, investigate the structured OCR/detection data and the reconstruction/rendering logic.
+
+Before making changes:
+1. Inspect the existing OCR pipeline.
+2. Inspect the structured OCR response/model.
+3. Inspect how bounding boxes/coordinates are being converted into rows, columns, menu items, prices, etc.
+4. Inspect the current formatted output widget.
+5. Identify exactly where text is being lost, rearranged, duplicated, or incorrectly reconstructed.
+
+Then implement the fix with minimal changes to the working parts.
+
+The final architecture should conceptually be:
+
+Image
+→ OCR
+→ Accurate raw OCR/detections
+→ Structure reconstruction
+→ Formatted document model
+→ Dedicated scrollable reader/output screen
+
+Do not replace the existing OCR implementation unless absolutely necessary.
+Do not remove the original OCR view.
+
+After implementing, explain:
+1. Which files were changed.
+2. What caused the formatted text to become inaccurate.
+3. How the new structured output preserves OCR accuracy.
+4. How large tables/documents are made to fit the phone screen.

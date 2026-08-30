@@ -1,0 +1,1 @@
+- [OCR runtime constraints](ocr-runtime-constraints.md) — structured scanning must work without optional OCR/AI services and preserve the original model on AI failure.

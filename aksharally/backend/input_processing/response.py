@@ -4,15 +4,18 @@ never need to check for different dict structures.
 """
 
 
-def build_response(source_type: str, extracted_text: str) -> dict:
+def build_response(source_type: str, extracted_text: str, structured_content=None) -> dict:
     """Build a successful standard response."""
-    return {
+    response = {
         "status": "success",
         "sourceType": source_type,
         "extractedText": extracted_text,
         "characterCount": len(extracted_text),
         "wordCount": len(extracted_text.split()),
     }
+    if structured_content is not None:
+        response["structuredContent"] = structured_content
+    return response
 
 
 def build_error(source_type: str, message: str) -> dict:

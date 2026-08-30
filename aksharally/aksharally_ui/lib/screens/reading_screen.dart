@@ -53,7 +53,47 @@ class _ReadingScreenState extends State<ReadingScreen> {
   void initState() {
     super.initState();
     _tab = widget.initialTab;
+
+    // Recover an image if Android recreated MainActivity
+    // while the camera/gallery picker was open.
+    _retrieveLostImage();
   }
+
+  Future<void> _retrieveLostImage() async {
+  try {
+    final LostDataResponse response = await _picker.retrieveLostData();
+
+    if (response.isEmpty) return;
+
+    if (response.files != null && response.files!.isNotEmpty) {
+      final XFile xf = response.files!.first;
+      final file = File(xf.path);
+
+      if (!await file.exists()) return;
+      if (await file.length() == 0) return;
+
+      if (!mounted) return;
+
+      setState(() {
+        _pickedFile = file;
+        _pickedFileName = xf.name;
+        _error = null;
+      });
+    } else if (response.exception != null) {
+      if (!mounted) return;
+
+      setState(() {
+        _error = response.exception.toString();
+      });
+    }
+  } catch (e) {
+    if (!mounted) return;
+
+    setState(() {
+      _error = e.toString().replaceFirst('Exception: ', '');
+    });
+  }
+}
 
   @override
   void dispose() {
@@ -66,18 +106,29 @@ class _ReadingScreenState extends State<ReadingScreen> {
   Future<void> _pickImage(ImageSource source) async {
     try {
       final XFile? xf = await _picker.pickImage(
-        source:       source,
-        imageQuality: 85,
+        source: source,
+        // Keep the camera's full-resolution capture. JPEG compression here
+        // can remove small characters, punctuation, prices, and table lines.
+        preferredCameraDevice: CameraDevice.rear,
       );
       if (xf == null) return;
+
+      final file = File(xf.path);
+      if (!await file.exists()) {
+        throw Exception('The camera did not return a readable image.');
+      }
+      if (await file.length() == 0) {
+        throw Exception('The captured image is empty. Please scan it again.');
+      }
+
       setState(() {
-        _pickedFile     = File(xf.path);
+        _pickedFile     = file;
         _pickedFileName = xf.name;
         _error          = null;
       });
     } catch (e) {
-      setState(() => _error =
-          'Could not open ${source == ImageSource.camera ? "camera" : "gallery"}.');
+      if (!mounted) return;
+      setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
     }
   }
 
@@ -164,6 +215,9 @@ class _ReadingScreenState extends State<ReadingScreen> {
 
     // ── Image or file ───────────────────────────────────────────────────────
     final file = _pickedFile!;
+    if (!await file.exists() || await file.length() == 0) {
+      throw Exception('The selected image is no longer available. Please scan it again.');
+    }
 
     if (_mode == _ProcessMode.formatOnly) {
       // OCR + dyslexia formatting (no Gemini).
@@ -176,14 +230,32 @@ class _ReadingScreenState extends State<ReadingScreen> {
       return;
     }
 
-    // Simplify + Format: OCR → raw text → Gemini → reader.
-    // Pipeline: OCR → Simplify → Format (display rendering in reader).
+    // Simplify + Format: retain structured OCR. Gemini can simplify prose
+    // fields, but must not flatten tables or menus into a paragraph.
     final formatResult = await ApiService.processImage(
       file,
       language: _language,
       profile:  _profile,
     );
-    // rawText = originalText ?? processedText (safe fallback per FormatResult)
+    final blocks = formatResult.structuredContent?['blocks'] as List?;
+    final hasStructuredLayout = blocks?.any((block) =>
+            block is Map && block['type'] != 'paragraph') ??
+        false;
+    if (hasStructuredLayout) {
+      final simplified = await ApiService.simplifyStructuredText(
+        formatResult.rawText,
+        formatResult.structuredContent!,
+        language: _language,
+      );
+      _push(OutputScreen(
+        initialFormatResult: formatResult.copyWith(
+          processedText: simplified.formattedText,
+          structuredContent: simplified.structuredContent,
+        ),
+      ));
+      return;
+    }
+
     final simplified = await ApiService.simplifyText(
       formatResult.rawText,
       language: _language,
@@ -429,7 +501,11 @@ class _ReadingScreenState extends State<ReadingScreen> {
           Text('Language', style: AppTheme.labelStyle),
           const SizedBox(height: AppTheme.spaceSM),
           _segmentRow(
-            options:  const [('en', 'English'), ('hi', 'हिन्दी')],
+            options:  const [
+              ('en', 'English'),
+              ('hi', 'हिन्दी'),
+              ('mr', 'मराठी'),
+            ],
             selected: _language,
             onSelect: (v) => setState(() => _language = v),
           ),

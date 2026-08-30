@@ -32,18 +32,37 @@ class HighlightedTextView extends StatelessWidget {
 
   /// Marks paragraph breaks in the words list (never spoken by TTS).
   static const String paragraphMarker = '¶';
+  /// Marks a single source line break so OCR rows and menu items stay
+  /// visually separate in the reading view.
+  static const String lineBreakMarker = '↵';
 
-  /// Splits raw text into a word list, converting `\n\n` into a paragraph
-  /// marker and collapsing single `\n` into a space. Ported verbatim from
-  /// ReaderScreen._splitToWords.
+  /// Splits raw text into words while retaining paragraph and line breaks.
+  ///
+  /// Single line breaks are meaningful for OCR output: they can separate
+  /// table rows, menu items, headings, and columns. They are kept as markers
+  /// rather than silently collapsed into spaces.
   static List<String> splitToWords(String text) {
-    return text
-        .replaceAll('\r\n', '\n')
-        .replaceAll('\n\n', ' $paragraphMarker ')
-        .replaceAll('\n', ' ')
-        .split(' ')
-        .where((w) => w.isNotEmpty)
-        .toList();
+    final normalized = text.replaceAll('\r\n', '\n');
+    final words = <String>[];
+    final paragraphs = normalized.split('\n\n');
+
+    for (var paragraphIndex = 0;
+        paragraphIndex < paragraphs.length;
+        paragraphIndex++) {
+      final lines = paragraphs[paragraphIndex].split('\n');
+      for (var lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+        words.addAll(
+          lines[lineIndex].split(' ').where((word) => word.isNotEmpty),
+        );
+        if (lineIndex < lines.length - 1) {
+          words.add(lineBreakMarker);
+        }
+      }
+      if (paragraphIndex < paragraphs.length - 1) {
+        words.add(paragraphMarker);
+      }
+    }
+    return words;
   }
 
   /// Returns a [TextStyle] using the font selected in AccessibilitySettings.
@@ -80,6 +99,32 @@ class HighlightedTextView extends StatelessWidget {
         return GoogleFonts.roboto(textStyle: base);
       case 'Comic Neue':
         return GoogleFonts.comicNeue(textStyle: base);
+      // ── Devanagari fonts — Hindi & Marathi ────────────────────────────────
+      case 'Mukta':
+        // Clean Devanagari letterforms selected for strong readability.
+        return GoogleFonts.mukta(textStyle: base).copyWith(
+          fontFamilyFallback: const ['Noto Sans Devanagari'],
+        );
+      case 'Noto Sans Devanagari':
+        // Broad Unicode coverage and reliable Devanagari rendering.
+        return GoogleFonts.notoSansDevanagari(textStyle: base).copyWith(
+          fontFamilyFallback: const ['Mukta'],
+        );
+      case 'Hind':
+        // Designed for Hindi interfaces and screen readability.
+        return GoogleFonts.hind(textStyle: base).copyWith(
+          fontFamilyFallback: const ['Mukta', 'Noto Sans Devanagari'],
+        );
+      case 'Baloo 2':
+        // Friendly rounded shapes for younger or beginner readers.
+        return GoogleFonts.baloo2(textStyle: base).copyWith(
+          fontFamilyFallback: const ['Mukta', 'Noto Sans Devanagari'],
+        );
+      case 'Tiro Devanagari Hindi':
+        // Comfortable long-form reading for sustained attention.
+        return GoogleFonts.tiroDevanagariHindi(textStyle: base).copyWith(
+          fontFamilyFallback: const ['Mukta', 'Noto Sans Devanagari'],
+        );
       // Platform font families — use system stack, Lexend as fallback
       case 'Verdana':
       case 'Tahoma':
@@ -246,6 +291,9 @@ class HighlightedTextView extends StatelessWidget {
       if (words[i] == paragraphMarker) {
         flush();
         sections.add(SizedBox(height: pSpacing));
+      } else if (words[i] == lineBreakMarker) {
+        flush();
+        sections.add(const SizedBox(height: 4));
       } else {
         currentParagraph.add(_wordWidget(i, textColor));
       }

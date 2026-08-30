@@ -14,6 +14,10 @@ class FormatResult {
   /// Use [rawText] to access with a safe fallback.
   final String? originalText;
 
+  /// Optional structure-aware OCR model for tables, menus, and columns.
+  /// Kept nullable so older backend responses remain fully compatible.
+  final Map<String, dynamic>? structuredContent;
+
   /// Returns the raw OCR/extracted text if available, otherwise falls back
   /// to [processedText].  Use this as the input to Gemini simplification
   /// so the pipeline is OCR → Simplify → Format rather than
@@ -31,6 +35,7 @@ class FormatResult {
     required this.recommendedFont,
     this.sourceType = 'unknown',
     this.originalText,
+    this.structuredContent,
   });
 
   factory FormatResult.fromJson(Map<String, dynamic> json) {
@@ -45,6 +50,29 @@ class FormatResult {
       recommendedFont:  json['recommendedFont']  as String,
       sourceType:       json['sourceType']       as String? ?? 'unknown',
       originalText:     json['originalText']     as String?,
+      structuredContent: json['structuredContent'] is Map
+          ? Map<String, dynamic>.from(json['structuredContent'] as Map)
+          : null,
+    );
+  }
+
+  FormatResult copyWith({
+    String? processedText,
+    String? originalText,
+    Map<String, dynamic>? structuredContent,
+  }) {
+    return FormatResult(
+      processedText: processedText ?? this.processedText,
+      profile: profile,
+      fontSize: fontSize,
+      lineHeight: lineHeight,
+      letterSpacing: letterSpacing,
+      wordSpacing: wordSpacing,
+      paragraphSpacing: paragraphSpacing,
+      recommendedFont: recommendedFont,
+      sourceType: sourceType,
+      originalText: originalText ?? this.originalText,
+      structuredContent: structuredContent ?? this.structuredContent,
     );
   }
 }

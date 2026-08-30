@@ -173,8 +173,7 @@ class _ReaderScreenState extends State<ReaderScreen> {
   Color getTextColor()       => AccessibilitySettings.textColor();
 
   // ── font resolution ───────────────────────────────────────────────────────
-  /// Returns a [TextStyle] using the font selected in AccessibilitySettings.
-  /// OpenDyslexic gracefully falls back to Lexend (OD is not a Google Font).
+   /// Returns a [TextStyle] using the font selected in AccessibilitySettings.
   TextStyle _resolveFont({
     required double size,
     required double height,
@@ -196,9 +195,36 @@ class _ReaderScreenState extends State<ReaderScreen> {
         return GoogleFonts.atkinsonHyperlegible(textStyle: base);
       case 'Noto Sans':
         return GoogleFonts.notoSans(textStyle: base);
+      case 'Inter':
+        return GoogleFonts.inter(textStyle: base);
+      case 'Roboto':
+        return GoogleFonts.roboto(textStyle: base);
+      case 'Comic Neue':
+        return GoogleFonts.comicNeue(textStyle: base);
+      case 'Mukta':
+        return GoogleFonts.mukta(textStyle: base).copyWith(
+          fontFamilyFallback: const ['Noto Sans Devanagari'],
+        );
+      case 'Noto Sans Devanagari':
+        return GoogleFonts.notoSansDevanagari(textStyle: base).copyWith(
+          fontFamilyFallback: const ['Mukta'],
+        );
+      case 'Hind':
+        return GoogleFonts.hind(textStyle: base).copyWith(
+          fontFamilyFallback: const ['Mukta', 'Noto Sans Devanagari'],
+        );
+      case 'Baloo 2':
+        return GoogleFonts.baloo2(textStyle: base).copyWith(
+          fontFamilyFallback: const ['Mukta', 'Noto Sans Devanagari'],
+        );
+      case 'Tiro Devanagari Hindi':
+        return GoogleFonts.tiroDevanagariHindi(textStyle: base).copyWith(
+          fontFamilyFallback: const ['Mukta', 'Noto Sans Devanagari'],
+        );
       case 'System Default':
         return base;
-      case 'OpenDyslexic': // OD not in Google Fonts — fallback to Lexend
+      case 'OpenDyslexic':
+        return base.copyWith(fontFamily: 'OpenDyslexic');
       case 'Lexend':
       default:
         return GoogleFonts.lexend(textStyle: base);

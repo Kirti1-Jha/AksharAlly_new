@@ -30,7 +30,7 @@ def format_text_endpoint():
       - in: query
         name: language
         type: string
-        enum: [en, hi]
+        enum: [en, hi, mr]
         default: en
         description: OCR language for image/PDF input
       - in: formData
@@ -146,6 +146,7 @@ def format_text_endpoint():
         "wordSpacing":      rp["wordSpacing"],
         "paragraphSpacing": rp["paragraphSpacing"],
         "recommendedFont":  rp["recommendedFont"],
+        "structuredContent": extraction.get("structuredContent"),
         # Extra info the Flutter client can use or ignore
         "metadata":         formatting["metadata"],
     }), 200

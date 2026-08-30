@@ -4,7 +4,7 @@ images captured from the device camera (which arrive as the same file
 types, so no extra handling is needed on the backend).
 """
 
-from .ocr_service import extract_text_from_bytes
+from .ocr_service import extract_document_from_bytes
 from .response import build_response, build_error
 
 ALLOWED_MIME_TYPES = {"image/jpeg", "image/jpg", "image/png", "image/webp"}
@@ -39,11 +39,11 @@ def process_image(file_storage, language: str = "en") -> dict:
         return build_error("image", f"File too large ({size_mb:.1f} MB). Max is {MAX_SIZE_MB} MB.")
 
     try:
-        extracted = extract_text_from_bytes(image_bytes, language)
+        extracted = extract_document_from_bytes(image_bytes, language)
     except Exception as e:
         return build_error("image", f"OCR failed: {str(e)}")
 
-    if not extracted:
+    if not extracted.get("text"):
         return build_error("image", "No text could be detected in the image.")
 
-    return build_response("image", extracted)
+    return build_response("image", extracted["text"], extracted.get("structure"))
