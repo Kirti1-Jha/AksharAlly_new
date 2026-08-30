@@ -75,28 +75,45 @@ class StructuredContentView extends StatelessWidget {
               column < row.length ? row[column] : '',
           ],
         );
-        // A conservative estimate keeps ordinary 2–4 column tables inside
-        // the phone viewport while retaining horizontal scrolling for truly
-        // wide tables or very long unbreakable values.
-        final estimatedWidth = columnValues.fold<double>(
-          0,
-          (total, values) =>
-              total + 28 + values.fold<int>(
-                0,
-                (maxLength, value) =>
-                    value.length > maxLength ? value.length : maxLength,
-              ) * 8.0,
-        );
-        final needsHorizontalScroll =
-            estimatedWidth > constraints.maxWidth || columnCount > 4;
+        // Estimate the width of the longest unbreakable word, not the full
+        // sentence. Long descriptions can wrap inside a cell and should not
+        // force an otherwise readable 2–3 column table to scroll.
+        final preferredWidths = columnValues.map<double>((values) {
+          final longestWord = values.fold<int>(0, (longest, value) {
+            final wordLength = value
+                .split(RegExp(r'\s+'))
+                .fold<int>(
+                  0,
+                  (current, word) =>
+                      word.length > current ? word.length : current,
+                );
+            return wordLength > longest ? wordLength : longest;
+          });
+          return (longestWord * 8.0 + 28.0).clamp(72.0, 220.0).toDouble();
+        }).toList();
+        final preferredTotal =
+            preferredWidths.fold<double>(0, (sum, width) => sum + width);
+        final availableWidth = constraints.maxWidth;
+        final needsHorizontalScroll = !availableWidth.isFinite ||
+            preferredTotal > availableWidth;
+
+        final fittingColumnWidths = <int, TableColumnWidth>{};
+        if (!needsHorizontalScroll && preferredTotal > 0) {
+          final extraWidth = availableWidth - preferredTotal;
+          for (var index = 0; index < columnCount; index++) {
+            // Give wider-content columns a proportionate share of spare
+            // space while keeping all cells at the same column width.
+            final share = preferredWidths[index] / preferredTotal;
+            fittingColumnWidths[index] = FixedColumnWidth(
+              preferredWidths[index] + extraWidth * share,
+            );
+          }
+        }
 
         final table = Table(
           columnWidths: needsHorizontalScroll
               ? null
-              : {
-                  for (var index = 0; index < columnCount; index++)
-                    index: const FlexColumnWidth(),
-                },
+              : fittingColumnWidths,
           defaultColumnWidth: const IntrinsicColumnWidth(),
           border: TableBorder.all(
             color: AppTheme.primaryBlue.withOpacity(0.35),
