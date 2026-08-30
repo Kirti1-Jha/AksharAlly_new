@@ -6,6 +6,7 @@ import '../models/format_result.dart';
 import '../theme/app_settings.dart';
 
 class ApiService {
+  static Future<FormatResult>? _inFlightImageRequest;
 
   /// ================================
   /// 🌐 BASE URL
@@ -18,7 +19,7 @@ class ApiService {
   static const String baseUrl = String.fromEnvironment(
     'API_BASE_URL',
     defaultValue:
-        'https://85d352df-7e6f-470b-883f-9c8c81e4fe4a-00-2j4r5a0ibp1hz.pike.replit.dev',
+        'http://192.168.0.104:5000',
   );
 
 
@@ -35,50 +36,95 @@ class ApiService {
     String profile = 'moderate',
     String? language,
   }) async {
-    final uri = Uri.parse('$baseUrl/api/format-text');
-    final lang = language ?? AppSettings.language;
+    if (_inFlightImageRequest != null) {
+      print("⚠️ OCR request already in-flight; awaiting the active request instead of queuing a duplicate.");
+      return _inFlightImageRequest!;
+    }
+
+    final requestFuture = _processImageInternal(file, profile: profile, language: language);
+    _inFlightImageRequest = requestFuture;
 
     try {
-      print("📡 Sending file request to: $uri");
-      print("📄 File path: ${file.path}");
-      print("📐 Profile: $profile  |  🌐 Language: $lang");
+      return await requestFuture;
+    } finally {
+      _inFlightImageRequest = null;
+    }
+  }
+
+  static Future<FormatResult> _processImageInternal(
+    File file, {
+    String profile = 'moderate',
+    String? language,
+  }) async {
+    final uri = Uri.parse('$baseUrl/api/format-text');
+    final lang = language ?? AppSettings.language;
+    final requestStartedAt = DateTime.now();
+
+    try {
+      print("📡 request started: $uri");
+      print("📄 file path: ${file.path}");
+      print("📐 profile: $profile | language: $lang");
 
       final request = http.MultipartRequest('POST', uri);
       request.fields['language'] = lang;
-      request.fields['profile']  = profile;
-
+      request.fields['profile'] = profile;
       request.files.add(
         await http.MultipartFile.fromPath('file', file.path),
       );
 
-      final streamed  = await request.send().timeout(const Duration(seconds: 60));
-      final response  = await http.Response.fromStream(streamed);
+      final streamed = await request.send().timeout(const Duration(seconds: 60));
+      final response = await http.Response.fromStream(streamed);
+      final elapsedMs = DateTime.now().difference(requestStartedAt).inMilliseconds;
+      final contentType = response.headers['content-type'] ?? 'unknown';
+      final bodyLength = response.bodyBytes.length;
 
-      print("📥 Status: ${response.statusCode}");
-      print("📥 Body:   ${response.body}");
+      print("⏱️ request completed in ${elapsedMs}ms");
+      print("📥 status: ${response.statusCode}");
+      print("📥 content-type: $contentType");
+      print("📥 body length: $bodyLength");
+      print("📥 body preview: ${response.body.substring(0, response.body.length > 400 ? 400 : response.body.length)}");
 
-      final data = json.decode(response.body);
-
-      if (response.statusCode == 200) {
-        return FormatResult.fromJson(data);
-      } else {
-        throw Exception(data['error'] ?? "Unknown backend error");
+      if (response.statusCode != 200) {
+        print("⚠️ non-200 response received; body: ${response.body}");
+        throw Exception(response.body.isNotEmpty ? response.body : 'Unknown backend error');
       }
 
-    } on TimeoutException {
+      if (!contentType.toLowerCase().contains('application/json') &&
+          !response.body.trimLeft().startsWith('{')) {
+        print("⚠️ response content type/body does not look like JSON");
+        throw const FormatException('Backend response was not JSON.');
+      }
+
+      final data = json.decode(response.body);
+      print("📦 parsed json type: ${data.runtimeType}");
+      if (data is! Map<String, dynamic>) {
+        final mapData = Map<String, dynamic>.from(data as Map);
+        print("📦 coerced json keys: ${mapData.keys.toList()}");
+        return FormatResult.fromJson(mapData);
+      }
+
+      print("📦 json keys: ${data.keys.toList()}");
+      return FormatResult.fromJson(data);
+
+    } on TimeoutException catch (e) {
+      print("⏰ TimeoutException: ${e.runtimeType} :: ${e.message}");
       throw Exception(
         'The image took too long to process. Please try a clearer or smaller image.',
       );
-    } on SocketException {
+    } on SocketException catch (e) {
+      print("❌ SocketException: $e");
       throw Exception(
         'Could not reach the OCR server. Check your connection and try again.',
       );
-    } on FileSystemException {
+    } on FileSystemException catch (e) {
+      print("❌ FileSystemException: $e");
       throw Exception('The captured image is no longer available. Please scan it again.');
-    } on FormatException {
+    } on FormatException catch (e) {
+      print("❌ FormatException while decoding OCR response: $e");
       throw Exception('The OCR server returned an invalid response. Please try again.');
-    } on Exception {
-      rethrow;
+    } on TypeError catch (e) {
+      print("❌ TypeError while building FormatResult: $e");
+      throw Exception('The OCR server returned a response in an unexpected format.');
     } catch (e) {
       print("❌ FILE API ERROR: $e");
       throw Exception('Unable to process the image: $e');
