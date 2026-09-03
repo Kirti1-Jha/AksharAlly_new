@@ -61,11 +61,11 @@ dev_dependencies:
 
 # The following section is specific to Flutter packages.
 flutter:
-
   uses-material-design: true
 
   assets:
     - assets/app_icon.png
+    - assets/images/aksharally_logo.webp
 
   fonts:
     - family: OpenDyslexic
