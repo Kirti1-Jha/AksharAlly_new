@@ -38,9 +38,9 @@ def simplify_text():
               example: The mitochondria is the powerhouse of the cell and produces ATP through cellular respiration.
             language:
               type: string
-              enum: [en, hi]
+              enum: [en, hi, mr]
               default: en
-              description: Language of the text (en or hi — Gemini will respond in the same language)
+              description: Language of the text (en, hi, or mr — Gemini will respond in the same language)
     responses:
       200:
         description: Text simplified successfully
@@ -84,7 +84,7 @@ def simplify_text():
             "error": "Missing required field: text",
         }), 400
 
-    if language not in ("en", "hi"):
+    if language not in ("en", "hi", "mr"):
         language = "en"
 
     try:

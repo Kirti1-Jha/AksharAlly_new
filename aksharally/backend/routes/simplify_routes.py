@@ -28,7 +28,7 @@ def process_simplify():
               example: The mitochondria is the powerhouse of the cell and produces ATP through cellular respiration.
             language:
               type: string
-              enum: [en, hi]
+              enum: [en, hi, mr]
               default: en
               description: Language of the text
     responses:

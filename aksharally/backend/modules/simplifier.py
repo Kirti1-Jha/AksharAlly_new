@@ -34,6 +34,10 @@ def process_text(text, language="en"):
         print("Empty input received")
         return ""
 
+    # Marathi and Hindi both use Devanagari. Reuse the existing Hindi prompt
+    # rather than sending Marathi through the English-only branch.
+    language = "hi" if str(language).lower() in ("hi", "mr") else "en"
+
     if not API_KEY:
         print("No API key, returning original text")
         return text

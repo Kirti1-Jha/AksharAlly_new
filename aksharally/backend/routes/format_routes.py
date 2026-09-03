@@ -30,7 +30,7 @@ def format_text_endpoint():
       - in: query
         name: language
         type: string
-        enum: [en, hi]
+        enum: [en, hi, mr]
         default: en
         description: OCR language for image/PDF input
       - in: formData
@@ -50,7 +50,7 @@ def format_text_endpoint():
         name: file
         type: file
         description: >
-          File to extract and format. Supported: JPG, JPEG, PNG, WEBP, PDF, DOCX.
+          File to extract and format. Supported: JPG, JPEG, PNG, WEBP, HEIC, HEIF, PDF, DOCX.
     responses:
       200:
         description: Text extracted and formatted successfully

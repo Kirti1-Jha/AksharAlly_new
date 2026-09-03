@@ -4,10 +4,11 @@ correct processor.  This is the single entry-point called by the route.
 
 Decision logic:
   - If the request has a 'text' field (form or JSON) and no file → text
-  - If the request has a file named 'file':
+   - If the request has a file named 'file':
       · .pdf  → pdf_processor
       · .docx → docx_processor
-      · image extensions → image_processor (covers uploads + camera captures)
+       · image extensions/MIME types → image_processor
+         (covers uploads + camera captures)
   - Anything else → error
 """
 
@@ -27,7 +28,8 @@ def route_input(request: Request, language: str = "en") -> dict:
     Accepted request shapes
     -----------------------
     Direct text   — form field 'text'  OR  JSON body {"text": "..."}
-    Image upload  — multipart file field 'file'  (.jpg / .jpeg / .png / .webp)
+    Image upload  — multipart file field 'file'  (.jpg / .jpeg / .png /
+                   .webp / .heic / .heif, or an image MIME type)
     Camera image  — same as image upload (frontend sends it as 'file')
     PDF           — multipart file field 'file'  (.pdf)
     DOCX          — multipart file field 'file'  (.docx)
@@ -61,11 +63,13 @@ def route_input(request: Request, language: str = "en") -> dict:
     if filename.endswith(".docx"):
         return process_docx(file)
 
-    if any(filename.endswith(ext) for ext in IMAGE_EXTS):
+    is_image_extension = any(filename.endswith(ext) for ext in IMAGE_EXTS)
+    is_image_mime = (file.mimetype or "").lower().startswith("image/")
+    if is_image_extension or is_image_mime:
         return process_image(file, language)
 
     return build_error(
         "unknown",
         f"Unsupported file type '{filename.rsplit('.', 1)[-1]}'. "
-        f"Allowed: jpg, jpeg, png, webp, pdf, docx."
+        f"Allowed: jpg, jpeg, png, webp, heic, heif, pdf, docx."
     )

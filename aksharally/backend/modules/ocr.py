@@ -46,6 +46,11 @@ def preprocess_image(image_np):
 
 
 def extract_text(image_input, language="en"):
+    # Hindi and Marathi both use Devanagari. EasyOCR's existing Hindi model
+    # is the correct shared path for both languages; this also keeps the
+    # pytesseract fallback from accidentally selecting English-only OCR.
+    normalized_language = "hi" if str(language).lower() in ("hi", "mr") else "en"
+
     if isinstance(image_input, np.ndarray):
         image_np = image_input
     else:
@@ -62,6 +67,6 @@ def extract_text(image_input, language="en"):
         )
         return " ".join(results).strip()
     else:
-        lang_code = "hin+eng" if language == "hi" else "eng"
+        lang_code = "hin+eng" if normalized_language == "hi" else "eng"
         text = pytesseract.image_to_string(processed, lang=lang_code)
         return text.strip()

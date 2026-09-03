@@ -19,9 +19,9 @@ def process_input():
       - in: query
         name: language
         type: string
-        enum: [en, hi]
+        enum: [en, hi, mr]
         default: en
-        description: OCR language — 'en' for English, 'hi' for Hindi (Devanagari)
+        description: OCR language — 'en' for English, 'hi' for Hindi, or 'mr' for Marathi (Devanagari)
       - in: formData
         name: text
         type: string
@@ -34,7 +34,7 @@ def process_input():
         type: file
         description: >
           File to process. Supported types:
-          JPG / JPEG / PNG / WEBP (image or camera capture),
+          JPG / JPEG / PNG / WEBP / HEIC / HEIF (image or camera capture),
           PDF (text-based or scanned),
           DOCX (Word document).
     responses:

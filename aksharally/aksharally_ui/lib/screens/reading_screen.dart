@@ -65,10 +65,12 @@ class _ReadingScreenState extends State<ReadingScreen> {
 
   Future<void> _pickImage(ImageSource source) async {
     try {
-      final XFile? xf = await _picker.pickImage(
-        source:       source,
-        imageQuality: 85,
-      );
+      // Keep the known-good camera compression, but do not recompress gallery
+      // images. Screenshots and phone photos can lose small Devanagari strokes
+      // when they are needlessly JPEG-compressed before OCR.
+      final XFile? xf = source == ImageSource.camera
+          ? await _picker.pickImage(source: source, imageQuality: 85)
+          : await _picker.pickImage(source: source);
       if (xf == null) return;
       setState(() {
         _pickedFile     = File(xf.path);
@@ -85,7 +87,9 @@ class _ReadingScreenState extends State<ReadingScreen> {
     try {
       final result = await FilePicker.platform.pickFiles(
         type:              FileType.custom,
-        allowedExtensions: ['pdf', 'docx', 'doc', 'txt', 'png', 'jpg', 'jpeg'],
+        allowedExtensions: [
+          'pdf', 'docx', 'doc', 'txt', 'png', 'jpg', 'jpeg', 'webp', 'heic', 'heif',
+        ],
       );
       if (result == null || result.files.isEmpty) return;
       final picked = result.files.first;
@@ -429,7 +433,11 @@ class _ReadingScreenState extends State<ReadingScreen> {
           Text('Language', style: AppTheme.labelStyle),
           const SizedBox(height: AppTheme.spaceSM),
           _segmentRow(
-            options:  const [('en', 'English'), ('hi', 'हिन्दी')],
+            options:  const [
+              ('en', 'English'),
+              ('hi', 'हिन्दी'),
+              ('mr', 'मराठी'),
+            ],
             selected: _language,
             onSelect: (v) => setState(() => _language = v),
           ),
