@@ -1,0 +1,68 @@
+QUICK FINAL AUDIT — PRIORITIZE EFFICIENCY. DO NOT START ANY NEW FEATURES OR LARGE REFACTORS.
+
+We are at approximately 96% quota, so keep this audit SHORT and focused. Do not waste quota on unnecessary exploration.
+
+Audit ONLY the three features you just implemented:
+
+1. REGISTRATION
+
+* Confirm Full Name, Email, Password, Confirm Password, Preferred Language and Age Group are correctly wired.
+* Confirm validation works.
+* Confirm Firebase UID/profile persistence works.
+* Confirm passwords are NOT stored.
+* Confirm existing email/password login is untouched.
+
+2. GOOGLE + APPLE SIGN-IN
+
+* Confirm both use genuine Firebase credential authentication and are not placeholders/bypasses.
+* Confirm existing/new users are handled without duplicate profiles.
+* Confirm cancellation/error handling exists.
+* Confirm any missing external Firebase/Google/Apple configuration is documented.
+* Do NOT attempt lengthy device setup or extensive dependency upgrades.
+* Do NOT claim real-device testing if it cannot be performed.
+
+3. ACCESSIBILITY SETTINGS
+
+* Confirm an ACTUAL clickable/enabled "Apply Now" action appears at the TOP immediately when the user makes an unapplied accessibility change.
+* Confirm the top and bottom Apply Now actions use the SAME pending settings state.
+* Confirm tapping either applies the same changes and clears pending state.
+* Confirm changing another setting makes Apply Now available again.
+
+CRITICAL:
+If all three implementations are correct, DO NOT modify the code. Just report that they pass the audit.
+
+If you find a CLEAR, SMALL bug directly related to these three requested features, fix ONLY that bug. Do not refactor.
+
+Do NOT:
+
+* upgrade dependencies,
+* rewrite architecture,
+* modify OCR,
+* modify backend APIs,
+* modify TTS,
+* modify reading functionality,
+* modify unrelated UI,
+* switch branches,
+* reset/discard existing work.
+
+Stay on MAIN.
+
+Use only lightweight/static checks that are already available. Do not spend time attempting unavailable Flutter/device tooling.
+
+FINAL RESPONSE MUST BE VERY SHORT:
+
+STATUS:
+Registration — PASS / ISSUE
+Google — PASS / ISSUE
+Apple — PASS / ISSUE
+Top Apply Now — PASS / ISSUE
+Bottom Apply Now — PASS / ISSUE
+Regression risk — LOW / MEDIUM / HIGH
+
+If there is an ISSUE, give only:
+
+* what is wrong
+* which file
+* what was fixed (if fixed)
+
+Do not perform additional work after the audit.
