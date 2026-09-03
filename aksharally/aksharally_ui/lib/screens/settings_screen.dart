@@ -291,7 +291,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 4),
           const Text(
             'The Live Preview below reflects your selections. '
-            'Press Apply Changes to update the entire app.',
+            'Press Apply Now to update the entire app.',
             style: TextStyle(color: Colors.white70, fontSize: 11, height: 1.4),
           ),
           const SizedBox(height: AppTheme.spaceSM),
@@ -327,7 +327,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     elevation: 0,
                   ),
-                  child: const Text('Apply Changes',
+                  child: const Text('Apply Now',
                       style: TextStyle(
                           fontSize: 13, fontWeight: FontWeight.w700)),
                 ),
@@ -335,6 +335,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _bottomApplyAction() {
+    if (!_hasPendingChanges) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(
+        top: AppTheme.spaceMD,
+        bottom: AppTheme.spaceMD,
+      ),
+      child: SizedBox(
+        width: double.infinity,
+        child: ElevatedButton.icon(
+          onPressed: _applyChanges,
+          icon: const Icon(Icons.check_circle_outline),
+          label: const Text('Apply Now'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppTheme.primaryBlue,
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppTheme.radiusMD),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -1162,7 +1188,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Reflects your current selections only. Press Apply Changes to update the app.',
+            'Reflects your current selections only. Press Apply Now to update the app.',
             style: TextStyle(
                 fontSize: 12,
                 color:    _cardText.withOpacity(0.65),
@@ -1413,6 +1439,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _customAppearanceSection(),
         _toggleSection(),
         _livePreviewSection(),
+        _bottomApplyAction(),
         _readingHistorySection(),
         _logoutSection(),
 

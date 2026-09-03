@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../theme/app_theme.dart';
 import '../services/auth_service.dart';
 
@@ -12,16 +13,31 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   bool isLogin = true;
   bool obscurePassword = true;
+  bool _isLoading = false;
 
+  final _formKey = GlobalKey<FormState>();
+  final fullNameController = TextEditingController();
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
+  final confirmPasswordController = TextEditingController();
+  String _preferredLanguage = 'en';
+  String? _ageGroup;
 
 late AuthService auth;
 
 @override
 void initState() {
   super.initState();
-  auth = AuthService(); 
+    auth = AuthService();
+  }
+
+  @override
+  void dispose() {
+    fullNameController.dispose();
+    emailController.dispose();
+    passwordController.dispose();
+    confirmPasswordController.dispose();
+    super.dispose();
 }
 
   static const gradientColors = [
@@ -32,41 +48,144 @@ void initState() {
   // HANDLE LOGIN / REGISTER
   Future<void> handleAuth() async {
     final email = emailController.text.trim();
-    final password = passwordController.text.trim();
+    final password = passwordController.text;
 
-    if (email.isEmpty || password.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please enter email & password")),
-      );
-      return;
-    }
+    if (_isLoading || !_formKey.currentState!.validate()) return;
+    setState(() => _isLoading = true);
 
     try {
       if (isLogin) {
-        // LOGIN
         final user = await auth.login(email, password);
-
         if (user != null) {
+          await auth.restoreUserPreferences(user);
           Navigator.pushReplacementNamed(context, '/home');
         }
       } else {
-        // REGISTER
         final user = await auth.register(email, password);
-
         if (user != null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Registered successfully! Please login")),
+          await auth.saveUserProfile(
+            user,
+            fullName: fullNameController.text.trim(),
+            preferredLanguage: _preferredLanguage,
+            ageGroup: _ageGroup,
           );
-          setState(() {
-            isLogin = true;
-          });
+          if (mounted) Navigator.pushReplacementNamed(context, '/home');
         }
       }
-    } catch (e) {
+    } catch (error) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error: ${e.toString()}")),
+        SnackBar(content: Text(AuthService.friendlyError(error))),
       );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  Future<void> _handleSocial(Future<User?> Function() signIn) async {
+    if (_isLoading) return;
+    setState(() => _isLoading = true);
+    try {
+      final user = await signIn();
+      if (user == null) return; // The user cancelled the provider flow.
+      await auth.saveUserProfile(user);
+      await auth.restoreUserPreferences(user);
+      if (mounted) Navigator.pushReplacementNamed(context, '/home');
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(AuthService.friendlyError(error))),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  InputDecoration _fieldDecoration(String hint, IconData icon) {
+    return InputDecoration(
+      hintText: hint,
+      filled: true,
+      fillColor: Colors.white,
+      prefixIcon: Icon(icon),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(20),
+        borderSide: BorderSide.none,
+      ),
+    );
+  }
+
+  Widget _registrationFields() {
+    if (isLogin) return const SizedBox.shrink();
+    return Column(
+      children: [
+        TextFormField(
+          controller: fullNameController,
+          textCapitalization: TextCapitalization.words,
+          decoration: _fieldDecoration("Full Name", Icons.person_outline),
+          validator: (value) => value == null || value.trim().isEmpty
+              ? 'Please enter your full name.'
+              : null,
+        ),
+        const SizedBox(height: 20),
+      ],
+    );
+  }
+
+  Widget _onboardingFields() {
+    if (isLogin) return const SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 20),
+        const Text(
+          'Optional reading preferences',
+          style: TextStyle(fontWeight: FontWeight.w700, color: Colors.black87),
+        ),
+        const SizedBox(height: 10),
+        const Text(
+          'Preferred language',
+          style: TextStyle(fontSize: 13, color: Colors.black54),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          children: [
+            _languageChip('English', 'en'),
+            _languageChip('हिंदी', 'hi'),
+            _languageChip('मराठी', 'mr'),
+          ],
+        ),
+        const SizedBox(height: 14),
+        DropdownButtonFormField<String>(
+          value: _ageGroup,
+          decoration: _fieldDecoration(
+            'Age group (optional)',
+            Icons.calendar_today_outlined,
+          ),
+          items: const [
+            DropdownMenuItem(value: 'under_13', child: Text('Under 13')),
+            DropdownMenuItem(value: '13_17', child: Text('13–17')),
+            DropdownMenuItem(value: '18_24', child: Text('18–24')),
+            DropdownMenuItem(value: '25_44', child: Text('25–44')),
+            DropdownMenuItem(value: '45_plus', child: Text('45+')),
+            DropdownMenuItem(
+              value: 'prefer_not_to_say',
+              child: Text('Prefer not to say'),
+            ),
+          ],
+          onChanged: (value) => setState(() => _ageGroup = value),
+        ),
+      ],
+    );
+  }
+
+  Widget _languageChip(String label, String value) {
+    return ChoiceChip(
+      label: Text(label),
+      selected: _preferredLanguage == value,
+      onSelected: (_) => setState(() => _preferredLanguage = value),
+    );
   }
 
   @override
@@ -79,8 +198,10 @@ void initState() {
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 420),
-              child: Column(
-                children: [
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  children: [
                   const SizedBox(height: 40),
 
                   // ICON
@@ -178,32 +299,30 @@ void initState() {
 
                   const SizedBox(height: 30),
 
+                  _registrationFields(),
+
                   // EMAIL FIELD
-                  TextField(
+                  TextFormField(
                     controller: emailController,
-                    decoration: InputDecoration(
-                      hintText: "Email",
-                      filled: true,
-                      fillColor: Colors.white,
-                      prefixIcon: const Icon(Icons.email_outlined),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(20),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
+                    keyboardType: TextInputType.emailAddress,
+                    decoration: _fieldDecoration("Email", Icons.email_outlined),
+                    validator: (value) {
+                      final email = value?.trim() ?? '';
+                      if (email.isEmpty) return 'Please enter your email.';
+                      final valid = RegExp(
+                        r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
+                      ).hasMatch(email);
+                      return valid ? null : 'Please enter a valid email address.';
+                    },
                   ),
 
                   const SizedBox(height: 20),
 
                   // PASSWORD FIELD
-                  TextField(
+                  TextFormField(
                     controller: passwordController,
                     obscureText: obscurePassword,
-                    decoration: InputDecoration(
-                      hintText: "Password",
-                      filled: true,
-                      fillColor: Colors.white,
-                      prefixIcon: const Icon(Icons.lock_outline),
+                    decoration: _fieldDecoration("Password", Icons.lock_outline).copyWith(
                       suffixIcon: IconButton(
                         icon: Icon(
                           obscurePassword
@@ -216,19 +335,45 @@ void initState() {
                           });
                         },
                       ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(20),
-                        borderSide: BorderSide.none,
-                      ),
                     ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter a password.';
+                      }
+                      if (!isLogin && value.length < 6) {
+                        return 'Use at least 6 characters.';
+                      }
+                      return null;
+                    },
                   ),
+
+                  if (!isLogin) ...[
+                    const SizedBox(height: 20),
+                    TextFormField(
+                      controller: confirmPasswordController,
+                      obscureText: obscurePassword,
+                      decoration: _fieldDecoration(
+                        "Confirm Password",
+                        Icons.lock_reset_outlined,
+                      ),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please confirm your password.';
+                        }
+                        return value == passwordController.text
+                            ? null
+                            : 'Passwords do not match.';
+                      },
+                    ),
+                    _onboardingFields(),
+                  ],
 
                   const SizedBox(height: 25),
 
                   // LOGIN / REGISTER BUTTON
                   InkWell(
                     borderRadius: BorderRadius.circular(30),
-                    onTap: handleAuth,
+                    onTap: _isLoading ? null : handleAuth,
                     child: Container(
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(vertical: 14),
@@ -242,14 +387,23 @@ void initState() {
                         borderRadius: BorderRadius.circular(30),
                       ),
                       child: Center(
-                        child: Text(
-                          isLogin ? "Login" : "Register",
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
+                        child: _isLoading
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : Text(
+                                isLogin ? "Login" : "Register",
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
                       ),
                     ),
                   ),
@@ -263,16 +417,23 @@ void initState() {
 
                   const SizedBox(height: 20),
 
-                  // GOOGLE BUTTON (placeholder)
-                  _socialButton("Continue with Google"),
+                  // GOOGLE BUTTON
+                  _socialButton(
+                    "Continue with Google",
+                    () => _handleSocial(auth.signInWithGoogle),
+                  ),
 
                   const SizedBox(height: 15),
 
-                  // APPLE BUTTON (placeholder)
-                  _socialButton("Continue with Apple"),
+                  // APPLE BUTTON
+                  _socialButton(
+                    "Continue with Apple",
+                    () => _handleSocial(auth.signInWithApple),
+                  ),
 
                   const SizedBox(height: 40),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
@@ -282,14 +443,10 @@ void initState() {
   }
 
   // SOCIAL BUTTON UI
-  Widget _socialButton(String text) {
+  Widget _socialButton(String text, VoidCallback onPressed) {
     return InkWell(
       borderRadius: BorderRadius.circular(20),
-      onTap: () {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("$text coming soon")),
-        );
-      },
+      onTap: _isLoading ? null : onPressed,
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 14),
         decoration: const BoxDecoration(
