@@ -1,73 +1,96 @@
 import 'package:flutter/material.dart';
 
+import '../theme/app_theme.dart';
+
 class SplashScreen extends StatelessWidget {
   const SplashScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
-      body: Container(
-        width: double.infinity,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              Color(0xFF1565C0), // dark blue
-              Color(0xFF42A5F5), // light blue
-            ],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
+      backgroundColor: theme.scaffoldBackgroundColor,
+      body: SafeArea(
+        minimum: const EdgeInsets.fromLTRB(
+          AppTheme.spaceLG,
+          AppTheme.spaceLG,
+          AppTheme.spaceLG,
+          AppTheme.spaceXL,
         ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Spacer(),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final isCompact = constraints.maxHeight < 680;
+            final verticalPadding = isCompact
+                ? AppTheme.spaceMD
+                : AppTheme.spaceLG;
+            final iconWidth = (constraints.maxWidth * 0.46)
+                .clamp(128.0, 176.0)
+                .toDouble();
+            final minimumContentHeight = (constraints.maxHeight -
+                    verticalPadding * 2)
+                .clamp(0.0, double.infinity)
+                .toDouble();
 
-            // App Name
-            const Text(
-              "AksharAlly",
-              style: TextStyle(
-                fontSize: 34,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
-
-            const SizedBox(height: 10),
-
-            // Tagline
-            const Text(
-              "Assistive Reading for Dyslexia",
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.white70,
-              ),
-            ),
-
-            const Spacer(),
-
-            // Get Started Button
-            Padding(
-              padding: const EdgeInsets.all(20),
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: const Color(0xFF1565C0),
-                  minimumSize: const Size(double.infinity, 50),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+            return SingleChildScrollView(
+              padding: EdgeInsets.symmetric(vertical: verticalPadding),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxWidth: 420,
+                    minHeight: minimumContentHeight,
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Semantics(
+                        image: true,
+                        label: 'AksharAlly logo',
+                        child: Image.asset(
+                          'assets/images/aksharally_logo.webp',
+                          width: iconWidth,
+                          fit: BoxFit.contain,
+                        ),
+                      ),
+                      SizedBox(height: isCompact ? 14 : 20),
+                      Text(
+                        'AksharAlly',
+                        textAlign: TextAlign.center,
+                        style: theme.textTheme.displayLarge?.copyWith(
+                          color: theme.colorScheme.primary,
+                          fontWeight: FontWeight.w900,
+                          height: 1.15,
+                        ),
+                      ),
+                      const SizedBox(height: AppTheme.spaceSM),
+                      Text(
+                        'Read with confidence.',
+                        textAlign: TextAlign.center,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.textTheme.bodyMedium?.color
+                              ?.withOpacity(0.72),
+                          height: 1.4,
+                        ),
+                      ),
+                      SizedBox(height: isCompact ? 28 : 40),
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 360),
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: () {
+                              Navigator.pushNamed(context, '/login');
+                            },
+                            child: const Text("Let's Begin"),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                onPressed: () {
-                  Navigator.pushNamed(context, '/login');
-                },
-                child: const Text(
-                  "Get Started",
-                  style: TextStyle(fontSize: 16),
-                ),
               ),
-            ),
-          ],
+            );
+          },
         ),
       ),
     );
