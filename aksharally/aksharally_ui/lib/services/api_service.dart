@@ -12,15 +12,13 @@ class ApiService {
   /// 🌐 BASE URL
   /// ================================
 
-  /// The Replit HTTPS URL is reachable from a physical phone and emulator.
-  ///
-  /// Local builds can point at another server without editing source:
-  /// flutter run --dart-define=API_BASE_URL=http://10.0.2.2:5000
-  static const String baseUrl = String.fromEnvironment(
-    'API_BASE_URL',
-    defaultValue:
-        'http://192.168.0.104:5000',
-  );
+  // ✅ REAL PHONE (same WiFi)
+
+  static const String baseUrl = "http://192.168.0.101:5000";
+
+
+  // ✅ ANDROID EMULATOR
+  // static const String baseUrl = "http://10.0.2.2:5000";
 
 
   /// ================================
