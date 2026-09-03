@@ -1,0 +1,158 @@
+I have identified a specific remaining bug in AksharAlly.
+
+CURRENT STATUS:
+- English OCR extraction: working
+- English simplification: working
+- Hindi OCR extraction: working
+- Hindi simplification: working
+- Marathi OCR extraction: working
+- Marathi formatting: working
+- Marathi simplification: BROKEN
+
+PROBLEM:
+When I select Marathi text and choose Simplify, the OCR text is correctly extracted in Marathi, but the simplifier converts/translates the Marathi text into Hindi instead of simplifying it while keeping it in Marathi.
+
+Example of the required behavior:
+
+Input:
+Marathi text
+
+Output:
+Simplified Marathi text
+
+NOT:
+Marathi text → Hindi translation
+
+IMPORTANT:
+Do NOT modify the OCR pipeline.
+Do NOT modify gallery image handling.
+Do NOT modify camera scanning.
+Do NOT modify Marathi OCR extraction.
+Do NOT modify formatting.
+The problem is ONLY in the simplification language handling.
+
+FIRST, inspect the existing simplification implementation and trace:
+
+Flutter selected language
+→ simplify request
+→ language value (`mr`)
+→ backend simplify route
+→ simplifier language handling
+→ prompt/instructions
+→ model/processing
+→ returned simplified text
+→ Flutter output
+
+Find exactly where `mr` is being treated as Hindi or where the simplifier is instructed to translate Marathi.
+
+REQUIREMENTS:
+
+1. Marathi must remain Marathi.
+
+When language = `mr`:
+- Preserve Marathi vocabulary and grammar.
+- Preserve Marathi meaning.
+- Simplify sentence structure where necessary.
+- Break long/complex sentences into shorter sentences.
+- Improve readability and spacing.
+- Do NOT translate Marathi into Hindi.
+- Do NOT replace Marathi words with Hindi equivalents.
+- Do NOT transliterate Marathi into another script.
+- Keep the output in Devanagari.
+- The output should sound naturally Marathi.
+
+2. Hindi must continue behaving exactly as it currently does.
+
+When language = `hi`:
+- Continue producing simplified Hindi.
+- Do not change the existing Hindi behavior.
+
+3. English must continue behaving exactly as it currently does.
+
+When language = `en`:
+- Continue producing simplified English.
+- Do not change the existing English behavior.
+
+4. IMPORTANT LANGUAGE DISTINCTION
+
+Hindi and Marathi both use Devanagari, but they are different languages.
+
+Do NOT use logic such as:
+
+if language == "hi" or language == "mr":
+    use Hindi simplification
+
+Instead, Marathi must have its own language-specific simplification instructions while sharing the same Devanagari/OCR capability where appropriate.
+
+5. Inspect the current prompt carefully.
+
+If the simplifier currently has something like:
+- "For Hindi/Marathi..."
+- "Use Hindi..."
+- "Translate to Hindi..."
+- "Simplify into Hindi..."
+- or any fallback where every non-English/non-Hindi language becomes Hindi,
+
+fix that logic.
+
+For Marathi, the instruction should explicitly say:
+
+"Input language is Marathi. Simplify the text in Marathi only. Do not translate it to Hindi or English. Preserve Marathi vocabulary, grammar, meaning, and Devanagari script. Only simplify sentence structure and improve readability."
+
+Use the equivalent appropriate instruction in the actual implementation rather than blindly copying this wording if the project uses a different prompt architecture.
+
+6. Check the response handling too.
+
+Make sure the backend does not:
+- translate the response after simplification
+- run Marathi output through a Hindi post-processing function
+- apply a Hindi normalization dictionary to Marathi
+- accidentally use `hi` as the fallback language for `mr`
+
+7. Add a regression test.
+
+Create a test specifically for Marathi:
+
+Input language:
+`mr`
+
+Input:
+A real Marathi sentence/paragraph.
+
+Expected:
+- Output remains Devanagari.
+- Output remains Marathi.
+- Meaning is preserved.
+- Sentence structure/readability is simplified.
+- It is NOT translated into Hindi.
+
+Also test:
+
+`en` → simplified English
+`hi` → simplified Hindi
+`mr` → simplified Marathi
+
+8. IMPORTANT:
+Do not make broad changes.
+
+Only fix the language-specific simplification bug.
+
+Before making changes, tell me:
+- where `mr` is currently being routed
+- why it is becoming Hindi
+- which exact file/function is responsible
+
+Then implement the smallest targeted fix.
+
+After fixing it, run the regression tests and report:
+
+1. Root cause
+2. Files changed
+3. Exact language-handling change
+4. Marathi test input/output behavior
+5. Confirmation that Hindi still works
+6. Confirmation that English still works
+7. Confirmation that OCR, gallery, formatting, and camera code were not modified
+8. Any remaining issue
+
+Do NOT create a new commit unless I explicitly ask you to.
