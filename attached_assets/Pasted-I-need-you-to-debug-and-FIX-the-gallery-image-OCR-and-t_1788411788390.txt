@@ -1,0 +1,216 @@
+I need you to debug and FIX the gallery-image OCR and text-simplification flow in my AksharAlly project.
+
+IMPORTANT:
+- The camera scanning OCR feature is NOW WORKING correctly.
+- Do NOT break, rewrite, or unnecessarily modify the working camera scanning flow.
+- Do NOT make broad changes to the OCR system just because something can be refactored.
+- The problem is specifically with images selected from the phone gallery.
+- Gallery images are not being extracted/simplified correctly for ENGLISH, HINDI, or MARATHI.
+
+PROJECT:
+AksharAlly is a Flutter frontend + Python Flask backend.
+The backend contains OCR, formatting, pipeline, and simplification routes/modules.
+The frontend is under `aksharally_ui/`.
+The backend contains files such as:
+- `backend/app.py`
+- `backend/modules/ocr.py`
+- `backend/routes/ocr_routes.py`
+- `backend/routes/pipeline_routes.py`
+- `backend/routes/simplify_routes.py`
+- `backend/routes/simplify_text_routes.py`
+and related files.
+
+TASK:
+Investigate the complete gallery-image flow end-to-end before changing anything:
+
+Flutter gallery image selection
+→ image/file conversion
+→ HTTP request to backend
+→ multipart/form-data or request body
+→ Flask route
+→ image decoding/loading
+→ image preprocessing
+→ OCR
+→ language handling
+→ extracted text
+→ simplification/formatting
+→ response JSON
+→ Flutter response parsing
+→ output screen
+
+FIRST:
+1. Inspect the existing codebase.
+2. Identify exactly how camera images are sent and processed.
+3. Identify exactly how gallery images are sent and processed.
+4. Compare the two flows.
+5. Determine the actual point where gallery images fail.
+6. Check backend logs/errors and response formats.
+7. Do not assume the OCR engine itself is broken because camera OCR already works.
+
+Test specifically for:
+- English gallery images
+- Hindi/Devanagari gallery images
+- Marathi/Devanagari gallery images
+- Clear images
+- Typical phone photos/screenshots
+- Portrait and landscape images
+- JPG/JPEG/PNG images
+
+INVESTIGATE THESE AREAS CAREFULLY:
+
+1. FLUTTER GALLERY UPLOAD
+Check:
+- ImagePicker/gallery selection
+- file path handling
+- bytes/file conversion
+- multipart request construction
+- MIME type
+- filename/extension
+- whether the selected image is actually being sent
+- request field name expected by Flask
+- whether gallery images are being compressed/resized incorrectly
+- whether HEIC/other phone image formats need handling
+- whether the image is rotated incorrectly because of EXIF orientation
+
+2. BACKEND IMAGE HANDLING
+Check:
+- Flask request.files handling
+- expected multipart field name
+- temporary file handling
+- PIL/OpenCV image loading
+- RGB/BGR conversion
+- image mode such as RGBA/Grayscale
+- EXIF orientation
+- corrupted/incomplete uploaded files
+- image decoding failures
+- differences between camera-captured images and gallery images
+
+3. OCR
+The existing working OCR implementation should be reused.
+
+Check whether the gallery path is:
+- skipping preprocessing
+- using incorrect preprocessing
+- passing the wrong image object
+- passing bytes/path incorrectly
+- using the wrong OCR language configuration
+- failing to preserve Devanagari text
+- incorrectly detecting English/Hindi/Marathi
+
+For Hindi and Marathi, remember that both use Devanagari script, so do not create unnecessary language-specific OCR logic if the existing OCR engine already supports Devanagari.
+
+Check the actual EasyOCR/Tesseract configuration currently used in the project and make the smallest necessary correction.
+
+4. LANGUAGE HANDLING
+Verify that:
+- English gallery images are recognized correctly.
+- Hindi gallery images are recognized correctly.
+- Marathi gallery images are recognized correctly.
+- Language selection/detection is consistent between camera and gallery flows.
+- Hindi/Marathi are not accidentally being sent through an English-only OCR configuration.
+- The backend does not incorrectly treat Marathi as a completely different script from Hindi.
+- The frontend does not send an incorrect language value.
+
+5. SIMPLIFICATION
+After OCR extraction works, verify the simplification pipeline separately.
+
+The current AksharAlly simplifier is intended to make text more dyslexia-friendly, primarily by:
+- breaking long/complex sentences into smaller sentences
+- improving spacing/readability
+- preserving the original meaning
+- supporting English and Devanagari text
+
+Do NOT introduce Gemini/OpenAI or another external API unless the existing project explicitly requires it.
+
+Check whether gallery OCR output is:
+- empty
+- malformed
+- incorrectly encoded
+- containing unexpected characters
+- being passed under the wrong JSON key
+- being rejected by the simplify endpoint
+- being displayed incorrectly by Flutter
+
+Also test simplification independently using known text. This will help determine whether the problem is OCR extraction or the simplification/API contract.
+
+6. API CONTRACT
+Compare:
+- camera OCR request
+- gallery OCR request
+- OCR response
+- simplify request
+- simplify response
+
+Make sure frontend and backend agree on:
+- endpoint
+- HTTP method
+- multipart field names
+- JSON keys
+- language values
+- extracted-text field names
+- error response format
+
+Do not rename APIs or response fields unless absolutely necessary. If a mismatch exists, fix the smallest number of files required and keep backward compatibility where possible.
+
+7. IMAGE PREPROCESSING
+Make gallery images go through the same reliable preprocessing/OCR pipeline as camera images where appropriate.
+
+Handle common gallery-image problems such as:
+- different resolution
+- portrait/landscape orientation
+- EXIF rotation
+- JPEG compression
+- dark/bright images
+- skew
+- margins/background
+- RGB/RGBA/greyscale formats
+
+Do not over-process images in a way that damages Devanagari characters.
+
+IMPLEMENTATION REQUIREMENTS:
+- Preserve the working camera scanning functionality.
+- Fix only the gallery-related failure and any directly related API/processing mismatch.
+- Reuse existing OCR code wherever possible.
+- Avoid duplicating OCR implementations.
+- Avoid unnecessary architectural changes.
+- Keep English, Hindi, and Marathi support.
+- Keep the existing Flutter UI intact unless a UI change is required to correctly display the result.
+- Add useful error handling so the frontend receives a meaningful error instead of silently failing.
+- Do not expose API keys, Firebase credentials, `.env` values, or other secrets.
+- Do not modify unrelated features.
+
+TESTING:
+After making the fix, test the complete flow for:
+
+A. English:
+Gallery image → OCR → extracted text → simplification → Flutter output
+
+B. Hindi:
+Gallery image → OCR → extracted Devanagari text → simplification → Flutter output
+
+C. Marathi:
+Gallery image → OCR → extracted Devanagari text → simplification → Flutter output
+
+Also test:
+- camera OCR still works
+- camera → simplification still works
+- gallery → OCR works
+- gallery → simplification works
+- empty/unreadable image produces a proper error
+- rotated gallery image works
+
+IMPORTANT DEBUGGING RULE:
+Do NOT stop after making a code change and say it should work.
+
+Actually trace the request/response flow and run the relevant backend tests or create targeted tests if tests do not exist.
+
+At the end, give me:
+1. The exact root cause of the gallery failure.
+2. Which files you changed.
+3. What you changed in each file.
+4. Why camera OCR was unaffected.
+5. How English, Hindi, and Marathi gallery images are now handled.
+6. What tests you ran and their results.
+7. Any remaining limitations.
+
+Before editing, inspect the existing implementation thoroughly. Make a targeted fix rather than rewriting the OCR pipeline.
