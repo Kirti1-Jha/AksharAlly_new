@@ -54,6 +54,7 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.4
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -63,12 +64,20 @@ flutter:
 
   uses-material-design: true
 
+  assets:
+    - assets/app_icon.png
+
   fonts:
     - family: OpenDyslexic
       fonts:
         - asset: assets/fonts/OpenDyslexic/OpenDyslexic3-Regular.ttf
         - asset: assets/fonts/OpenDyslexic/OpenDyslexic3-Bold.ttf
           weight: 700
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/app_icon.png"
 
   # To add assets to your application, add an assets section, like this:
   # assets:
