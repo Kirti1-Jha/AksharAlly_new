@@ -34,9 +34,9 @@ def process_text(text, language="en"):
         print("Empty input received")
         return ""
 
-    # Marathi and Hindi both use Devanagari. Reuse the existing Hindi prompt
-    # rather than sending Marathi through the English-only branch.
-    language = "hi" if str(language).lower() in ("hi", "mr") else "en"
+    language = str(language or "en").lower()
+    if language not in ("en", "hi", "mr"):
+        language = "en"
 
     if not API_KEY:
         print("No API key, returning original text")
@@ -69,6 +69,31 @@ def process_text(text, language="en"):
 {text}
 
 सरल टेक्स्ट:
+"""
+
+        # =========================
+        # 🇮🇳 MARATHI PROMPT
+        # =========================
+        elif language == "mr":
+            prompt = f"""
+You are helping a dyslexic reader.
+
+Input language is Marathi. Simplify the text in Marathi only.
+Do not translate it to Hindi or English.
+Preserve Marathi vocabulary, grammar, meaning, and Devanagari script.
+Only simplify sentence structure and improve readability.
+
+नियम:
+- मराठी शब्दसंग्रह आणि व्याकरण कायम ठेवा.
+- दीर्घ किंवा गुंतागुंतीची वाक्ये लहान वाक्यांमध्ये बदला.
+- प्रत्येक वाक्यात एकच मुख्य विचार ठेवा.
+- कोणतीही अतिरिक्त माहिती जोडू नका.
+- मजकूराचे लिप्यंतरण करू नका.
+
+मराठी मजकूर:
+{text}
+
+सोप्या मराठीत मजकूर:
 """
 
         # =========================
