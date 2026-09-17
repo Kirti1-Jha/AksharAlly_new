@@ -69,6 +69,21 @@ void initState() {
     }
   }
 
+  // HANDLE GOOGLE SIGN-IN
+  Future<void> _handleGoogleSignIn() async {
+    try {
+      final user = await auth.signInWithGoogle();
+      if (user == null) return; // user cancelled the Google popup
+      if (mounted) Navigator.pushReplacementNamed(context, '/home');
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Google sign-in error: ${e.toString()}")),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -263,13 +278,17 @@ void initState() {
 
                   const SizedBox(height: 20),
 
-                  // GOOGLE BUTTON (placeholder)
-                  _socialButton("Continue with Google"),
+                  // GOOGLE BUTTON
+                  _socialButton("Continue with Google", _handleGoogleSignIn),
 
                   const SizedBox(height: 15),
 
-                  // APPLE BUTTON (placeholder)
-                  _socialButton("Continue with Apple"),
+                  // APPLE BUTTON (still placeholder)
+                  _socialButton("Continue with Apple", () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text("Continue with Apple coming soon")),
+                    );
+                  }),
 
                   const SizedBox(height: 40),
                 ],
@@ -282,14 +301,10 @@ void initState() {
   }
 
   // SOCIAL BUTTON UI
-  Widget _socialButton(String text) {
+  Widget _socialButton(String text, VoidCallback onPressed) {
     return InkWell(
       borderRadius: BorderRadius.circular(20),
-      onTap: () {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("$text coming soon")),
-        );
-      },
+      onTap: onPressed,
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 14),
         decoration: const BoxDecoration(
