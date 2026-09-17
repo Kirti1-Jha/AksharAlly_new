@@ -23,7 +23,7 @@ plugins {
     id("org.jetbrains.kotlin.android") version "2.2.20" apply false
 
     // ✅ ADD THIS LINE (VERY IMPORTANT)
-    id("com.google.gms.google-services") version "4.3.15" apply false
+    //id("com.google.gms.google-services") version "4.3.15" apply false
 }
 
 include(":app")
