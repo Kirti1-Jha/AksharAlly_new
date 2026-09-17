@@ -1,0 +1,574 @@
+You are working on my existing **AksharAlly** application. Make the following feature improvements carefully in the **main branch only**.
+
+IMPORTANT: This is an existing working application. **Do NOT rewrite, restructure, or replace working modules unnecessarily.** Before making changes, inspect the existing project structure, authentication flow, Firebase configuration, Flutter navigation, settings/accessibility screens, backend APIs, and current state management. Reuse the existing architecture and conventions wherever possible.
+
+The priority is:
+
+1. Add a proper and useful new-user registration flow.
+2. Make Google and Apple authentication functional.
+3. Improve the Accessibility Settings UX by showing "Apply Now" at the top whenever there are unapplied changes.
+4. Preserve every existing functionality and avoid regressions.
+
+---
+
+# FEATURE 1 — IMPROVE THE REGISTRATION PAGE
+
+## Current problem
+
+The registration page currently asks only for:
+
+* Name
+* Password
+
+This is insufficient for a new user.
+
+We need a more complete registration/onboarding form that collects the information actually useful for AksharAlly while keeping registration simple and user-friendly.
+
+## Required changes
+
+First inspect the existing Firebase Authentication implementation and registration screen.
+
+Expand the registration form to collect appropriate user information, including at minimum:
+
+* Full Name
+* Email Address
+* Password
+* Confirm Password
+
+Also collect relevant optional onboarding/accessibility information where appropriate, without making the registration unnecessarily complicated.
+
+Potential useful fields:
+
+* Preferred language(s): Hindi / Marathi / English
+* Reading preference or primary language
+* Optional age group
+* Whether the user wants accessibility/customized reading settings
+
+IMPORTANT:
+Do NOT collect sensitive medical information or ask the user to provide a diagnosis of dyslexia during registration.
+
+The registration page should have:
+
+### Required fields
+
+* Full Name
+* Email
+* Password
+* Confirm Password
+
+### Optional onboarding preferences
+
+Use appropriate UI such as dropdowns, chips, radio buttons, or multi-select controls rather than making everything a text field.
+
+For example:
+
+* Preferred language: English / Hindi / Marathi
+* Reading language(s): allow multiple selections if the existing app supports multiple languages
+
+Do not introduce unnecessary personal-data collection.
+
+## Validation
+
+Implement proper validation:
+
+### Name
+
+* Required
+* Should not accept an empty value
+* Trim unnecessary whitespace
+
+### Email
+
+* Required
+* Validate email format
+* Use the existing Firebase authentication mechanism
+
+### Password
+
+* Required
+* Do not expose the password as plain text
+* Provide show/hide password functionality if consistent with the existing UI
+* Follow Firebase's password requirements
+
+### Confirm Password
+
+* Required
+* Must match the password
+
+Display clear, user-friendly validation errors directly on the form.
+
+## Firebase/database integration
+
+Inspect how the current application creates users.
+
+Continue using the existing Firebase Authentication system rather than creating a second authentication system.
+
+After successful Firebase registration, save the additional profile information in the application's existing user/profile storage mechanism.
+
+If Firestore is already being used:
+
+* Store the profile information in the existing user document structure.
+* Use the Firebase Auth UID as the user identifier.
+* Do NOT create duplicate user records.
+
+If a profile model/service already exists, extend it instead of creating a competing implementation.
+
+The password itself must NEVER be stored in Firestore or another database as plain text.
+
+Handle:
+
+* Email already in use
+* Weak password
+* Invalid email
+* Network errors
+* Firebase errors
+* Registration cancellation/failure
+
+The user should only be navigated to the authenticated part of the app after registration succeeds.
+
+Do not break the existing login flow.
+
+---
+
+# FEATURE 2 — MAKE "CONTINUE WITH GOOGLE" FUNCTIONAL
+
+## Current problem
+
+The registration/login screen contains:
+
+"Continue with Google"
+
+but it currently does not work correctly.
+
+Inspect the current authentication implementation before changing anything.
+
+Implement proper Google Sign-In using the authentication stack already used by the application.
+
+Since this is a Flutter + Firebase application:
+
+* Verify Firebase Authentication configuration.
+* Verify that Google is enabled as a Firebase Authentication provider.
+* Use the appropriate current Flutter Firebase/Google authentication packages already compatible with the project's dependency versions.
+* Do NOT blindly upgrade all dependencies.
+* Do NOT introduce unnecessary package upgrades that could break the project.
+
+Implement the complete flow:
+
+1. User taps "Continue with Google".
+2. Google account selection/sign-in opens.
+3. Authenticate the Google account.
+4. Obtain Firebase credentials.
+5. Sign the user into Firebase.
+6. Retrieve the Firebase UID.
+7. Check whether the user profile already exists.
+8. If it exists, load the existing profile/preferences.
+9. If it does not exist, create the required profile document.
+10. Navigate to the appropriate authenticated screen.
+
+Handle cancellation gracefully.
+
+For example, if the user closes the Google account picker, do NOT show a confusing error.
+
+Handle:
+
+* Sign-in cancellation
+* Google authentication failure
+* Firebase authentication failure
+* Network failure
+* Existing account
+* New Google account
+* Missing/incomplete profile information
+
+IMPORTANT:
+Do not create duplicate profiles when a Google user logs in multiple times.
+
+Use the Firebase UID as the stable identity.
+
+---
+
+# FEATURE 3 — MAKE "CONTINUE WITH APPLE" FUNCTIONAL
+
+The screen also contains:
+
+"Continue with Apple"
+
+Make this functional rather than leaving it as a non-working button.
+
+First inspect the current Firebase configuration and determine whether Apple Sign-In is already configured.
+
+Implement Apple authentication using the correct Firebase-compatible Flutter authentication approach.
+
+IMPORTANT:
+
+Apple Sign-In has platform/configuration requirements.
+
+Do not fake the authentication or simply bypass the login screen.
+
+If Apple Sign-In requires configuration that cannot be completed purely through application code, identify exactly what is missing and implement everything that can safely be implemented in the repository.
+
+The code should:
+
+1. Launch Apple Sign-In.
+2. Authenticate the user.
+3. Authenticate the returned credential with Firebase.
+4. Obtain Firebase UID.
+5. Check/create the user's profile.
+6. Preserve existing profile information for returning users.
+7. Navigate into the application after successful authentication.
+
+Handle:
+
+* User cancellation
+* Authentication failure
+* Firebase errors
+* Network errors
+* Private relay Apple email addresses
+* Returning Apple users
+* New Apple users
+
+Do NOT store passwords for social-login users.
+
+IMPORTANT:
+Do not break email/password authentication while implementing Google/Apple authentication.
+
+---
+
+# FEATURE 4 — ACCESSIBILITY SETTINGS: APPLY NOW AT TOP
+
+## Current problem
+
+The Accessibility Settings screen currently has an "Apply Now" button only at the bottom.
+
+This creates a bad UX because the user has to scroll to the bottom every time they make a change.
+
+## Required behavior
+
+When the user makes ANY manual accessibility/settings change that has not yet been applied:
+
+Show an "Apply Now" action at the TOP of the settings screen as well.
+
+The top Apply Now action should become visible/enabled only when there are unapplied changes.
+
+Examples of changes that should trigger it:
+
+* Font selection
+* Font size
+* Letter spacing
+* Line spacing
+* Word spacing
+* Text color
+* Background color
+* Reading mode
+* Dyslexia-friendly settings
+* Any other accessibility setting already supported by the application
+
+Do NOT create a second independent settings state.
+
+The top and bottom "Apply Now" buttons must operate on the SAME pending changes.
+
+For example:
+
+User changes:
+Font → OpenDyslexic
+Font size → 20
+Background → cream
+
+Then:
+
+TOP:
+[ Apply Now ]
+
+and bottom:
+[ Apply Now ]
+
+Both buttons should apply exactly the same pending settings.
+
+Once the user taps either Apply Now button:
+
+* Apply the changes.
+* Persist them using the application's existing settings persistence mechanism.
+* Update the UI wherever necessary.
+* Remove/disable the top Apply Now action because there are no longer unapplied changes.
+* Keep the bottom button behavior consistent with the existing implementation.
+
+If the user changes another setting afterward, the top Apply Now action should become available again.
+
+## Important implementation detail
+
+Do NOT duplicate the settings state.
+
+Find the existing state/model/provider/controller used by the Accessibility Settings screen.
+
+Use a single source of truth such as:
+
+currentAppliedSettings
++
+pendingSettings
+
+or whatever equivalent architecture already exists.
+
+Determine whether settings are currently managed through:
+
+* Provider
+* Riverpod
+* Bloc/Cubit
+* setState
+* ChangeNotifier
+* another existing state-management solution
+
+and follow the existing architecture.
+
+Do NOT introduce another state-management framework just for this feature.
+
+## UI requirements
+
+The top Apply Now action should be clearly visible but should not permanently occupy excessive space.
+
+A good implementation could be:
+
+* A compact action bar directly below the AppBar, OR
+* A sticky action area at the top of the scrollable settings content.
+
+Follow the existing AksharAlly visual design.
+
+The action should clearly communicate that there are unapplied changes.
+
+Example:
+
+"Changes not applied"
+[ Apply Now ]
+
+The exact design can follow the existing UI.
+
+The bottom Apply Now button should remain because some users may naturally reach the bottom.
+
+---
+
+# IMPORTANT — DO NOT BREAK EXISTING FUNCTIONALITY
+
+Before editing:
+
+1. Inspect the entire authentication flow.
+2. Inspect Firebase initialization.
+3. Inspect the registration screen.
+4. Inspect login screen.
+5. Inspect routing/navigation.
+6. Inspect user profile storage.
+7. Inspect accessibility settings state management.
+8. Inspect settings persistence.
+9. Inspect existing API/backend dependencies.
+10. Inspect pubspec.yaml and current package versions.
+
+Do not replace working code merely because another implementation is easier.
+
+Preserve:
+
+* Existing login
+* Existing logout
+* Existing Firebase authentication
+* Existing navigation
+* Existing OCR functionality
+* Existing OCR language handling
+* Existing text processing/simplification
+* Existing text-to-speech
+* Existing reading screen
+* Existing accessibility settings
+* Existing library
+* Existing profile/user data
+* Existing backend/API communication
+* Existing UI styling
+* Existing routes
+* Existing API contracts
+
+Do not modify OCR/backend code unless absolutely required for these features.
+
+---
+
+# DEPENDENCY SAFETY
+
+Before adding packages:
+
+1. Check the existing pubspec.yaml.
+2. Check whether Google/Apple authentication packages already exist.
+3. Reuse existing compatible dependencies wherever possible.
+4. Do NOT perform a blanket `flutter pub upgrade`.
+5. Do NOT upgrade Flutter/Firebase versions unnecessarily.
+6. Do NOT change package versions unless required.
+7. If a dependency must be added, choose a version compatible with the current Flutter/Dart/Firebase setup.
+
+After dependency changes:
+
+Run:
+
+flutter pub get
+
+Then run:
+
+flutter analyze
+
+Fix all errors introduced by the changes.
+
+---
+
+# FIREBASE CONFIGURATION SAFETY
+
+Inspect:
+
+* firebase_options.dart
+* Android Firebase configuration
+* iOS Firebase configuration if present
+* Firebase Authentication providers
+* Firestore/security configuration
+* Existing Firebase initialization
+
+Do not expose secrets or API keys unnecessarily.
+
+Do not hardcode credentials.
+
+For Google Sign-In, verify the required Firebase/Android configuration.
+
+For Apple Sign-In, verify the required Apple/Firebase configuration and clearly document anything that requires configuration outside the repository.
+
+Do not claim Apple Sign-In is fully functional if external Apple Developer/Firebase configuration is still missing.
+
+---
+
+# ERROR HANDLING & UX
+
+All new authentication actions should provide appropriate loading states.
+
+When authentication is running:
+
+* Disable duplicate taps.
+* Show a loading indicator where appropriate.
+* Prevent multiple simultaneous authentication requests.
+
+Errors should be human-readable.
+
+Avoid exposing raw Firebase exception messages directly to users.
+
+Examples:
+
+Instead of:
+"FirebaseAuthException: account-exists-with-different-credential"
+
+show an appropriate user-facing message.
+
+---
+
+# TESTING REQUIREMENTS
+
+After implementation, test the following.
+
+## Registration
+
+Test:
+
+* Empty form
+* Invalid email
+* Weak password
+* Password mismatch
+* Valid registration
+* Existing email
+* Network/authentication failure
+* Optional language preferences
+* Profile creation
+
+## Existing login
+
+Verify that normal email/password login still works.
+
+## Google
+
+Test:
+
+* Google button opens authentication
+* Successful Google login
+* Cancel Google login
+* Existing Google user
+* New Google user
+* Profile creation
+* No duplicate profile
+* Navigation after login
+
+## Apple
+
+Test:
+
+* Apple button launches authentication where platform/configuration supports it
+* Successful authentication
+* Cancellation
+* Returning user
+* New user
+* Profile creation
+* Correct error handling
+
+If Apple cannot be tested in the current environment because Apple Developer configuration/device requirements are unavailable, do NOT fake the result. Verify the code/configuration as far as possible and document the remaining external setup.
+
+## Accessibility settings
+
+Test:
+
+1. Open Accessibility Settings.
+2. Change one setting.
+3. Confirm top Apply Now appears/enables.
+4. Confirm bottom Apply Now also works.
+5. Tap TOP Apply Now.
+6. Confirm changes are applied.
+7. Confirm top Apply Now disappears/becomes disabled.
+8. Change another setting.
+9. Confirm top Apply Now becomes available again.
+10. Tap bottom Apply Now.
+11. Confirm the same pending settings are applied.
+12. Leave the screen without applying and verify the existing app behavior remains unchanged.
+
+---
+
+# CODE QUALITY
+
+Keep the implementation clean and maintainable.
+
+Avoid:
+
+* Duplicate authentication logic
+* Duplicate settings state
+* Dead code
+* Temporary debug code
+* Hardcoded user data
+* Hardcoded passwords
+* Hardcoded tokens
+* Fake authentication
+* Unnecessary architecture changes
+
+Use the existing project naming conventions.
+
+Add comments only where they provide useful context.
+
+---
+
+# GIT SAFETY
+
+Work on the **main branch only**.
+
+Before making changes:
+
+* Check git status.
+* Do not switch branches.
+* Do not reset or discard unrelated existing work.
+* Do not overwrite unrelated modifications.
+
+Only modify files necessary for these requested features.
+
+At the end, show:
+
+1. Files changed
+2. What was changed in each file
+3. Dependencies added/changed
+4. Firebase configuration requirements
+5. Tests performed
+6. Any limitations, especially Apple Sign-In configuration
+7. Any pre-existing issues that were discovered but not caused by these changes
+
+Most importantly:
+
+**Do not stop after partially implementing the UI. The goal is a complete, integrated implementation that works with the existing AksharAlly authentication, Firebase, settings, navigation, and application architecture without breaking existing functionality.**

@@ -3,6 +3,7 @@ import '../theme/app_theme.dart';
 import '../theme/app_settings.dart';
 import '../theme/ui_accessibility.dart';
 import '../services/library_storage.dart';
+import '../services/auth_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -34,6 +35,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   // Language applies immediately (OCR-only, not a UI preview setting)
   String _language = AppSettings.language;
+  final AuthService _auth = AuthService();
 
   // ── Pending mutate helper (preview-only — does NOT touch UIAccessibility) ──
   void _preview(void Function() mutate) {
@@ -289,7 +291,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 4),
           const Text(
             'The Live Preview below reflects your selections. '
-            'Press Apply Changes to update the entire app.',
+            'Press Apply Now to update the entire app.',
             style: TextStyle(color: Colors.white70, fontSize: 11, height: 1.4),
           ),
           const SizedBox(height: AppTheme.spaceSM),
@@ -325,7 +327,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     elevation: 0,
                   ),
-                  child: const Text('Apply Changes',
+                  child: const Text('Apply Now',
                       style: TextStyle(
                           fontSize: 13, fontWeight: FontWeight.w700)),
                 ),
@@ -333,6 +335,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _bottomApplyAction() {
+    if (!_hasPendingChanges) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(
+        top: AppTheme.spaceMD,
+        bottom: AppTheme.spaceMD,
+      ),
+      child: SizedBox(
+        width: double.infinity,
+        child: ElevatedButton.icon(
+          onPressed: _applyChanges,
+          icon: const Icon(Icons.check_circle_outline),
+          label: const Text('Apply Now'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppTheme.primaryBlue,
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppTheme.radiusMD),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -1160,7 +1188,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Reflects your current selections only. Press Apply Changes to update the app.',
+            'Reflects your current selections only. Press Apply Now to update the app.',
             style: TextStyle(
                 fontSize: 12,
                 color:    _cardText.withOpacity(0.65),
@@ -1309,6 +1337,69 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  Future<void> _confirmLogout() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Log out?'),
+        content: const Text('Are you sure you want to log out of AksharAlly?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Log Out'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    try {
+      await _auth.logout();
+      if (!mounted) return;
+      Navigator.pushNamedAndRemoveUntil(
+        context,
+        '/login',
+        (route) => false,
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Unable to log out right now. Please try again.'),
+        ),
+      );
+    }
+  }
+
+  Widget _logoutSection() {
+    return _sectionCard(
+      title: 'Account',
+      description: 'Manage your current AksharAlly session.',
+      child: SizedBox(
+        width: double.infinity,
+        child: OutlinedButton.icon(
+          onPressed: _confirmLogout,
+          icon: const Icon(Icons.logout),
+          label: const Text('Log Out'),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: Colors.red,
+            side: const BorderSide(color: Colors.red),
+            padding: const EdgeInsets.symmetric(vertical: 13),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppTheme.radiusMD),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   // ════════════════════════════════════════════════════════════════════════════
   // BUILD
   // ════════════════════════════════════════════════════════════════════════════
@@ -1348,7 +1439,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _customAppearanceSection(),
         _toggleSection(),
         _livePreviewSection(),
+        _bottomApplyAction(),
         _readingHistorySection(),
+        _logoutSection(),
 
         const SizedBox(height: AppTheme.spaceXL),
       ],

@@ -1,0 +1,287 @@
+# ADD LOGOUT BUTTON — ISOLATED FEATURE BRANCH ONLY
+
+I need you to add a proper Logout feature to AksharAlly.
+
+IMPORTANT: This work is being done in a DIFFERENT Replit account while another developer/agent is simultaneously working on the camera scanning + structured OCR feature.
+
+Therefore, this task MUST be completely isolated and designed to merge cleanly later.
+
+==================================================
+1. BRANCH REQUIREMENT
+==================================================
+
+DO NOT work directly on main.
+
+First make sure you are working from the latest appropriate base branch.
+
+Create a new feature branch specifically for this task:
+
+feature/logout-button
+
+If that branch already exists, do NOT overwrite unrelated work. Inspect it first.
+
+Do not commit directly to main.
+
+The final changes should be easy to cherry-pick or merge into the main project later.
+
+==================================================
+2. FIRST INSPECT THE EXISTING AUTH SYSTEM
+==================================================
+
+Before changing anything, inspect the existing authentication implementation.
+
+Determine:
+
+- How login currently works.
+- Whether Firebase Authentication is being used.
+- Where the current authenticated user/session is stored.
+- How the application knows whether a user is logged in.
+- Where authentication state is initialized.
+- Whether there is already a logout/sign-out method somewhere.
+- Which screen is the appropriate place for the Logout button.
+
+Do NOT create a second authentication system.
+
+Do NOT replace the existing authentication implementation.
+
+Use the existing authentication architecture.
+
+==================================================
+3. LOGOUT FUNCTIONALITY
+==================================================
+
+Implement a proper logout/sign-out action.
+
+If the project uses Firebase Authentication, use the existing Firebase Auth instance/service and its normal sign-out mechanism.
+
+The expected behavior is:
+
+Logout button
+    ↓
+Sign out current authenticated user
+    ↓
+Clear/refresh authentication state
+    ↓
+Return user to the existing Login screen
+    ↓
+User should no longer be treated as authenticated
+
+Do not merely navigate to the Login screen without actually signing the user out.
+
+The Firebase/session state must actually be cleared.
+
+==================================================
+4. LOGOUT BUTTON UI
+==================================================
+
+Add a clear Logout button in the most appropriate existing authenticated-user area.
+
+Prefer an existing:
+
+- Profile section
+- Settings page
+- Account section
+- Navigation drawer
+- User menu
+
+Do NOT redesign the application's UI.
+
+Do NOT create a new page unless absolutely necessary.
+
+Match the existing AksharAlly design, typography, spacing, and button style.
+
+The button should clearly communicate:
+
+"Logout"
+
+or
+
+"Log Out"
+
+Use an appropriate logout icon if the existing UI uses icons.
+
+==================================================
+5. CONFIRMATION DIALOG
+==================================================
+
+If appropriate for the existing application design, show a simple confirmation dialog before signing out.
+
+For example:
+
+"Are you sure you want to log out?"
+
+[Cancel] [Logout]
+
+If the application already has a confirmation-dialog pattern, reuse it.
+
+Do not introduce a complicated new UI.
+
+If the existing application convention does not use confirmation dialogs, a direct logout action is acceptable.
+
+==================================================
+6. ERROR HANDLING
+==================================================
+
+If logout fails because of an authentication/service error:
+
+- Do not silently pretend logout succeeded.
+- Show a clear user-friendly error message.
+- Do not expose technical stack traces to the user.
+
+If logout succeeds:
+
+- Navigate to the existing Login screen.
+- Make sure authenticated-only screens cannot still be accessed through stale state.
+
+==================================================
+7. VERY IMPORTANT — AVOID CAMERA/OCR WORK
+==================================================
+
+Another developer is currently working on the camera scanning and structured OCR feature.
+
+DO NOT modify camera/OCR-related code unless it is absolutely unavoidable.
+
+In particular, avoid changing these files unless you discover that logout genuinely requires a change there:
+
+- reading_screen.dart
+- output_screen.dart
+- highlighted_text_view.dart
+- api_service.dart
+- ocr.py
+- dyslexia_formatter.py
+- format_routes.py
+- input_router.py
+- image_processor.py
+- ocr_service.py
+- simplifier.py
+- simplify_routes.py
+
+DO NOT touch the camera scanning flow.
+
+DO NOT refactor shared code just for cleanliness.
+
+DO NOT rename shared functions unnecessarily.
+
+DO NOT update dependencies unless absolutely required for logout.
+
+The goal is to keep this branch merge-friendly with the parallel camera/OCR work.
+
+==================================================
+8. DO NOT MODIFY UNRELATED FEATURES
+==================================================
+
+Do NOT change:
+
+- Camera scanning
+- OCR
+- Tables
+- Menu recognition
+- Text simplification
+- TTS
+- Reader functionality
+- Library
+- General settings
+- UI redesign
+- Authentication architecture
+- Backend OCR routes
+- Database structure
+
+Only implement Logout.
+
+==================================================
+9. TEST THE COMPLETE LOGOUT FLOW
+==================================================
+
+Test the following:
+
+### Test 1 — Logged-in user
+
+Login normally.
+
+Verify that the Logout button is visible in the appropriate location.
+
+### Test 2 — Logout
+
+Tap Logout.
+
+Verify that:
+
+- The authentication session is actually signed out.
+- The user is taken to the existing Login screen.
+- Authenticated state is cleared.
+
+### Test 3 — Back navigation
+
+After logout, attempt to navigate back.
+
+The user must NOT regain access to authenticated screens using stale navigation state.
+
+### Test 4 — Login again
+
+Log in again with the existing authentication flow.
+
+Verify that login still works normally.
+
+### Test 5 — App restart
+
+After logging out, restart/reload the application.
+
+Verify that the user remains logged out.
+
+==================================================
+10. CHECK FOR MERGE CONFLICTS
+==================================================
+
+Before finishing:
+
+- Check exactly which files you changed.
+- Make sure changes are limited to Logout/auth-related functionality.
+- Do not unnecessarily modify files that another developer is likely to be editing.
+- Check git diff.
+- Check git status.
+- Ensure no unrelated generated files or temporary files are committed.
+
+If possible, keep the commit small and focused.
+
+==================================================
+11. COMMIT
+==================================================
+
+Create a clean commit with a message such as:
+
+feat: add logout functionality
+
+Do not include unrelated changes in the commit.
+
+==================================================
+12. FINAL REPORT
+==================================================
+
+When finished, report:
+
+1. Branch name.
+2. Files changed.
+3. How logout works.
+4. Where the Logout button was added.
+5. Whether Firebase/authentication state is actually cleared.
+6. Tests performed.
+7. Git commit hash.
+8. Any potential merge-conflict concerns.
+
+IMPORTANT:
+
+This branch will later be merged into a branch containing significant camera/OCR changes.
+
+Therefore:
+
+KEEP THE DIFF SMALL.
+
+DO NOT REFACTOR.
+
+DO NOT TOUCH CAMERA/OCR FILES.
+
+DO NOT CHANGE UNRELATED FUNCTIONALITY.
+
+The only goal is:
+
+EXISTING LOGIN → LOGGED-IN USER → LOGOUT BUTTON → ACTUAL SIGN-OUT → EXISTING LOGIN SCREEN
