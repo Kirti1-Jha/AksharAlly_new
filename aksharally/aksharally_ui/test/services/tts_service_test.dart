@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:aksharally_ui/services/tts_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -92,6 +94,50 @@ void main() {
       expect(service.isPaused, isFalse);
     });
 
+    test('pause failure leaves the active utterance playing', () async {
+      await service.speak('Continue reading this passage.');
+      engine.pauseError = StateError('pause not supported');
+
+      expect(await service.pause(), isFalse);
+      expect(service.isSpeaking, isTrue);
+      expect(service.isPaused, isFalse);
+      expect(service.lastError, contains('pause not supported'));
+    });
+
+    test('late pause result cannot pause a newer utterance', () async {
+      await service.speak('First passage.');
+      final pauseGate = Completer<bool>();
+      engine.pauseGate = pauseGate;
+      final pendingPause = service.pause();
+
+      await service.speak('Second passage.');
+      pauseGate.complete(true);
+
+      expect(await pendingPause, isFalse);
+      expect(service.isSpeaking, isTrue);
+      expect(service.isPaused, isFalse);
+      expect(engine.activeSegment, 'Second passage.');
+    });
+
+    test(
+      'progress from a previous text does not highlight a new utterance',
+      () async {
+        var progressCount = 0;
+        await service.speak(
+          'First passage.',
+          onProgress: (_, __, ___, ____) => progressCount++,
+        );
+        await service.speak(
+          'Different passage.',
+          onProgress: (_, __, ___, ____) => progressCount++,
+        );
+
+        engine.emitProgressFor('First passage.', 0, 5);
+
+        expect(progressCount, 0);
+      },
+    );
+
     test('initialization registers only one set of platform listeners', () async {
       await service.init();
       await service.init();
@@ -111,6 +157,8 @@ class _FakeTtsEngine implements TtsEngine {
   int _lastLocalProgressStart = 0;
   bool _speaking = false;
   bool _paused = false;
+  Object? pauseError;
+  Completer<bool>? pauseGate;
 
   void Function()? _startHandler;
   void Function()? _completionHandler;
@@ -165,6 +213,9 @@ class _FakeTtsEngine implements TtsEngine {
 
   @override
   Future<bool> pause() async {
+    if (pauseError != null) throw pauseError!;
+    final gate = pauseGate;
+    if (gate != null) return gate.future;
     if (!_speaking) return false;
     final safeStart = _lastLocalProgressStart
         .clamp(0, activeSegment.length)
@@ -186,13 +237,12 @@ class _FakeTtsEngine implements TtsEngine {
   }
 
   void emitRange(int start, int end) {
+    emitProgressFor(activeSegment, start, end);
+  }
+
+  void emitProgressFor(String text, int start, int end) {
     _lastLocalProgressStart = start;
-    _progressHandler?.call(
-      activeSegment,
-      start,
-      end,
-      activeSegment.substring(start, end),
-    );
+    _progressHandler?.call(text, start, end, text.substring(start, end));
   }
 
   void complete() {

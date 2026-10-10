@@ -37,6 +37,8 @@ class _VoiceAssistantControlsState extends State<VoiceAssistantControls> {
   String _message = 'Tap the microphone to give a reading command.';
   String _transcript = '';
   bool _preparing = false;
+  bool _startingListening = false;
+  bool _processingCommand = false;
   bool _available = false;
   bool _isListening = false;
   bool _sessionOpen = false;
@@ -175,7 +177,11 @@ class _VoiceAssistantControlsState extends State<VoiceAssistantControls> {
   }
 
   Future<void> _toggleListening() async {
-    if (_sessionOpen && !_isListening) return;
+    if (_startingListening ||
+        _processingCommand ||
+        (_sessionOpen && !_isListening)) {
+      return;
+    }
     if (_isListening) {
       await _cancelListening();
       return;
@@ -194,18 +200,19 @@ class _VoiceAssistantControlsState extends State<VoiceAssistantControls> {
       return;
     }
 
-    await widget.onBeforeListening();
-    if (!mounted) return;
-
-    setState(() {
-      _transcript = '';
-      _message = 'Listening…';
-      _sessionOpen = true;
-      _handledFinalResult = false;
-      _isListening = true;
-    });
-
+    setState(() => _startingListening = true);
     try {
+      await widget.onBeforeListening();
+      if (!mounted) return;
+
+      setState(() {
+        _transcript = '';
+        _message = 'Listening…';
+        _sessionOpen = true;
+        _handledFinalResult = false;
+        _isListening = true;
+      });
+
       await _speech.listen(
         onResult: (result) => _handleResult(result, languageCode),
         listenOptions: SpeechListenOptions(
@@ -225,6 +232,8 @@ class _VoiceAssistantControlsState extends State<VoiceAssistantControls> {
         });
       }
       await _closeSession();
+    } finally {
+      if (mounted) setState(() => _startingListening = false);
     }
   }
 
@@ -237,7 +246,10 @@ class _VoiceAssistantControlsState extends State<VoiceAssistantControls> {
     if (!result.finalResult || _handledFinalResult) return;
 
     _handledFinalResult = true;
-    setState(() => _message = 'Command received.');
+    setState(() {
+      _processingCommand = true;
+      _message = 'Command received.';
+    });
     unawaited(_runRecognizedCommand(result.recognizedWords, languageCode));
   }
 
@@ -251,6 +263,8 @@ class _VoiceAssistantControlsState extends State<VoiceAssistantControls> {
       if (mounted) {
         setState(() => _message = 'Could not process that command: $error');
       }
+    } finally {
+      if (mounted) setState(() => _processingCommand = false);
     }
   }
 
@@ -315,7 +329,10 @@ class _VoiceAssistantControlsState extends State<VoiceAssistantControls> {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final languageAvailable = _selectedLocaleId != null;
-    final processing = _sessionOpen && !_isListening;
+    final processing =
+        _startingListening ||
+        _processingCommand ||
+        (_sessionOpen && !_isListening);
 
     return Card(
       child: Padding(
@@ -412,7 +429,7 @@ class _VoiceAssistantControlsState extends State<VoiceAssistantControls> {
                 label: Text(
                   _isListening
                       ? 'Stop listening'
-                      : _preparing
+                      : _preparing || _startingListening
                       ? 'Preparing microphone…'
                       : processing
                       ? 'Processing…'

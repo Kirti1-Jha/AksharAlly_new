@@ -37,6 +37,20 @@ void main() {
       );
     });
 
+    test(
+      'recognizes sentence endings before closing quotes and brackets',
+      () {
+        final words = ReadingTextSegments.splitToWords(
+          '“पहिले वाक्य संपले।” दुसरे वाक्य सुरू आहे!',
+        );
+
+        final nextSentence = ReadingTextSegments.sentenceAt(words, 3);
+
+        expect(nextSentence?.firstWordIndex, 3);
+        expect(nextSentence?.lastWordIndex, 6);
+      },
+    );
+
     test('resolves text after repeated tokens in their original order', () {
       const source = 'तो शब्द, तो शब्द पुन्हा. पुढचा भाग.';
       final words = ReadingTextSegments.splitToWords(source);

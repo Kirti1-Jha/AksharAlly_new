@@ -183,7 +183,7 @@ class TTSService {
   }
 
   void _handleProgress(String reportedText, int start, int end, String word) {
-    if (!_hasActiveUtterance || isPaused) return;
+    if (!_hasActiveUtterance || !_hasStarted || isPaused) return;
     final originalText = _lastSpokenText;
     if (originalText == null) return;
     if (_segmentStartOffset > 0 && reportedText == originalText) return;
@@ -299,18 +299,19 @@ class TTSService {
   Future<bool> pause() async {
     if (isPaused) return true;
     if (!isSpeaking || !_hasActiveUtterance) return false;
+    final generation = _generation;
     try {
-      if (!await _engine.pause()) return false;
+      final paused = await _engine.pause();
+      if (generation != _generation || !_hasActiveUtterance) return false;
+      if (!paused) return false;
       _resumeOffset = _lastProgressStart;
       isSpeaking = false;
       isPaused = true;
       return true;
     } catch (error) {
       lastError = error.toString();
-      if (generation == _generation && _hasActiveUtterance) {
-        isSpeaking = false;
-        isPaused = true;
-      }
+      // A failed native pause must not make active speech look paused. The
+      // caller can keep the current playback and highlight timer running.
       return false;
     }
   }

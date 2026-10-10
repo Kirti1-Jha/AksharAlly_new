@@ -65,6 +65,57 @@ void main() {
       );
     });
 
+    test(
+      'supports the requested reader controls in English, Hindi, and Marathi',
+      () {
+        final commands = <String, Map<String, VoiceCommandIntent>>{
+          'en-US': {
+            'Start reading': VoiceCommandIntent.readCurrentPage,
+            'PAUSE reading!': VoiceCommandIntent.pauseReading,
+            'continue   reading': VoiceCommandIntent.resumeReading,
+            'Stop.': VoiceCommandIntent.stopReading,
+            'Repeat current sentence': VoiceCommandIntent.repeatSentence,
+            'Repeat the passage': VoiceCommandIntent.repeatPassage,
+            'Speak slower': VoiceCommandIntent.decreaseSpeechRate,
+            'Read faster': VoiceCommandIntent.increaseSpeechRate,
+          },
+          'hi-IN': {
+            'पढ़ना शुरू करें': VoiceCommandIntent.readCurrentPage,
+            'पढ़ना रोकें': VoiceCommandIntent.pauseReading,
+            'पढ़ना जारी रखें': VoiceCommandIntent.resumeReading,
+            'पढ़ना बंद करें': VoiceCommandIntent.stopReading,
+            'वाक्य दोहराएं': VoiceCommandIntent.repeatSentence,
+            'पूरा पृष्ठ फिर से पढ़ें': VoiceCommandIntent.repeatPassage,
+            'धीरे पढ़ें': VoiceCommandIntent.decreaseSpeechRate,
+            'तेज़ पढ़ें': VoiceCommandIntent.increaseSpeechRate,
+          },
+          'mr-IN': {
+            'वाचायला सुरू करा': VoiceCommandIntent.readCurrentPage,
+            'वाचन थोडावेळ थांबवा': VoiceCommandIntent.pauseReading,
+            'वाचन पुन्हा सुरू करा': VoiceCommandIntent.resumeReading,
+            'वाचन बंद करा': VoiceCommandIntent.stopReading,
+            'हे वाक्य पुन्हा वाचा': VoiceCommandIntent.repeatSentence,
+            'संपूर्ण उतारा पुन्हा वाचा': VoiceCommandIntent.repeatPassage,
+            'हळू वाचा': VoiceCommandIntent.decreaseSpeechRate,
+            'जलद वाचा': VoiceCommandIntent.increaseSpeechRate,
+          },
+        };
+
+        for (final language in commands.entries) {
+          for (final command in language.value.entries) {
+            expect(
+              VoiceCommandHandler.parse(
+                command.key,
+                languageCode: language.key,
+              ),
+              command.value,
+              reason: '${language.key}: ${command.key}',
+            );
+          }
+        }
+      },
+    );
+
     test('rejects ambiguous, combined, and unsupported phrases', () {
       expect(
         VoiceCommandHandler.parse(

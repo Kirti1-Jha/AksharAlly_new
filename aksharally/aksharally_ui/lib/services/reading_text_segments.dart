@@ -58,8 +58,29 @@ class ReadingTextSegments {
     return ReadingSentenceRange(firstWordIndex: first, lastWordIndex: last);
   }
 
-  static bool endsSentence(String word) =>
-      const ['.', '!', '?', '।', '॥', '…'].any(word.endsWith);
+  static bool endsSentence(String word) {
+    var end = word.length;
+    const closingPunctuation = {'"', "'", '”', '’', ')', ']', '}', '»'};
+    while (end > 0 &&
+        closingPunctuation.contains(word.substring(end - 1, end))) {
+      end--;
+    }
+    const sentencePunctuation = [
+      '.',
+      '!',
+      '?',
+      '。',
+      '！',
+      '？',
+      '।',
+      '॥',
+      '…',
+    ];
+    return end > 0 &&
+        sentencePunctuation.any(
+          (mark) => word.substring(0, end).endsWith(mark),
+        );
+  }
 
   /// Returns the original source text after [wordIndex], preserving spacing.
   ///

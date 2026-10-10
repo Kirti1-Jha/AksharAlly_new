@@ -1,0 +1,59 @@
+## Continue AksharAlly Voice Assistant — Do Not Start From Scratch
+
+Continue the existing implementation on Git branch `feature/voice-assistant`.
+
+**Latest known commit:** `8188384` — `Refactor output screen UI and update TTS service implementation`
+
+**Active Flutter app:** `aksharally/aksharally_ui`
+
+### 1. Inspect before editing
+- Verify the current branch, Git status, and latest commit.
+- Inspect the existing voice-command handler, voice assistant controls, TTS service, output screen, `tts_progress_mapper.dart`, `reading_text_segments.dart`, highlighted-text widget, and related tests.
+- Preserve all existing committed work. Do not reset, rebase, clean, or overwrite changes.
+- Identify incomplete functionality and existing test/build failures before making changes.
+
+### 2. Finish voice-command functionality
+Ensure spoken commands execute actual reader actions, not just display transcripts.
+
+Support English, Hindi, and Marathi commands for:
+- Start reading
+- Pause, resume, and stop
+- Repeat the passage or current sentence
+- Speak slower or faster
+- Next/previous sentence when reliable navigation is supported
+
+Normalize case, punctuation, and whitespace. Prevent false matches, duplicate actions, and unsupported commands from triggering unintended behavior. Display helpful feedback when a command is not recognized.
+
+### 3. Verify accurate TTS word highlighting
+- Prefer actual `flutter_tts` progress callbacks and correctly map their offsets to displayed word ranges.
+- Highlight the currently spoken word at normal, slow, and fast speech rates.
+- Keep highlighting synchronized during pause/resume, stop, repeat, sentence navigation, and speech-rate changes.
+- Prevent stale callbacks from previous playback sessions from changing the active highlight.
+- Handle punctuation, whitespace, repeated words, and Hindi/Marathi Unicode text.
+- Do not describe fixed-timer estimates as exact synchronization. If reliable word-level progress is unavailable, document the limitation and fallback.
+- Preserve the existing dyslexia-friendly formatting, fonts, colours, spacing, OCR, simplification, and Firebase functionality.
+
+### 4. Preserve dependencies and project scope
+- Keep the locally vendored `speech_to_text` 6.6.2 package and its documented Android compatibility patch.
+- Do not edit the Pub cache.
+- Do not change Firebase versions or Flutter/Dart SDK constraints.
+- Do not refactor unrelated features or redesign the UI.
+
+### 5. Validate and report
+Run the following from `aksharally/aksharally_ui` if Flutter is available:
+
+```bash
+flutter pub get
+dart format --output=none --set-exit-if-changed lib test
+flutter analyze
+flutter test
+flutter build apk --debug
+```
+
+Also run `git diff --check`.
+
+Prioritize fixing blockers in the voice assistant and TTS synchronization rather than unrelated warnings. If a command fails, diagnose the actual error before making changes.
+
+**Final report:** list changed files, implemented commands, test results, Android build status, and any remaining platform/device limitations. Clearly distinguish automated tests from physical-device verification.
+
+Do not commit or push without my explicit approval.
