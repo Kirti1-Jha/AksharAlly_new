@@ -45,5 +45,9 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>AksharAlly uses the microphone when you tap the voice-command button.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>AksharAlly converts your spoken reading commands into text on your device's speech service.</string>
 </dict>
 </plist>

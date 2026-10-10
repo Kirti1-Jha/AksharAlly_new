@@ -16,17 +16,13 @@ enum _ProcessMode { formatOnly, simplifyFormat }
 class ReadingScreen extends StatefulWidget {
   final ReadingTab initialTab;
 
-  const ReadingScreen({
-    super.key,
-    this.initialTab = ReadingTab.scan,
-  });
+  const ReadingScreen({super.key, this.initialTab = ReadingTab.scan});
 
   @override
   State<ReadingScreen> createState() => _ReadingScreenState();
 }
 
 class _ReadingScreenState extends State<ReadingScreen> {
-
   // ── Local UI state ─────────────────────────────────────────────────────────
   late ReadingTab _tab;
   _ProcessMode _mode = _ProcessMode.formatOnly;
@@ -35,16 +31,16 @@ class _ReadingScreenState extends State<ReadingScreen> {
   // They are NEVER written to AppSettings — they are only passed into API
   // calls via the optional language: and profile: parameters.
   String _language = 'en';
-  String _profile  = 'moderate';
+  String _profile = 'moderate';
 
   // Input state
   final _textController = TextEditingController();
-  final _picker         = ImagePicker();
-  File?   _pickedFile;
+  final _picker = ImagePicker();
+  File? _pickedFile;
   String? _pickedFileName;
 
   // Processing state
-  bool    _isLoading = false;
+  bool _isLoading = false;
   String? _error;
 
   // ── Lifecycle ───────────────────────────────────────────────────────────────
@@ -73,31 +69,42 @@ class _ReadingScreenState extends State<ReadingScreen> {
           : await _picker.pickImage(source: source);
       if (xf == null) return;
       setState(() {
-        _pickedFile     = File(xf.path);
+        _pickedFile = File(xf.path);
         _pickedFileName = xf.name;
-        _error          = null;
+        _error = null;
       });
     } catch (e) {
-      setState(() => _error =
-          'Could not open ${source == ImageSource.camera ? "camera" : "gallery"}.');
+      setState(
+        () => _error =
+            'Could not open ${source == ImageSource.camera ? "camera" : "gallery"}.',
+      );
     }
   }
 
   Future<void> _pickFile() async {
     try {
       final result = await FilePicker.platform.pickFiles(
-        type:              FileType.custom,
+        type: FileType.custom,
         allowedExtensions: [
-          'pdf', 'docx', 'doc', 'txt', 'png', 'jpg', 'jpeg', 'webp', 'heic', 'heif',
+          'pdf',
+          'docx',
+          'doc',
+          'txt',
+          'png',
+          'jpg',
+          'jpeg',
+          'webp',
+          'heic',
+          'heif',
         ],
       );
       if (result == null || result.files.isEmpty) return;
       final picked = result.files.first;
       if (picked.path == null) return;
       setState(() {
-        _pickedFile     = File(picked.path!);
+        _pickedFile = File(picked.path!);
         _pickedFileName = picked.name;
-        _error          = null;
+        _error = null;
       });
     } catch (e) {
       setState(() => _error = 'Could not open file picker.');
@@ -105,7 +112,7 @@ class _ReadingScreenState extends State<ReadingScreen> {
   }
 
   void _clearPick() => setState(() {
-    _pickedFile     = null;
+    _pickedFile = null;
     _pickedFileName = null;
   });
 
@@ -117,15 +124,17 @@ class _ReadingScreenState extends State<ReadingScreen> {
       return;
     }
     if (_tab != ReadingTab.type && _pickedFile == null) {
-      setState(() => _error = _tab == ReadingTab.scan
-          ? 'Please capture or select an image first.'
-          : 'Please select a file first.');
+      setState(
+        () => _error = _tab == ReadingTab.scan
+            ? 'Please capture or select an image first.'
+            : 'Please select a file first.',
+      );
       return;
     }
 
     setState(() {
       _isLoading = true;
-      _error     = null;
+      _error = null;
     });
 
     try {
@@ -134,7 +143,7 @@ class _ReadingScreenState extends State<ReadingScreen> {
       if (mounted) {
         setState(() {
           _isLoading = false;
-          _error     = e.toString().replaceFirst('Exception: ', '');
+          _error = e.toString().replaceFirst('Exception: ', '');
         });
       }
     }
@@ -146,23 +155,34 @@ class _ReadingScreenState extends State<ReadingScreen> {
   /// Language and profile are passed EXPLICITLY to every API call.
   /// AppSettings is never mutated here.
   Future<void> _runPipelineAndNavigate() async {
-
     // ── Typed text ──────────────────────────────────────────────────────────
     if (_tab == ReadingTab.type) {
       final text = _textController.text.trim();
 
       if (_mode == _ProcessMode.formatOnly) {
         // No API call — text passed directly to the reader.
-        _push(OutputScreen(displayText: text, saveOnLoad: true));
+        _push(
+          OutputScreen(
+            displayText: text,
+            saveOnLoad: true,
+            readingLanguage: _language,
+          ),
+        );
         return;
       }
 
       // Simplify + Format: Gemini call with local language, then show result.
       final simplified = await ApiService.simplifyText(
         text,
-        language: _language,   // local state — AppSettings untouched
+        language: _language, // local state — AppSettings untouched
       );
-      _push(OutputScreen(displayText: simplified, saveOnLoad: true));
+      _push(
+        OutputScreen(
+          displayText: simplified,
+          saveOnLoad: true,
+          readingLanguage: _language,
+        ),
+      );
       return;
     }
 
@@ -173,10 +193,12 @@ class _ReadingScreenState extends State<ReadingScreen> {
       // OCR + dyslexia formatting (no Gemini).
       final result = await ApiService.processImage(
         file,
-        language: _language,   // local state — AppSettings untouched
-        profile:  _profile,    // local state — AppSettings untouched
+        language: _language, // local state — AppSettings untouched
+        profile: _profile, // local state — AppSettings untouched
       );
-      _push(OutputScreen(initialFormatResult: result));
+      _push(
+        OutputScreen(initialFormatResult: result, readingLanguage: _language),
+      );
       return;
     }
 
@@ -185,14 +207,20 @@ class _ReadingScreenState extends State<ReadingScreen> {
     final formatResult = await ApiService.processImage(
       file,
       language: _language,
-      profile:  _profile,
+      profile: _profile,
     );
     // rawText = originalText ?? processedText (safe fallback per FormatResult)
     final simplified = await ApiService.simplifyText(
       formatResult.rawText,
       language: _language,
     );
-    _push(OutputScreen(displayText: simplified, saveOnLoad: true));
+    _push(
+      OutputScreen(
+        displayText: simplified,
+        saveOnLoad: true,
+        readingLanguage: _language,
+      ),
+    );
   }
 
   void _push(Widget screen) {
@@ -207,7 +235,7 @@ class _ReadingScreenState extends State<ReadingScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar:          _buildAppBar(),
+      appBar: _buildAppBar(),
       body: Column(
         children: [
           _buildTabStrip(),
@@ -240,27 +268,24 @@ class _ReadingScreenState extends State<ReadingScreen> {
 
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
-      elevation:       0,
+      elevation: 0,
       backgroundColor: Colors.transparent,
       flexibleSpace: Container(
-        decoration: const BoxDecoration(
-          gradient: AppTheme.creamGradient,
-        ),
+        decoration: const BoxDecoration(gradient: AppTheme.creamGradient),
       ),
       leading: IconButton(
-        icon:      const Icon(Icons.arrow_back, color: AppTheme.primaryBlue),
+        icon: const Icon(Icons.arrow_back, color: AppTheme.primaryBlue),
         onPressed: () => Navigator.pop(context),
       ),
       centerTitle: true,
       title: ShaderMask(
-        shaderCallback: (bounds) =>
-            AppTheme.brandGradient.createShader(bounds),
+        shaderCallback: (bounds) => AppTheme.brandGradient.createShader(bounds),
         child: const Text(
           'AksharAlly',
           style: TextStyle(
             fontWeight: FontWeight.w900,
-            fontSize:   22,
-            color:      Colors.white,
+            fontSize: 22,
+            color: Colors.white,
           ),
         ),
       ),
@@ -274,15 +299,15 @@ class _ReadingScreenState extends State<ReadingScreen> {
       color: AppTheme.accentCream,
       padding: const EdgeInsets.symmetric(
         horizontal: AppTheme.spaceMD,
-        vertical:   AppTheme.spaceSM,
+        vertical: AppTheme.spaceSM,
       ),
       child: Row(
         children: [
-          _tabItem(ReadingTab.scan,   Icons.document_scanner_outlined, 'Scan'),
+          _tabItem(ReadingTab.scan, Icons.document_scanner_outlined, 'Scan'),
           const SizedBox(width: AppTheme.spaceXS),
-          _tabItem(ReadingTab.type,   Icons.edit_outlined,             'Type'),
+          _tabItem(ReadingTab.type, Icons.edit_outlined, 'Type'),
           const SizedBox(width: AppTheme.spaceXS),
-          _tabItem(ReadingTab.upload, Icons.upload_file_outlined,      'Upload'),
+          _tabItem(ReadingTab.upload, Icons.upload_file_outlined, 'Upload'),
         ],
       ),
     );
@@ -293,30 +318,33 @@ class _ReadingScreenState extends State<ReadingScreen> {
     return Expanded(
       child: GestureDetector(
         onTap: () => setState(() {
-          _tab            = tab;
-          _pickedFile     = null;
+          _tab = tab;
+          _pickedFile = null;
           _pickedFileName = null;
-          _error          = null;
+          _error = null;
         }),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
           padding: const EdgeInsets.symmetric(vertical: 10),
           decoration: BoxDecoration(
-            color:        selected ? AppTheme.primaryBlue : Colors.transparent,
+            color: selected ? AppTheme.primaryBlue : Colors.transparent,
             borderRadius: BorderRadius.circular(AppTheme.radiusMD),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, size: 17,
-                  color: selected ? Colors.white : AppTheme.primaryBlue),
+              Icon(
+                icon,
+                size: 17,
+                color: selected ? Colors.white : AppTheme.primaryBlue,
+              ),
               const SizedBox(width: 5),
               Text(
                 label,
                 style: TextStyle(
-                  fontSize:   13,
+                  fontSize: 13,
                   fontWeight: FontWeight.w600,
-                  color:      selected ? Colors.white : AppTheme.primaryBlue,
+                  color: selected ? Colors.white : AppTheme.primaryBlue,
                 ),
               ),
             ],
@@ -330,9 +358,12 @@ class _ReadingScreenState extends State<ReadingScreen> {
 
   Widget _buildInputArea() {
     switch (_tab) {
-      case ReadingTab.scan:   return _buildScanArea();
-      case ReadingTab.type:   return _buildTypeArea();
-      case ReadingTab.upload: return _buildUploadArea();
+      case ReadingTab.scan:
+        return _buildScanArea();
+      case ReadingTab.type:
+        return _buildTypeArea();
+      case ReadingTab.upload:
+        return _buildUploadArea();
     }
   }
 
@@ -344,7 +375,7 @@ class _ReadingScreenState extends State<ReadingScreen> {
           children: [
             Expanded(
               child: _outlineButton(
-                icon:  Icons.camera_alt_outlined,
+                icon: Icons.camera_alt_outlined,
                 label: 'Camera',
                 onTap: () => _pickImage(ImageSource.camera),
               ),
@@ -352,7 +383,7 @@ class _ReadingScreenState extends State<ReadingScreen> {
             const SizedBox(width: AppTheme.spaceSM),
             Expanded(
               child: _outlineButton(
-                icon:  Icons.photo_library_outlined,
+                icon: Icons.photo_library_outlined,
                 label: 'Gallery',
                 onTap: () => _pickImage(ImageSource.gallery),
               ),
@@ -369,7 +400,7 @@ class _ReadingScreenState extends State<ReadingScreen> {
           _selectedFileRow(),
         ] else
           _emptyStatePlaceholder(
-            icon:    Icons.image_search_outlined,
+            icon: Icons.image_search_outlined,
             message: 'No image selected yet.\nUse Camera or Gallery above.',
           ),
       ],
@@ -379,15 +410,15 @@ class _ReadingScreenState extends State<ReadingScreen> {
   Widget _buildTypeArea() {
     return TextField(
       controller: _textController,
-      maxLines:   null,
-      minLines:   7,
+      maxLines: null,
+      minLines: 7,
       decoration: InputDecoration(
-        hintText:    'Type or paste your text here…',
-        filled:      true,
-        fillColor:   AppTheme.lightGrey,
+        hintText: 'Type or paste your text here…',
+        filled: true,
+        fillColor: AppTheme.lightGrey,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppTheme.radiusMD),
-          borderSide:   BorderSide.none,
+          borderSide: BorderSide.none,
         ),
         contentPadding: const EdgeInsets.all(AppTheme.spaceMD),
       ),
@@ -400,7 +431,7 @@ class _ReadingScreenState extends State<ReadingScreen> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _outlineButton(
-          icon:  Icons.attach_file_outlined,
+          icon: Icons.attach_file_outlined,
           label: 'Choose File  (PDF · DOCX · TXT · Image)',
           onTap: _pickFile,
         ),
@@ -409,8 +440,9 @@ class _ReadingScreenState extends State<ReadingScreen> {
           _fileCard()
         else
           _emptyStatePlaceholder(
-            icon:    Icons.folder_open_outlined,
-            message: 'No file selected yet.\nSupports PDF, DOCX, TXT, and images.',
+            icon: Icons.folder_open_outlined,
+            message:
+                'No file selected yet.\nSupports PDF, DOCX, TXT, and images.',
           ),
       ],
     );
@@ -422,18 +454,17 @@ class _ReadingScreenState extends State<ReadingScreen> {
     return Container(
       padding: const EdgeInsets.all(AppTheme.spaceMD),
       decoration: BoxDecoration(
-        color:        AppTheme.lightGrey,
+        color: AppTheme.lightGrey,
         borderRadius: BorderRadius.circular(AppTheme.radiusMD),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-
           // Language
           Text('Language', style: AppTheme.labelStyle),
           const SizedBox(height: AppTheme.spaceSM),
           _segmentRow(
-            options:  const [
+            options: const [
               ('en', 'English'),
               ('hi', 'हिन्दी'),
               ('mr', 'मराठी'),
@@ -450,14 +481,15 @@ class _ReadingScreenState extends State<ReadingScreen> {
           Text('Processing Mode', style: AppTheme.labelStyle),
           const SizedBox(height: AppTheme.spaceXS),
           _modeRadio(
-            value:    _ProcessMode.formatOnly,
-            title:    'Format Only',
+            value: _ProcessMode.formatOnly,
+            title: 'Format Only',
             subtitle: 'Dyslexia-friendly layout. No AI. Words never changed.',
           ),
           _modeRadio(
-            value:    _ProcessMode.simplifyFormat,
-            title:    'Simplify + Format',
-            subtitle: 'AI simplifies the text, then formats it for easier reading.',
+            value: _ProcessMode.simplifyFormat,
+            title: 'Simplify + Format',
+            subtitle:
+                'AI simplifies the text, then formats it for easier reading.',
           ),
         ],
       ),
@@ -470,8 +502,8 @@ class _ReadingScreenState extends State<ReadingScreen> {
     return Container(
       padding: const EdgeInsets.all(AppTheme.spaceMD),
       decoration: BoxDecoration(
-        color:        AppTheme.error.withOpacity(0.07),
-        border:       Border.all(color: AppTheme.error.withOpacity(0.3)),
+        color: AppTheme.error.withOpacity(0.07),
+        border: Border.all(color: AppTheme.error.withOpacity(0.3)),
         borderRadius: BorderRadius.circular(AppTheme.radiusMD),
       ),
       child: Row(
@@ -497,8 +529,8 @@ class _ReadingScreenState extends State<ReadingScreen> {
       child: ElevatedButton(
         onPressed: _isLoading ? null : _onContinue,
         style: ElevatedButton.styleFrom(
-          backgroundColor:         AppTheme.primaryBlue,
-          foregroundColor:         Colors.white,
+          backgroundColor: AppTheme.primaryBlue,
+          foregroundColor: Colors.white,
           disabledBackgroundColor: AppTheme.primaryBlue.withOpacity(0.45),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppTheme.radiusXL),
@@ -506,10 +538,10 @@ class _ReadingScreenState extends State<ReadingScreen> {
         ),
         child: _isLoading
             ? const SizedBox(
-                width:  22,
+                width: 22,
                 height: 22,
                 child: CircularProgressIndicator(
-                  color:       Colors.white,
+                  color: Colors.white,
                   strokeWidth: 2.5,
                 ),
               )
@@ -524,8 +556,8 @@ class _ReadingScreenState extends State<ReadingScreen> {
   // ── Reusable sub-widgets ────────────────────────────────────────────────────
 
   Widget _outlineButton({
-    required IconData    icon,
-    required String      label,
+    required IconData icon,
+    required String label,
     required VoidCallback onTap,
   }) {
     return OutlinedButton.icon(
@@ -533,18 +565,18 @@ class _ReadingScreenState extends State<ReadingScreen> {
       label: Text(
         label,
         style: const TextStyle(
-          color:      AppTheme.primaryBlue,
+          color: AppTheme.primaryBlue,
           fontWeight: FontWeight.w600,
-          fontSize:   13,
+          fontSize: 13,
         ),
       ),
       onPressed: onTap,
       style: OutlinedButton.styleFrom(
         padding: const EdgeInsets.symmetric(
-          vertical:   AppTheme.spaceMD,
+          vertical: AppTheme.spaceMD,
           horizontal: AppTheme.spaceSM,
         ),
-        side:  const BorderSide(color: AppTheme.primaryBlue, width: 1.5),
+        side: const BorderSide(color: AppTheme.primaryBlue, width: 1.5),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppTheme.radiusMD),
         ),
@@ -554,25 +586,26 @@ class _ReadingScreenState extends State<ReadingScreen> {
 
   Widget _emptyStatePlaceholder({
     required IconData icon,
-    required String   message,
+    required String message,
   }) {
     return Container(
       height: 110,
       decoration: BoxDecoration(
-        border:       Border.all(color: AppTheme.primaryBlue.withOpacity(0.18)),
+        border: Border.all(color: AppTheme.primaryBlue.withOpacity(0.18)),
         borderRadius: BorderRadius.circular(AppTheme.radiusMD),
-        color:        AppTheme.accentCream.withOpacity(0.35),
+        color: AppTheme.accentCream.withOpacity(0.35),
       ),
       child: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 30,
-                color: AppTheme.primaryBlue.withOpacity(0.35)),
+            Icon(icon, size: 30, color: AppTheme.primaryBlue.withOpacity(0.35)),
             const SizedBox(height: AppTheme.spaceSM),
-            Text(message,
-                textAlign: TextAlign.center,
-                style: AppTheme.captionStyle),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: AppTheme.captionStyle,
+            ),
           ],
         ),
       ),
@@ -587,14 +620,16 @@ class _ReadingScreenState extends State<ReadingScreen> {
         Expanded(
           child: Text(
             _pickedFileName ?? 'Image selected',
-            style:    AppTheme.captionStyle,
+            style: AppTheme.captionStyle,
             overflow: TextOverflow.ellipsis,
           ),
         ),
         TextButton(
           onPressed: _clearPick,
-          child: const Text('Clear',
-              style: TextStyle(color: AppTheme.primaryBlue)),
+          child: const Text(
+            'Clear',
+            style: TextStyle(color: AppTheme.primaryBlue),
+          ),
         ),
       ],
     );
@@ -604,14 +639,17 @@ class _ReadingScreenState extends State<ReadingScreen> {
     return Container(
       padding: const EdgeInsets.all(AppTheme.spaceMD),
       decoration: BoxDecoration(
-        color:        Colors.white,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(AppTheme.radiusMD),
-        border:       Border.all(color: AppTheme.primaryBlue.withOpacity(0.2)),
+        border: Border.all(color: AppTheme.primaryBlue.withOpacity(0.2)),
       ),
       child: Row(
         children: [
-          const Icon(Icons.insert_drive_file_outlined,
-              color: AppTheme.primaryBlue, size: 28),
+          const Icon(
+            Icons.insert_drive_file_outlined,
+            color: AppTheme.primaryBlue,
+            size: 28,
+          ),
           const SizedBox(width: AppTheme.spaceSM),
           Expanded(
             child: Column(
@@ -619,7 +657,7 @@ class _ReadingScreenState extends State<ReadingScreen> {
               children: [
                 Text(
                   _pickedFileName ?? 'File selected',
-                  style:    AppTheme.bodyStrongStyle,
+                  style: AppTheme.bodyStrongStyle,
                   overflow: TextOverflow.ellipsis,
                 ),
                 Text('Ready to process', style: AppTheme.captionStyle),
@@ -627,9 +665,9 @@ class _ReadingScreenState extends State<ReadingScreen> {
             ),
           ),
           IconButton(
-            icon:      const Icon(Icons.close, size: 20),
+            icon: const Icon(Icons.close, size: 20),
             onPressed: _clearPick,
-            tooltip:   'Remove',
+            tooltip: 'Remove',
           ),
         ],
       ),
@@ -638,8 +676,8 @@ class _ReadingScreenState extends State<ReadingScreen> {
 
   Widget _segmentRow({
     required List<(String, String)> options,
-    required String                 selected,
-    required void Function(String)  onSelect,
+    required String selected,
+    required void Function(String) onSelect,
   }) {
     return Row(
       children: options.map((opt) {
@@ -649,8 +687,8 @@ class _ReadingScreenState extends State<ReadingScreen> {
             onTap: () => onSelect(opt.$1),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 140),
-              margin:   const EdgeInsets.symmetric(horizontal: 2),
-              padding:  const EdgeInsets.symmetric(vertical: AppTheme.spaceSM),
+              margin: const EdgeInsets.symmetric(horizontal: 2),
+              padding: const EdgeInsets.symmetric(vertical: AppTheme.spaceSM),
               decoration: BoxDecoration(
                 color: isSelected ? AppTheme.primaryBlue : Colors.white,
                 borderRadius: BorderRadius.circular(AppTheme.radiusSM),
@@ -664,7 +702,7 @@ class _ReadingScreenState extends State<ReadingScreen> {
                 opt.$2,
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize:   13,
+                  fontSize: 13,
                   fontWeight: FontWeight.w600,
                   color: isSelected ? Colors.white : AppTheme.primaryBlue,
                 ),
@@ -678,8 +716,8 @@ class _ReadingScreenState extends State<ReadingScreen> {
 
   Widget _modeRadio({
     required _ProcessMode value,
-    required String       title,
-    required String       subtitle,
+    required String title,
+    required String subtitle,
   }) {
     final isSelected = _mode == value;
     return GestureDetector(
@@ -690,12 +728,12 @@ class _ReadingScreenState extends State<ReadingScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Radio<_ProcessMode>(
-              value:                value,
-              groupValue:           _mode,
-              onChanged:            (v) => setState(() => _mode = v!),
-              activeColor:          AppTheme.primaryBlue,
+              value: value,
+              groupValue: _mode,
+              onChanged: (v) => setState(() => _mode = v!),
+              activeColor: AppTheme.primaryBlue,
               materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              visualDensity:        VisualDensity.compact,
+              visualDensity: VisualDensity.compact,
             ),
             const SizedBox(width: AppTheme.spaceXS),
             Expanded(
