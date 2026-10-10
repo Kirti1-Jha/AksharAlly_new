@@ -1,0 +1,31 @@
+Continue the AksharAlly voice assistant dependency troubleshooting from the previous Replit workspace.
+
+## Current project state
+- Project: AksharAlly
+- Flutter app: `aksharally/aksharally_ui`
+- Intended Git branch: `feature/voice-assistant`
+- Dart SDK on my local Windows computer: 3.10.8
+- Current Firebase constraints:
+  - `firebase_core: ^2.30.0`
+  - `firebase_auth: ^4.17.0`
+- Current speech dependency in the latest pushed `pubspec.yaml`:
+  - `speech_to_text: ^7.4.0`
+
+## What has already happened
+1. With `speech_to_text: ^6.6.2`, `flutter pub get`, `flutter analyze`, and `flutter test` succeeded locally. The voice-command tests passed, and the two undefined-class errors were resolved.
+2. The Android debug build failed because `speech_to_text` 6.6.2 uses the obsolete Android `Registrar` API.
+3. Changing to `speech_to_text: ^7.4.0` caused dependency resolution to fail because that release requires `web ^1.0.0`, conflicting with the current Firebase dependency constraints.
+4. Version 7.5.0 is not suitable for the current Dart 3.10.8 SDK.
+5. In this second Replit workspace, I aborted a rebase, fetched `origin`, and reset the local branch to `origin/feature/voice-assistant`. The local branch name may need verification because it previously showed `main`.
+
+## Tasks
+1. Verify the current branch, working tree, and upstream before changing any files. Do not reset, rebase, or clean Git again.
+2. Inspect the actual published package metadata and Android source for candidate `speech_to_text` versions.
+3. Find a stable version that supports Dart 3.10.8, uses the modern Android embedding (`FlutterPlugin`/`ActivityAware`), and resolves with the existing Firebase and `web` constraints.
+4. Prefer the smallest dependency change. Do not upgrade or downgrade Firebase, change the SDK, or alter unrelated dependencies merely to force resolution.
+5. Preserve existing voice commands, English/Hindi/Marathi language handling, TTS controls, and listening lifecycle cleanup.
+6. If no suitable version exists, explain the evidence and recommend the least disruptive alternative. Do not guess a version or edit the Pub cache.
+7. If Flutter is unavailable in this workspace, clearly report which checks could not run. Do not claim dependency resolution, tests, or an Android build succeeded unless actually verified.
+8. Report the exact files changed and wait for my approval before committing or pushing.
+
+The immediate objective is to resolve the speech dependency conflict without losing the latest pushed voice-assistant work or breaking Firebase authentication.
