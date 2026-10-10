@@ -1,0 +1,69 @@
+Continue the existing AksharAlly voice assistant implementation on the Git branch `feature/voice-assistant`. The changes have already been committed and pushed to GitHub from another Replit account.
+
+Do not recreate the implementation or overwrite existing work.
+
+### Existing implementation
+
+Nine files were included in the previous commit:
+
+1. `aksharally/aksharally_ui/android/app/src/main/AndroidManifest.xml`
+2. `aksharally/aksharally_ui/ios/Runner/Info.plist`
+3. `aksharally/aksharally_ui/lib/screens/output_screen.dart`
+4. `aksharally/aksharally_ui/lib/screens/reading_screen.dart`
+5. `aksharally/aksharally_ui/lib/services/tts_service.dart`
+6. `aksharally/aksharally_ui/lib/services/voice_command_handler.dart`
+7. `aksharally/aksharally_ui/lib/widgets/voice_assistant_controls.dart`
+8. `aksharally/aksharally_ui/pubspec.yaml`
+9. `aksharally/aksharally_ui/test/services/voice_command_handler_test.dart`
+
+The previous Agent reported that English, Hindi and Marathi command-parser smoke checks passed, but its final review was interrupted by the daily quota limit. Do not treat that report as proof that the entire Flutter application builds or works on a device.
+
+### Mandatory first steps
+
+1. Verify the current Git branch and working-tree status.
+2. Inspect the latest commits and the existing implementation in all nine files.
+3. Confirm that no voice assistant changes are missing from the pushed commit.
+4. Identify the active Flutter app at `aksharally/aksharally_ui`.
+5. Do not modify `main`, the logout branch, or unrelated OCR/backend files.
+6. Preserve existing gallery OCR and language-simplification fixes.
+7. Report the current state before making additional changes.
+
+### Finish Phase A
+
+Inspect and validate the following:
+
+- Speech-recognition dependency and version compatibility.
+- Android microphone permissions and speech-recognition service visibility.
+- iOS microphone and speech-recognition usage descriptions.
+- Correct integration with the existing TTS service.
+- Start, pause, resume, stop and repeat reading commands.
+- Font-size and colour commands using existing accessibility settings.
+- Correct handling of the selected language in `ReadingScreen` and `OutputScreen`.
+- English, Hindi and Marathi command parsing.
+- Listening indicators, microphone permissions, errors, duplicate commands and unsupported commands.
+- Prevention of overlapping TTS playback and stale commands when changing passages.
+- Preservation of existing synchronized highlighting and manual reader controls.
+
+### Run checks
+
+From `aksharally/aksharally_ui`, attempt:
+
+1. `flutter pub get`
+2. `dart format --output=none --set-exit-if-changed lib test`
+3. `flutter analyze`
+4. `flutter test`
+5. `flutter build apk --debug`, if the Android SDK and build environment are available.
+
+Fix errors introduced by the voice assistant without rewriting unrelated modules. If a command cannot run because a tool or SDK is unavailable, state that explicitly.
+
+Inspect the final Git diff and report the files changed, checks passed, checks failed, and remaining manual Android-device tests.
+
+### Scope restrictions
+
+- Complete Phase A only.
+- Do not start the conversational AI phase.
+- Do not add paid APIs for basic voice commands.
+- Do not commit, push, merge, or reset anything without my explicit approval.
+- Do not claim device testing or build success unless it actually occurred.
+
+Start by inspecting the existing implementation and reporting its status. Then proceed with the remaining validation and necessary fixes.

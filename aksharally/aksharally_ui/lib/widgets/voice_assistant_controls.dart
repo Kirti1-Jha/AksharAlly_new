@@ -41,6 +41,22 @@ class _VoiceAssistantControlsState extends State<VoiceAssistantControls> {
   bool _handledFinalResult = false;
 
   @override
+  void dispose() {
+    if (_sessionOpen || _isListening) {
+      unawaited(_cancelSpeechOnDispose());
+    }
+    super.dispose();
+  }
+
+  Future<void> _cancelSpeechOnDispose() async {
+    try {
+      await _speech.cancel();
+    } catch (_) {
+      // The platform session may already have ended while this widget closes.
+    }
+  }
+
+  @override
   void didUpdateWidget(covariant VoiceAssistantControls oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.initialLanguageCode != widget.initialLanguageCode &&
