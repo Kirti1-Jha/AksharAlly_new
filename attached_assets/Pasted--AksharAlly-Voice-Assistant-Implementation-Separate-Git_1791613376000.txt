@@ -1,0 +1,262 @@
+# AksharAlly — Voice Assistant Implementation (Separate Git Branch)
+
+## Project Context
+
+I am developing **AksharAlly**, an AI-powered, dyslexia-friendly reading companion supporting English, Hindi and Marathi.
+
+The existing application uses:
+- **Frontend:** Flutter (`aksharally_ui`)
+- **Backend:** Python Flask (`backend`)
+- **OCR:** Existing multilingual OCR pipeline
+- **Text processing:** Existing text formatting and text simplification modules
+- **Text-to-speech:** Existing reading and speech functionality
+- **Reader:** Existing reading screens with synchronized word/sentence highlighting
+- **Other functionality:** Firebase authentication, library and saved reading content, accessibility settings, and existing API integrations
+
+The repository may contain unused duplicate folders or older implementations. Identify the active Flutter application and backend before making any changes. Do not assume that every similarly named folder is in use.
+
+## Main Objective
+
+Implement a voice assistant for AksharAlly with two capabilities:
+
+**Phase A — Voice Commands**
+- Read the current text or page aloud.
+- Pause, resume, stop and repeat reading.
+- Increase or decrease the font size.
+- Change background and text colours using supported voice commands.
+- Display the recognized speech so the user can verify what was heard.
+- Provide a visible microphone/listening indicator.
+- Support English, Hindi and Marathi where the device's speech services allow it.
+
+**Phase B — Conversational Reading Assistant**
+- Let users ask questions about the currently displayed passage.
+- Explain difficult words and paragraphs in simpler language.
+- Speak the explanation aloud.
+- Allow users to repeat an explanation.
+- Preserve the original passage without overwriting it with an AI-generated explanation.
+- Support English, Hindi and Marathi where feasible.
+
+The two phases must remain separate so Phase A can work without an AI API.
+
+## CRITICAL RULES
+
+1. Work only on a dedicated Git branch named `feature/voice-assistant`.
+2. Do not modify `main` or any other existing feature branch.
+3. Before creating or switching branches, inspect the current branch, working tree and existing changes. Never discard, reset, stash or overwrite user work without explicit approval.
+4. If the working tree contains uncommitted changes, stop and report them before performing branch operations that could affect them.
+5. If the required branch already exists, inspect it and reuse it when appropriate. Do not overwrite its history.
+6. Do not modify code until the initial repository audit and baseline checks have been reported.
+7. After the audit, implement only Phase A first. Do not start Phase B until Phase A has been implemented, tested and reported.
+8. Do not rebuild the application or replace existing working modules.
+9. Preserve OCR, image/gallery processing, PDF/DOCX workflows, text simplification, text formatting, TTS, synchronized highlighting, Firebase authentication, library storage, themes, accessibility settings and existing API contracts.
+10. Prefer reusing existing services and controllers over introducing duplicate implementations.
+11. Do not modify the Flask backend unless the audit demonstrates that a backend change is essential. Basic voice commands must work without a backend AI request.
+12. Avoid paid APIs for basic voice commands. Use device speech-recognition services and existing TTS functionality where appropriate.
+13. Never hardcode API keys or secrets in Flutter code or commit them to Git.
+14. Do not claim a feature works unless the relevant checks have actually been run.
+15. Do not commit or push changes without my approval.
+
+## STEP 1 — Repository Audit and Baseline
+
+Before writing code:
+
+1. Run `git status` and `git branch --show-current`.
+2. Identify the current branch and inspect local modifications, untracked files and recent commits.
+3. Locate the active Flutter application and Python Flask backend.
+4. Inspect:
+   - `pubspec.yaml`
+   - Existing TTS and speech-related dependencies
+   - The active reading screen and legacy reader screen, if both exist
+   - Existing reader state, playback controls and highlighting implementation
+   - Language-selection and language-detection logic
+   - Font-size, text-colour and background-colour settings
+   - Existing service/controller architecture
+   - Flask routes and API service only where relevant
+   - Existing Flutter and backend tests
+5. Determine whether `speech_to_text` or `flutter_tts` is already installed and whether TTS is already implemented.
+6. Identify Android microphone permissions and any platform-specific requirements.
+7. Run appropriate baseline checks, such as Flutter analysis and available backend tests, if the environment supports them.
+8. Record existing failures separately from any future failures.
+
+### Required audit report
+
+Before editing any files, report:
+
+- Active Flutter and backend directories.
+- Current Git branch and working-tree status.
+- Relevant files and their responsibilities.
+- Existing TTS, highlighting, language and settings implementations.
+- Dependencies already available and dependencies that may be needed.
+- Baseline test results and existing errors.
+- The exact proposed files to modify and why.
+- Any blockers or assumptions requiring my decision.
+
+Do not start implementation in the same step as the audit. Wait for my approval.
+
+## STEP 2 — Prepare the Feature Branch
+
+After I approve the audit:
+
+1. Create or safely switch to `feature/voice-assistant` from the appropriate stable starting point.
+2. Preserve all existing user work and branch history.
+3. Verify the correct branch using Git.
+4. Do not merge unrelated branches or commits.
+5. Do not push to GitHub unless I explicitly approve it.
+
+If the branch cannot be created safely, stop and explain why.
+
+## STEP 3 — Implement Phase A: Voice Commands
+
+### Speech recognition
+
+Use Flutter's `speech_to_text` package if it fits the existing architecture and is not already available.
+
+- Request microphone permission appropriately.
+- Display listening, processing, success and error states.
+- Show the recognized speech.
+- Allow users to stop listening.
+- Handle unavailable speech services, denied permissions, silence, timeouts and recognition errors.
+- Avoid continuous background listening.
+- Ensure the microphone does not remain active unexpectedly.
+- Support selecting English, Hindi or Marathi where supported by the device.
+- Do not silently switch the selected language.
+
+### Command processing
+
+Implement a dedicated command/intent handler that is separate from UI widgets.
+
+Support commands such as:
+
+- "Read this page."
+- "Pause reading."
+- "Resume reading."
+- "Stop reading."
+- "Repeat that sentence."
+- "Increase font size."
+- "Decrease font size."
+- "Change background colour."
+
+Add suitable equivalents for Hindi and Marathi where feasible.
+
+Use deterministic, rule-based command matching initially. Do not call an AI API to interpret simple commands.
+
+If a command is ambiguous or unsupported, ask the user to repeat it or show a clear message rather than executing an unrelated action.
+
+### Reader integration
+
+- Reuse the existing reader and TTS controllers.
+- Read the currently displayed content, not an unrelated or previously opened passage.
+- Use the existing playback and highlighting logic wherever possible.
+- Keep manual buttons functional.
+- Prevent duplicate commands from executing twice.
+- Avoid overlapping speech playback.
+- Ensure changing the current document cancels stale playback and prevents commands from affecting the previous document.
+- Preserve the existing text and its language.
+
+### Accessibility and interface
+
+Add a simple, consistent voice-assistant interface that matches the current AksharAlly design.
+
+Include:
+- A microphone control.
+- Clear listening status.
+- Recognized speech.
+- A way to stop listening.
+- A clear error or unsupported-command message.
+
+Use accessible labels and appropriate touch-target sizes. Do not redesign unrelated screens.
+
+### Phase A acceptance criteria
+
+Phase A is complete only when:
+
+- Microphone permissions and errors are handled.
+- Speech recognition works on the available test device.
+- Supported commands trigger the correct actions.
+- Reading, pause, resume, stop and repeat work correctly.
+- Font and colour commands update the actual settings.
+- Existing manual controls continue working.
+- TTS and highlighting behave consistently with the existing implementation.
+- Unsupported commands fail safely.
+- The application builds and relevant analysis/tests pass, or remaining environment blockers are clearly documented.
+
+After Phase A, provide a report of files changed, dependencies added, tests performed, results, known limitations and any manual device-testing requirements. Stop and wait for my approval before Phase B.
+
+## STEP 4 — Implement Phase B: Conversational Reading Assistant
+
+Begin only after I approve Phase A.
+
+Add an optional conversational reading assistant that can answer questions about the currently displayed text.
+
+Requirements:
+
+1. Inspect existing AI integration and backend services before choosing a provider.
+2. Reuse the existing Gemini integration where appropriate, provided the current SDK and API configuration support it.
+3. Keep API credentials in secure backend configuration or Replit Secrets.
+4. Add a dedicated Flask endpoint only if required.
+5. Send only the necessary passage and user question.
+6. Preserve the original text and distinguish it from the explanation.
+7. Keep answers concise, accessible and appropriate to the selected language.
+8. Do not silently translate Marathi into Hindi or change the user's selected language.
+9. Speak the answer using the existing TTS implementation.
+10. Handle network failures, timeouts, invalid responses, API quotas and unavailable services gracefully.
+11. Make it clear when an answer is unavailable instead of inventing a response.
+12. Keep the basic voice commands operational even when the AI service is unavailable.
+
+Test questions such as:
+- "Explain this paragraph simply."
+- "What does this word mean?"
+- "Explain this in Marathi."
+- "Repeat your explanation."
+
+Do not use AI-generated explanations as replacements for the source passage.
+
+## STEP 5 — Testing and Regression Prevention
+
+Test the voice assistant and existing functionality.
+
+### Voice assistant tests
+- Microphone permission granted and denied.
+- Speech recognized correctly and incorrectly.
+- Silence and background noise.
+- Unsupported device language.
+- Start, pause, resume, stop and repeat.
+- Font-size and colour commands.
+- Repeated or ambiguous commands.
+- Switching between passages.
+- Hindi, Marathi and English.
+- AI errors and offline operation, once Phase B exists.
+
+### Existing functionality
+Verify that:
+- Camera and gallery OCR still work.
+- English, Hindi and Marathi text extraction remains functional.
+- Text formatting and simplification still work.
+- PDF/DOCX processing remains functional.
+- TTS and highlighting continue to work.
+- Firebase login and registration remain functional.
+- Library and saved content still work.
+- Existing themes and accessibility settings remain intact.
+
+Run Flutter analysis, available automated tests and an Android build when the environment supports them.
+
+Do not hide, suppress or misreport existing failures.
+
+## STEP 6 — Final Review
+
+Before considering the feature ready:
+
+1. Review the complete Git diff.
+2. Check for unrelated modifications, duplicate services and exposed secrets.
+3. Verify that only intended files were changed.
+4. Summarize all completed features and limitations.
+5. Report exactly which tests passed and failed.
+6. Provide the commands needed to run the application and test the voice assistant.
+7. Explain any manual Android testing that remains.
+8. Wait for my explicit approval before committing, pushing or merging.
+
+## Execution Instructions
+
+Start with STEP 1 only.
+
+**First inspect and report. Do not edit code, install packages, create files or make branch changes until I approve the repository audit and the proposed implementation scope.**
