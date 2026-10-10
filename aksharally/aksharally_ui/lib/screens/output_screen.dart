@@ -5,7 +5,9 @@ import '../theme/app_theme.dart';
 import '../services/library_storage.dart';
 import '../models/library_item.dart';
 import '../models/format_result.dart';
+import '../services/reading_text_segments.dart';
 import '../services/tts_service.dart';
+import '../services/tts_progress_mapper.dart';
 import '../services/voice_command_handler.dart';
 import '../theme/accessibility_settings.dart';
 import '../widgets/highlighted_text_view.dart';
@@ -86,10 +88,18 @@ class _OutputScreenState extends State<OutputScreen> {
 
   List<String> words = [];
   int currentIndex = -1;
-  Timer? _timer;
+  Timer? _fallbackTimer;
+  Stopwatch? _fallbackStopwatch;
+  Duration _fallbackElapsed = Duration.zero;
+  Duration _fallbackWordDuration = Duration.zero;
+  bool _fallbackActive = false;
+  bool _usingEstimatedHighlight = false;
+  int _fallbackPosition = 0;
+  int _playbackGeneration = 0;
+  TtsProgressMapper? _progressMapper;
   String _activeSpeechText = '';
   List<int> _activeWordIndices = [];
-  bool _receivedTtsProgress = false;
+  bool _hasPreciseTtsProgress = false;
 
   // ── accessibility overlays ────────────────────────────────────────────────
   // Initialised lazily in build() once LayoutBuilder provides a real height.
@@ -213,7 +223,7 @@ class _OutputScreenState extends State<OutputScreen> {
       return false;
     }
     await _tts.setRate(speechRate);
-    _speakText(simplifiedText, _indicesForWords(0, words.length - 1));
+    await _speakText(simplifiedText, _indicesForWords(0, words.length - 1));
     return true;
   }
 
@@ -223,14 +233,50 @@ class _OutputScreenState extends State<OutputScreen> {
     void Function()? onComplete,
   }) async {
     if (text.trim().isEmpty || wordIndices.isEmpty) return;
-    _timer?.cancel();
+    final generation = ++_playbackGeneration;
+    _cancelFallbackTimer();
     _activeSpeechText = text;
     _activeWordIndices = wordIndices;
-    _receivedTtsProgress = false;
-    setState(() => currentIndex = wordIndices.first);
-    await _tts.speak(text, onProgress: _onTtsProgress, onComplete: onComplete);
-    if (!mounted || _receivedTtsProgress) return;
-    _startFallbackHighlight(0);
+    _progressMapper = TtsProgressMapper(
+      text: text,
+      displayWordIndices: wordIndices,
+    );
+    _fallbackPosition = 0;
+    _fallbackActive = false;
+    _hasPreciseTtsProgress = false;
+    if (mounted) {
+      setState(() {
+        currentIndex = wordIndices.first;
+        _usingEstimatedHighlight = false;
+      });
+    }
+
+    await _tts.speak(
+      text,
+      onProgress: (progressText, start, end, word) => _onTtsProgress(
+        progressText,
+        start,
+        end,
+        word,
+        generation,
+      ),
+      onComplete: () {
+        if (!mounted || generation != _playbackGeneration) return;
+        _cancelFallbackTimer();
+        _fallbackActive = false;
+        setState(() => _usingEstimatedHighlight = false);
+        final callback = onComplete;
+        callback?.call();
+      },
+    );
+    if (!mounted ||
+        generation != _playbackGeneration ||
+        _hasPreciseTtsProgress ||
+        _fallbackActive ||
+        _tts.isPaused) {
+      return;
+    }
+    _startFallbackHighlight(generation);
   }
 
   List<int> _indicesForWords(int first, int last) {
@@ -241,45 +287,144 @@ class _OutputScreenState extends State<OutputScreen> {
     ];
   }
 
-  void _onTtsProgress(String text, int start, int end, String word) {
-    if (_activeSpeechText.isEmpty || _activeWordIndices.isEmpty) return;
-    final safeOffset = start.clamp(0, _activeSpeechText.length).toInt();
-    final spokenBefore = _activeSpeechText
-        .substring(0, safeOffset)
-        .trim()
-        .split(RegExp(r'\s+'))
-        .where((token) => token.isNotEmpty)
-        .length;
-    final position = spokenBefore.clamp(0, _activeWordIndices.length - 1);
-    final wordIndex = _activeWordIndices[position];
-    _receivedTtsProgress = true;
-    _timer?.cancel();
-    if (mounted && currentIndex != wordIndex) {
-      setState(() => currentIndex = wordIndex);
+  void _onTtsProgress(
+    String text,
+    int start,
+    int end,
+    String word,
+    int generation,
+  ) {
+    if (generation != _playbackGeneration ||
+        text != _activeSpeechText ||
+        _activeSpeechText.isEmpty ||
+        _activeWordIndices.isEmpty) {
+      return;
+    }
+    final mapper = _progressMapper;
+    if (mapper == null) return;
+
+    if (mapper.isCoarseProgressWord(word)) {
+      if (!_fallbackActive) _startFallbackHighlight(generation);
+      return;
+    }
+
+    final wordIndex = mapper.displayIndexForRange(start, end);
+    if (wordIndex == null) return;
+    _hasPreciseTtsProgress = true;
+    _cancelFallbackTimer();
+    _fallbackActive = false;
+    _fallbackPosition = mapper.positionForDisplayIndex(wordIndex) ?? 0;
+    if (mounted) {
+      setState(() {
+        currentIndex = wordIndex;
+        _usingEstimatedHighlight = false;
+      });
     }
   }
 
-  void _startFallbackHighlight(int startPosition) {
-    _timer?.cancel();
-    if (_activeWordIndices.isEmpty) return;
-    var position = startPosition;
-    _timer = Timer.periodic(const Duration(milliseconds: 400), (timer) {
-      if (_receivedTtsProgress) {
-        timer.cancel();
-        return;
-      }
-      if (position >= _activeWordIndices.length) {
-        timer.cancel();
-        return;
-      }
-      final wordIndex = _activeWordIndices[position++];
-      if (mounted) setState(() => currentIndex = wordIndex);
-    });
+  void _startFallbackHighlight(int generation) {
+    final mapper = _progressMapper;
+    if (generation != _playbackGeneration ||
+        _hasPreciseTtsProgress ||
+        mapper == null ||
+        mapper.wordCount == 0) {
+      return;
+    }
+    _fallbackActive = true;
+    _fallbackPosition = _fallbackPosition
+        .clamp(0, mapper.wordCount - 1)
+        .toInt();
+    _fallbackElapsed = Duration.zero;
+    _fallbackWordDuration = TtsProgressMapper.estimateWordDuration(
+      mapper.wordAtPosition(_fallbackPosition)!,
+      speechRate,
+    );
+    if (mounted) {
+      setState(() {
+        currentIndex = mapper.displayIndexAtPosition(_fallbackPosition)!;
+        _usingEstimatedHighlight = true;
+      });
+    }
+    _scheduleFallbackTimer(generation);
+  }
+
+  void _scheduleFallbackTimer(int generation) {
+    if (!_fallbackActive || _tts.isPaused) return;
+    _fallbackTimer?.cancel();
+    _fallbackStopwatch = Stopwatch()..start();
+    final remaining = _fallbackWordDuration - _fallbackElapsed;
+    _fallbackTimer = Timer(
+      remaining.isNegative ? Duration.zero : remaining,
+      () {
+        if (generation != _playbackGeneration || !_fallbackActive) return;
+        _captureFallbackElapsed();
+        final mapper = _progressMapper;
+        if (mapper == null) return;
+        final nextPosition = _fallbackPosition + 1;
+        if (nextPosition >= mapper.wordCount) {
+          _fallbackActive = false;
+          _fallbackTimer = null;
+          _fallbackStopwatch = null;
+          return;
+        }
+        _fallbackPosition = nextPosition;
+        _fallbackElapsed = Duration.zero;
+        final nextWord = mapper.wordAtPosition(nextPosition)!;
+        _fallbackWordDuration = TtsProgressMapper.estimateWordDuration(
+          nextWord,
+          speechRate,
+        );
+        if (mounted) {
+          setState(
+            () => currentIndex = mapper.displayIndexAtPosition(nextPosition)!,
+          );
+        }
+        _scheduleFallbackTimer(generation);
+      },
+    );
+  }
+
+  void _captureFallbackElapsed() {
+    final stopwatch = _fallbackStopwatch;
+    if (stopwatch == null) return;
+    if (stopwatch.isRunning) {
+      _fallbackElapsed += stopwatch.elapsed;
+      stopwatch.stop();
+    }
+  }
+
+  void _freezeFallbackTimer() {
+    if (!_fallbackActive) return;
+    _captureFallbackElapsed();
+    _fallbackTimer?.cancel();
+    _fallbackTimer = null;
+  }
+
+  void _resumeFallbackTimer(int generation) {
+    if (generation != _playbackGeneration || _hasPreciseTtsProgress) return;
+    if (!_fallbackActive) {
+      _startFallbackHighlight(generation);
+      return;
+    }
+    _scheduleFallbackTimer(generation);
+  }
+
+  void _cancelFallbackTimer() {
+    _fallbackTimer?.cancel();
+    _fallbackTimer = null;
+    _fallbackStopwatch?.stop();
+    _fallbackStopwatch = null;
+    _fallbackElapsed = Duration.zero;
   }
 
   Future<bool> _pausePlayback() async {
-    _timer?.cancel();
+    final willRestartEstimatedWord = _provideEstimatedResumeOffset();
+    _freezeFallbackTimer();
     final paused = await _tts.pause();
+    if (paused && willRestartEstimatedWord) {
+      _fallbackElapsed = Duration.zero;
+    }
+    if (!paused) _resumeFallbackTimer(_playbackGeneration);
     if (!paused && mounted) {
       setState(() => _voiceMessage = 'Reading is not currently playing.');
     }
@@ -298,9 +443,84 @@ class _OutputScreenState extends State<OutputScreen> {
       }
       return;
     }
-    final currentPosition = _activeWordIndices.indexOf(currentIndex);
-    _receivedTtsProgress = false;
-    _startFallbackHighlight(currentPosition < 0 ? 0 : currentPosition);
+    _resumeFallbackTimer(_playbackGeneration);
+  }
+
+  Future<void> _changeSpeechRate(double amount) async {
+    final requestedRate = (speechRate + amount).clamp(0.1, 1.0).toDouble();
+    if (requestedRate == speechRate) {
+      _setVoiceMessage(
+        amount > 0
+            ? 'Speech speed is already at its maximum.'
+            : 'Speech speed is already at its minimum.',
+      );
+      return;
+    }
+
+    try {
+      final restartsEstimatedWord =
+          !_hasPreciseTtsProgress &&
+          _usingEstimatedHighlight &&
+          (_tts.isSpeaking || _tts.isPaused);
+      _provideEstimatedResumeOffset();
+      final appliedRate = await _tts.setRate(requestedRate);
+      if (!mounted) return;
+      _rescaleFallbackForRate(
+        appliedRate,
+        restartCurrentWord: restartsEstimatedWord,
+      );
+      setState(() => speechRate = appliedRate);
+      _setVoiceMessage(
+        'Speech speed ${amount > 0 ? 'increased' : 'reduced'} to '
+        '${(appliedRate * 100).round()}%.',
+      );
+    } catch (error) {
+      _setVoiceMessage('Could not change speech speed: $error');
+    }
+  }
+
+  bool _provideEstimatedResumeOffset() {
+    if (_hasPreciseTtsProgress ||
+        !_usingEstimatedHighlight ||
+        !_tts.isSpeaking) {
+      return false;
+    }
+    final offset = _progressMapper?.sourceOffsetAtPosition(_fallbackPosition);
+    if (offset == null) return false;
+    _tts.setFallbackResumeOffset(offset);
+    return true;
+  }
+
+  void _rescaleFallbackForRate(
+    double rate, {
+    required bool restartCurrentWord,
+  }) {
+    if (!_fallbackActive) return;
+    final mapper = _progressMapper;
+    final word = mapper?.wordAtPosition(_fallbackPosition);
+    if (mapper == null || word == null) return;
+
+    final wasRunning = _fallbackTimer != null && !_tts.isPaused;
+    _captureFallbackElapsed();
+    _fallbackTimer?.cancel();
+    _fallbackTimer = null;
+    final oldBudget = _fallbackWordDuration.inMicroseconds;
+    final progressFraction = oldBudget == 0
+        ? 0.0
+        : (_fallbackElapsed.inMicroseconds / oldBudget)
+              .clamp(0.0, 1.0)
+              .toDouble();
+    final newBudget = TtsProgressMapper.estimateWordDuration(
+      word,
+      rate,
+    );
+    _fallbackWordDuration = newBudget;
+    _fallbackElapsed = Duration(
+      microseconds: restartCurrentWord
+          ? 0
+          : (newBudget.inMicroseconds * progressFraction).round(),
+    );
+    if (wasRunning) _scheduleFallbackTimer(_playbackGeneration);
   }
 
   Future<void> _beforeVoiceListening() async {
@@ -334,12 +554,15 @@ class _OutputScreenState extends State<OutputScreen> {
         }
         break;
       case VoiceCommandIntent.pauseReading:
-        await pauseReading();
-        _setVoiceMessage('Reading paused.');
+        final paused = await _pausePlayback();
+        if (paused) _setVoiceMessage('Reading paused.');
         break;
       case VoiceCommandIntent.resumeReading:
+        final wasPaused = _tts.isPaused;
         await resumeReading();
-        _setVoiceMessage('Resuming reading.');
+        if (wasPaused && _tts.isSpeaking) {
+          _setVoiceMessage('Resuming reading.');
+        }
         break;
       case VoiceCommandIntent.stopReading:
         await stopReading();
@@ -349,6 +572,19 @@ class _OutputScreenState extends State<OutputScreen> {
         await _repeatCurrentSentence(
           continueReadingAfter: shouldResumeAfterCommand,
         );
+        break;
+      case VoiceCommandIntent.repeatPassage:
+        if (await _startReadingCurrentText()) {
+          _setVoiceMessage('Repeating this passage from the beginning.');
+        }
+        break;
+      case VoiceCommandIntent.increaseSpeechRate:
+        await _changeSpeechRate(0.1);
+        if (shouldResumeAfterCommand) await resumeReading();
+        break;
+      case VoiceCommandIntent.decreaseSpeechRate:
+        await _changeSpeechRate(-0.1);
+        if (shouldResumeAfterCommand) await resumeReading();
         break;
       case VoiceCommandIntent.increaseFontSize:
         await _changeFontSize(2);
@@ -363,9 +599,7 @@ class _OutputScreenState extends State<OutputScreen> {
         if (shouldResumeAfterCommand) await resumeReading();
         break;
       case VoiceCommandIntent.unsupported:
-        _setVoiceMessage(
-          'I did not recognize that reading command. Please try one command at a time.',
-        );
+        _setVoiceMessage(VoiceCommandHandler.unsupportedFeedback(languageCode));
         if (shouldResumeAfterCommand) await resumeReading();
         break;
     }
@@ -374,68 +608,35 @@ class _OutputScreenState extends State<OutputScreen> {
   Future<void> _repeatCurrentSentence({
     required bool continueReadingAfter,
   }) async {
-    var activeIndex = currentIndex;
-    if (activeIndex < 0 || activeIndex >= words.length) {
+    if (currentIndex < 0 || currentIndex >= words.length) {
       _setVoiceMessage(
         'Start reading first so I know which sentence to repeat.',
       );
       if (continueReadingAfter) await resumeReading();
       return;
     }
-    if (words[activeIndex] == HighlightedTextView.paragraphMarker) {
-      while (activeIndex < words.length &&
-          words[activeIndex] == HighlightedTextView.paragraphMarker) {
-        activeIndex++;
-      }
-      if (activeIndex >= words.length) {
-        _setVoiceMessage('There is no current sentence to repeat.');
-        return;
-      }
+    final sentenceRange = ReadingTextSegments.sentenceAt(words, currentIndex);
+    if (sentenceRange == null) {
+      _setVoiceMessage('There is no current sentence to repeat.');
+      return;
     }
-
-    var first = activeIndex;
-    while (first > 0) {
-      final previous = words[first - 1];
-      if (previous == HighlightedTextView.paragraphMarker ||
-          _endsSentence(previous)) {
-        break;
-      }
-      first--;
-    }
-
-    var last = activeIndex;
-    while (last < words.length - 1) {
-      if (_endsSentence(words[last])) break;
-      final next = words[last + 1];
-      if (next == HighlightedTextView.paragraphMarker) break;
-      last++;
-    }
+    final first = sentenceRange.firstWordIndex;
+    final last = sentenceRange.lastWordIndex;
 
     final selectedWords = _indicesForWords(first, last);
     final sentence = selectedWords.map((index) => words[index]).join(' ');
     final remainingWords = _indicesForWords(last + 1, words.length - 1);
-    final remainingText = _textAfterWord(last);
+    final remainingText = ReadingTextSegments.textAfterWord(
+      simplifiedText,
+      words,
+      last,
+    );
     final completion = continueReadingAfter && remainingWords.isNotEmpty
         ? () => unawaited(_speakText(remainingText, remainingWords))
         : null;
 
     await _speakText(sentence, selectedWords, onComplete: completion);
     _setVoiceMessage('Repeating the current sentence.');
-  }
-
-  bool _endsSentence(String word) =>
-      const ['.', '!', '?', '।', '॥', '…'].any(word.endsWith);
-
-  String _textAfterWord(int wordIndex) {
-    var cursor = 0;
-    for (var i = 0; i <= wordIndex && i < words.length; i++) {
-      final token = words[i];
-      if (token == HighlightedTextView.paragraphMarker) continue;
-      final position = simplifiedText.indexOf(token, cursor);
-      if (position < 0) continue;
-      cursor = position + token.length;
-    }
-    return simplifiedText.substring(cursor).trim();
   }
 
   Future<void> _changeFontSize(double amount) async {
@@ -500,20 +701,25 @@ class _OutputScreenState extends State<OutputScreen> {
   }
 
   Future<void> stopReading() async {
+    ++_playbackGeneration;
+    _cancelFallbackTimer();
+    _fallbackActive = false;
+    _progressMapper = null;
     await _tts.stop();
-    _timer?.cancel();
     _activeSpeechText = '';
     _activeWordIndices = [];
     if (mounted)
       setState(() {
         currentIndex = -1;
+        _usingEstimatedHighlight = false;
       });
   }
 
   @override
   void dispose() {
-    _timer?.cancel();
-    _tts.stop();
+    ++_playbackGeneration;
+    _cancelFallbackTimer();
+    unawaited(_tts.stop());
     super.dispose();
   }
 
@@ -1069,6 +1275,23 @@ class _OutputScreenState extends State<OutputScreen> {
                         onLanguageChanged: _onVoiceLanguageChanged,
                         feedback: _voiceMessage,
                       ),
+
+                      if (_usingEstimatedHighlight)
+                        Padding(
+                          padding: const EdgeInsets.only(
+                            top: AppTheme.spaceSM,
+                          ),
+                          child: Semantics(
+                            liveRegion: true,
+                            child: Text(
+                              'This device does not provide word-level speech progress. Highlight timing is estimated and may drift.',
+                              style: TextStyle(
+                                color: getTextColor().withOpacity(0.75),
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        ),
 
                       const SizedBox(height: AppTheme.spaceMD),
 

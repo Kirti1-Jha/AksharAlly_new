@@ -4,6 +4,9 @@ enum VoiceCommandIntent {
   resumeReading,
   stopReading,
   repeatSentence,
+  repeatPassage,
+  increaseSpeechRate,
+  decreaseSpeechRate,
   increaseFontSize,
   decreaseFontSize,
   changeColors,
@@ -38,6 +41,26 @@ class VoiceCommandHandler {
         'repeat that sentence',
         'repeat the sentence',
         'repeat sentence',
+        'repeat current sentence',
+      ],
+      VoiceCommandIntent.repeatPassage: [
+        'repeat this passage',
+        'repeat the passage',
+        'repeat passage',
+        'repeat current passage',
+        'read the passage again',
+      ],
+      VoiceCommandIntent.increaseSpeechRate: [
+        'speak faster',
+        'read faster',
+        'faster',
+        'increase reading speed',
+      ],
+      VoiceCommandIntent.decreaseSpeechRate: [
+        'speak slower',
+        'read slower',
+        'slower',
+        'decrease reading speed',
       ],
       VoiceCommandIntent.increaseFontSize: [
         'increase font size',
@@ -80,6 +103,24 @@ class VoiceCommandHandler {
         'यह वाक्य दोहराएं',
         'वाक्य दोहराएं',
         'फिर से वाक्य पढ़ें',
+      ],
+      VoiceCommandIntent.repeatPassage: [
+        'पूरा पाठ फिर से पढ़ें',
+        'पूरा पृष्ठ फिर से पढ़ें',
+        'पूरा पेज दोबारा पढ़ें',
+        'यह पूरा पाठ फिर से पढ़ें',
+      ],
+      VoiceCommandIntent.increaseSpeechRate: [
+        'तेज़ बोलें',
+        'तेज़ पढ़ें',
+        'पढ़ने की गति बढ़ाएं',
+        'गति बढ़ाएं',
+      ],
+      VoiceCommandIntent.decreaseSpeechRate: [
+        'धीरे बोलें',
+        'धीरे पढ़ें',
+        'पढ़ने की गति घटाएं',
+        'गति कम करें',
       ],
       VoiceCommandIntent.increaseFontSize: [
         'अक्षर का आकार बढ़ाएं',
@@ -124,6 +165,24 @@ class VoiceCommandHandler {
         'वाक्य पुन्हा सांगा',
         'वाक्य पुन्हा वाचा',
       ],
+      VoiceCommandIntent.repeatPassage: [
+        'संपूर्ण उतारा पुन्हा वाचा',
+        'संपूर्ण परिच्छेद पुन्हा वाचा',
+        'पूर्ण मजकूर पुन्हा वाचा',
+        'हा उतारा पुन्हा वाचा',
+      ],
+      VoiceCommandIntent.increaseSpeechRate: [
+        'जलद वाचा',
+        'वेगाने वाचा',
+        'वाचनाचा वेग वाढवा',
+        'वाचन जलद करा',
+      ],
+      VoiceCommandIntent.decreaseSpeechRate: [
+        'हळू वाचा',
+        'हळू बोला',
+        'वाचनाचा वेग कमी करा',
+        'वाचन मंद करा',
+      ],
       VoiceCommandIntent.increaseFontSize: [
         'अक्षरांचा आकार वाढवा',
         'फॉन्ट मोठा करा',
@@ -166,6 +225,22 @@ class VoiceCommandHandler {
     return VoiceCommandIntent.unsupported;
   }
 
+  static String unsupportedFeedback(String languageCode) {
+    final language = languageCode
+        .toLowerCase()
+        .replaceAll('_', '-')
+        .split('-')
+        .first;
+    return switch (language) {
+      'hi' =>
+        'यह कमांड समझ नहीं आया। एक कमांड बोलें, जैसे “यह पेज पढ़ें”, “पढ़ना रोकें” या “धीरे पढ़ें”। वाक्य आगे/पीछे करना अभी उपलब्ध नहीं है।',
+      'mr' =>
+        'हा आदेश समजला नाही. एक आदेश बोला, जसे “हे पान वाचा”, “वाचन थांबवा” किंवा “हळू वाचा”. वाक्य पुढे/मागे नेणे सध्या उपलब्ध नाही.',
+      _ =>
+        'I did not recognize that command. Try one command at a time, such as “read this page,” “pause reading,” or “read slower.” Sentence navigation is not available yet.',
+    };
+  }
+
   static String _normalize(String value) {
     var normalized = value.toLowerCase();
     for (final punctuation in const [
@@ -177,6 +252,10 @@ class VoiceCommandHandler {
       ':',
       '(',
       ')',
+      '-',
+      '–',
+      '—',
+      '/',
       '[',
       ']',
       '{',

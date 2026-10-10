@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../theme/accessibility_settings.dart';
+import '../services/reading_text_segments.dart';
 
 /// Paragraph-aware, word-highlighting text renderer.
 ///
@@ -31,20 +32,13 @@ class HighlightedTextView extends StatelessWidget {
   });
 
   /// Marks paragraph breaks in the words list (never spoken by TTS).
-  static const String paragraphMarker = '¶';
+  static const String paragraphMarker = ReadingTextSegments.paragraphMarker;
 
   /// Splits raw text into a word list, converting `\n\n` into a paragraph
   /// marker and collapsing single `\n` into a space. Ported verbatim from
   /// ReaderScreen._splitToWords.
-  static List<String> splitToWords(String text) {
-    return text
-        .replaceAll('\r\n', '\n')
-        .replaceAll('\n\n', ' $paragraphMarker ')
-        .replaceAll('\n', ' ')
-        .split(' ')
-        .where((w) => w.isNotEmpty)
-        .toList();
-  }
+  static List<String> splitToWords(String text) =>
+      ReadingTextSegments.splitToWords(text);
 
   /// Returns a [TextStyle] using the font selected in AccessibilitySettings.
   ///

@@ -36,6 +36,35 @@ void main() {
       );
     });
 
+    test('matches repeat and speed commands in the selected language', () {
+      expect(
+        VoiceCommandHandler.parse(
+          'Repeat the passage!',
+          languageCode: 'en-US',
+        ),
+        VoiceCommandIntent.repeatPassage,
+      );
+      expect(
+        VoiceCommandHandler.parse('read slower', languageCode: 'en'),
+        VoiceCommandIntent.decreaseSpeechRate,
+      );
+      expect(
+        VoiceCommandHandler.parse('पढ़ने की गति बढ़ाएं', languageCode: 'hi-IN'),
+        VoiceCommandIntent.increaseSpeechRate,
+      );
+      expect(
+        VoiceCommandHandler.parse('हळू वाचा।', languageCode: 'mr-IN'),
+        VoiceCommandIntent.decreaseSpeechRate,
+      );
+      expect(
+        VoiceCommandHandler.parse(
+          'संपूर्ण उतारा पुन्हा वाचा',
+          languageCode: 'mr',
+        ),
+        VoiceCommandIntent.repeatPassage,
+      );
+    });
+
     test('rejects ambiguous, combined, and unsupported phrases', () {
       expect(
         VoiceCommandHandler.parse(
@@ -51,6 +80,32 @@ void main() {
       expect(
         VoiceCommandHandler.parse('read this page', languageCode: 'fr'),
         VoiceCommandIntent.unsupported,
+      );
+      expect(
+        VoiceCommandHandler.parse(
+          'please pause reading now',
+          languageCode: 'en',
+        ),
+        VoiceCommandIntent.unsupported,
+      );
+      expect(
+        VoiceCommandHandler.parse('read slower', languageCode: 'mr'),
+        VoiceCommandIntent.unsupported,
+      );
+      expect(
+        VoiceCommandHandler.parse('next sentence', languageCode: 'en'),
+        VoiceCommandIntent.unsupported,
+      );
+    });
+
+    test('provides selected-language help for unsupported commands', () {
+      expect(
+        VoiceCommandHandler.unsupportedFeedback('mr-IN'),
+        contains('हळू वाचा'),
+      );
+      expect(
+        VoiceCommandHandler.unsupportedFeedback('en-US'),
+        contains('Sentence navigation is not available yet'),
       );
     });
   });
