@@ -1,50 +1,62 @@
+"""
+Gemini-first OCR for AksharAlly.
+
+- Uses Gemini vision to transcribe ordinary image pages, including handwriting.
+- Uses Tesseract for table/grid pages because spatial cell positions matter there.
+- Falls back to Tesseract if Gemini is not configured or the API call fails.
+- Preserves the public extract_document()/extract_text() interfaces.
+"""
+
+import io
+import os
+import re
+from functools import lru_cache
+
 import cv2
 import numpy as np
-from PIL import Image
 import pytesseract
+from PIL import Image
+from dotenv import load_dotenv
+from google import genai
+from google.genai import types
 
-try:
-    import easyocr
-    reader = easyocr.Reader(['en', 'hi'], gpu=False)
-    EASYOCR_AVAILABLE = True
-    print("✅ EasyOCR loaded successfully")
-except Exception as e:
-    EASYOCR_AVAILABLE = False
-    reader = None
-    print(f"⚠️ EasyOCR not available ({e}), falling back to pytesseract")
+load_dotenv()
+
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+GEMINI_OCR_MODEL = os.getenv("GEMINI_OCR_MODEL", "gemini-2.5-flash")
+
+if GEMINI_API_KEY:
+    _gemini_client = genai.Client(api_key=GEMINI_API_KEY)
+    print(f"✅ Gemini OCR configured ({GEMINI_OCR_MODEL})")
+else:
+    _gemini_client = None
+    print("⚠️ GEMINI_API_KEY not set; OCR will use Tesseract fallback")
 
 
 def preprocess_image(image_np):
+    """Prepare a grayscale image for Tesseract fallback."""
     if len(image_np.shape) == 3:
-        # PIL supplies RGB arrays. Treating them as BGR subtly damages
-        # colour-to-gray conversion before OCR.
         gray = cv2.cvtColor(image_np, cv2.COLOR_RGB2GRAY)
     else:
-        gray = image_np
+        gray = image_np.copy()
 
     height, width = gray.shape
-
     if height < 1000 or width < 1000:
         gray = cv2.resize(
-            gray, None, fx=1.5, fy=1.5,
-            interpolation=cv2.INTER_CUBIC
+            gray, None, fx=1.5, fy=1.5, interpolation=cv2.INTER_CUBIC
         )
 
     clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
     enhanced = clahe.apply(gray)
-
     denoised = cv2.fastNlMeansDenoising(enhanced, h=10)
-
-    thresh = cv2.adaptiveThreshold(
+    return cv2.adaptiveThreshold(
         denoised,
         255,
         cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
         cv2.THRESH_BINARY,
         11,
-        2
+        2,
     )
-
-    return thresh
 
 
 def _tesseract_language(language):
@@ -57,26 +69,29 @@ def _tesseract_language(language):
 
 
 def _tesseract_detections(image, language, psm=3):
-    """Return OCR words with their positions instead of flattening them."""
+    """Return Tesseract words with positions so the structure analyzer can run."""
     data = pytesseract.image_to_data(
         image,
         lang=_tesseract_language(language),
         config=f"--oem 3 --psm {psm}",
         output_type=pytesseract.Output.DICT,
     )
-
     detections = []
     for index, value in enumerate(data.get("text", [])):
         text = value.strip()
         if not text:
             continue
+        try:
+            confidence = float(data["conf"][index])
+        except (ValueError, TypeError):
+            confidence = -1.0
         detections.append({
             "text": text,
             "left": int(data["left"][index]),
             "top": int(data["top"][index]),
             "width": int(data["width"][index]),
             "height": int(data["height"][index]),
-            "confidence": float(data["conf"][index]),
+            "confidence": confidence,
             "lineKey": (
                 int(data["block_num"][index]),
                 int(data["par_num"][index]),
@@ -88,7 +103,7 @@ def _tesseract_detections(image, language, psm=3):
 
 
 def _render_detections(detections):
-    """Render positioned OCR words into lines while keeping column gaps."""
+    """Render positioned OCR words into lines while retaining rough column gaps."""
     grouped = []
     by_key = {}
     for detection in detections:
@@ -113,13 +128,7 @@ def _render_detections(detections):
     return "\n".join(rendered).strip()
 
 
-def _layout_text_from_tesseract(image, language):
-    """Compatibility wrapper returning layout-preserving OCR text."""
-    return _render_detections(_tesseract_detections(image, language))
-
-
 def _group_line_positions(mask, axis, threshold_ratio=0.35):
-    """Find contiguous x/y positions occupied by strong table lines."""
     projection = mask.sum(axis=axis)
     limit = (mask.shape[axis] * 255) * threshold_ratio
     occupied = projection > limit
@@ -136,7 +145,7 @@ def _group_line_positions(mask, axis, threshold_ratio=0.35):
 
 
 def _detect_table_grid(gray):
-    """Detect substantial horizontal and vertical table rules."""
+    """Detect a ruled table so cell extraction can use positional Tesseract OCR."""
     binary = cv2.threshold(gray, 200, 255, cv2.THRESH_BINARY_INV)[1]
     horizontal_kernel = cv2.getStructuringElement(
         cv2.MORPH_RECT, (max(20, gray.shape[1] // 25), 1)
@@ -151,23 +160,16 @@ def _detect_table_grid(gray):
     if len(x_lines) < 3 or len(y_lines) < 3:
         return None
 
-    # Require the rules to meet repeatedly. Independent page decorations can
-    # produce several horizontal and vertical strokes without forming cells.
-    intersection_hits = 0
+    intersections = 0
     for x_line in x_lines:
         for y_line in y_lines:
-            y_start = max(0, y_line - 1)
-            y_end = min(gray.shape[0], y_line + 2)
-            x_start = max(0, x_line - 1)
-            x_end = min(gray.shape[1], x_line + 2)
-            if (
-                vertical[y_start:y_end, x_start:x_end].any()
-                and horizontal[y_start:y_end, x_start:x_end].any()
-            ):
-                intersection_hits += 1
-    if intersection_hits < max(4, len(x_lines) * len(y_lines) * 0.5):
-        return None
+            ys = slice(max(0, y_line - 1), min(gray.shape[0], y_line + 2))
+            xs = slice(max(0, x_line - 1), min(gray.shape[1], x_line + 2))
+            if vertical[ys, xs].any() and horizontal[ys, xs].any():
+                intersections += 1
 
+    if intersections < max(4, len(x_lines) * len(y_lines) * 0.5):
+        return None
     return {
         "xLines": x_lines,
         "yLines": y_lines,
@@ -177,100 +179,131 @@ def _detect_table_grid(gray):
 
 
 def _remove_table_lines(gray, grid):
-    """Remove detected rules while leaving text pixels intact for OCR."""
     rules = cv2.bitwise_or(grid["horizontalMask"], grid["verticalMask"])
     return cv2.inpaint(gray, rules, 3, cv2.INPAINT_TELEA)
 
 
-def _easyocr_detections(results):
+def _image_to_png_bytes(image_np):
+    image = Image.fromarray(image_np.astype(np.uint8)).convert("RGB")
+    buffer = io.BytesIO()
+    image.save(buffer, format="PNG")
+    return buffer.getvalue()
+
+
+def _gemini_transcribe(image_np, language="en"):
+    """Transcribe the supplied page image using Gemini vision."""
+    if _gemini_client is None:
+        raise RuntimeError("Gemini OCR is not configured: GEMINI_API_KEY is missing.")
+
+    language = (language or "en").lower()
+    language_name = {"en": "English", "hi": "Hindi", "mr": "Marathi"}.get(
+        language, "the language visible in the image"
+    )
+    prompt = f"""
+You are an OCR transcription engine for student notes.
+Transcribe the visible text in this image in {language_name} (preserve other
+languages/scripts if they appear). This is transcription, not summarization.
+
+Rules:
+- Preserve the author's wording, spelling where readable, line order, headings,
+  numbering, bullets, symbols, equations, and paragraph breaks.
+- Do not explain, summarize, translate, or add facts.
+- Do not silently complete sentences or guess words from general knowledge.
+- If a short span cannot be read, write [unclear] for that span.
+- Keep mathematical expressions and abbreviations as close to the image as possible.
+- Return only the transcription, with no preface or markdown code fences.
+"""
+    image_bytes = _image_to_png_bytes(image_np)
+    response = _gemini_client.models.generate_content(
+        model=GEMINI_OCR_MODEL,
+        contents=[
+            prompt,
+            types.Part.from_bytes(data=image_bytes, mime_type="image/png"),
+        ],
+        config=types.GenerateContentConfig(
+            temperature=0,
+            max_output_tokens=8192,
+        ),
+    )
+    text = (response.text or "").strip()
+    text = re.sub(r"^\s*```(?:text|markdown)?\s*", "", text, flags=re.IGNORECASE)
+    text = re.sub(r"\s*```\s*$", "", text)
+    if not text:
+        raise RuntimeError("Gemini returned an empty transcription.")
+    return text
+
+
+def _detections_from_transcribed_lines(text, image_shape):
+    """
+    Build approximate line-level boxes for the existing structure analyzer.
+    Gemini returns the transcription rather than character bounding boxes.
+    """
+    height, width = image_shape[:2]
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    if not lines:
+        return []
+
+    line_height = max(1, int(height / max(len(lines) + 1, 2)))
     detections = []
-    for order, result in enumerate(results):
-        bounding_box, text, confidence = result
-        text = text.strip()
-        if not text:
-            continue
-        xs = [point[0] for point in bounding_box]
-        ys = [point[1] for point in bounding_box]
-        left, right = min(xs), max(xs)
-        top, bottom = min(ys), max(ys)
+    for index, line in enumerate(lines):
+        top = min(max(0, index * line_height), max(0, height - line_height))
         detections.append({
-            "text": text,
-            "left": int(left),
-            "top": int(top),
-            "width": int(right - left),
-            "height": int(bottom - top),
-            "confidence": float(confidence),
-            "lineKey": order,
-            "order": order,
+            "text": line,
+            "left": int(width * 0.03),
+            "top": top,
+            "width": int(width * 0.94),
+            "height": line_height,
+            "confidence": 0.0,  # Gemini does not provide calibrated OCR confidence.
+            "lineKey": index,
+            "order": index,
         })
     return detections
 
 
-def _layout_text_from_easyocr(results):
-    """Group EasyOCR boxes into lines instead of flattening them."""
-    words = []
-    for bounding_box, text, _confidence in results:
-        if not text.strip():
-            continue
-        xs = [point[0] for point in bounding_box]
-        ys = [point[1] for point in bounding_box]
-        words.append((
-            min(xs),
-            min(ys),
-            max(xs),
-            max(ys),
-            text.strip(),
-        ))
-
-    words.sort(key=lambda item: (item[1], item[0]))
-    lines = []
-    for word in words:
-        center_y = (word[1] + word[3]) / 2
-        matching_line = None
-        for line in lines:
-            if abs(center_y - line["center_y"]) <= max(12, word[3] - word[1]):
-                matching_line = line
-                break
-        if matching_line is None:
-            matching_line = {"center_y": center_y, "words": []}
-            lines.append(matching_line)
-        matching_line["words"].append(word)
-
-    rendered = []
-    for line in lines:
-        line["words"].sort(key=lambda item: item[0])
-        rendered.append(" ".join(word[4] for word in line["words"]))
-    return "\n".join(rendered).strip()
-
-
 def extract_document(image_input, language="en"):
-    """Extract text and a structure-aware display model from an image."""
+    """
+    Return {'text', 'detections', 'structure'} for an image or RGB ndarray.
+
+    Gemini handles normal full-page transcription, including handwritten notes.
+    Tesseract is retained for grid/table pages and as a robust API/configuration
+    fallback. The function signature remains compatible with existing callers.
+    """
     if isinstance(image_input, np.ndarray):
         image_np = image_input
     else:
         image = Image.open(image_input).convert("RGB")
         image_np = np.array(image)
 
+    if image_np.ndim == 2:
+        image_np = cv2.cvtColor(image_np, cv2.COLOR_GRAY2RGB)
+    elif image_np.shape[2] == 4:
+        image_np = cv2.cvtColor(image_np, cv2.COLOR_RGBA2RGB)
+
     gray = cv2.cvtColor(image_np, cv2.COLOR_RGB2GRAY)
     grid = _detect_table_grid(gray)
 
-    # Tesseract is used for grids so the cell coordinates and empty cells
-    # remain available. EasyOCR remains a useful fallback for ordinary
-    # camera captures where its detector is installed.
-    if EASYOCR_AVAILABLE and not grid and (language or "en").lower() == "en":
-        detections = _easyocr_detections(
-            reader.readtext(image_np, detail=1, paragraph=False)
-        )
+    if grid:
+        # Cell geometry matters more than semantic transcription for tables.
+        ocr_image = _remove_table_lines(gray, grid)
+        detections = _tesseract_detections(ocr_image, language, psm=6)
+        rendered_text = _render_detections(detections)
+        if not rendered_text:
+            detections = _tesseract_detections(preprocess_image(image_np), language)
+            rendered_text = _render_detections(detections)
     else:
-        ocr_image = _remove_table_lines(gray, grid) if grid else gray
-        detections = _tesseract_detections(ocr_image, language, psm=6 if grid else 3)
+        try:
+            rendered_text = _gemini_transcribe(image_np, language)
+            detections = _detections_from_transcribed_lines(rendered_text, image_np.shape)
+            print("✅ Image transcription completed with Gemini")
+        except Exception as error:
+            print(f"⚠️ Gemini OCR failed; using Tesseract fallback: {error}")
+            detections = _tesseract_detections(gray, language, psm=3)
+            rendered_text = _render_detections(detections)
+            if not rendered_text:
+                detections = _tesseract_detections(preprocess_image(image_np), language)
+                rendered_text = _render_detections(detections)
 
-    if not detections:
-        detections = _tesseract_detections(preprocess_image(image_np), language)
-
-    rendered_text = _render_detections(detections)
     from input_processing.structure_analyzer import analyze_structure
-
     structure = analyze_structure(
         image_np.shape,
         detections,
@@ -285,4 +318,5 @@ def extract_document(image_input, language="en"):
 
 
 def extract_text(image_input, language="en"):
+    """Backward-compatible text-only wrapper."""
     return extract_document(image_input, language)["text"]
