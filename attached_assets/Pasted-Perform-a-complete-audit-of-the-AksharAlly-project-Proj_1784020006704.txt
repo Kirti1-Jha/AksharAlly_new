@@ -1,0 +1,81 @@
+Perform a complete audit of the AksharAlly project.
+
+Project Context:
+
+* AksharAlly is an AI-powered dyslexia-friendly reading companion.
+* Frontend: Flutter
+* Backend: Flask (Python)
+* OCR supports English and Hindi.
+* Gemini is used for text simplification.
+* Users can input text, images, camera captures, PDFs, and DOCX files.
+* Firebase authentication is enabled.
+
+Audit the entire codebase and provide a report with the following sections:
+
+1. Architecture Review
+
+   * Analyze frontend-backend communication.
+   * Check API structure and route organization.
+   * Identify duplicated, unused, or unnecessary files.
+   * Identify scalability concerns.
+
+2. Functional Testing Review
+
+   * Verify text input flow.
+   * Verify image OCR flow.
+   * Verify PDF processing flow.
+   * Verify DOCX processing flow.
+   * Verify simplification flow.
+   * Verify Firebase authentication flow.
+   * Identify any broken user journeys.
+
+3. Bug Detection
+
+   * Find runtime errors.
+   * Find logical errors.
+   * Find state management issues.
+   * Find null safety issues.
+   * Find API error handling issues.
+   * Find security concerns.
+
+4. Code Quality Review
+
+   * Identify code smells.
+   * Detect duplicate code.
+   * Detect dead code and unused imports.
+   * Recommend refactoring opportunities.
+
+5. Performance Review
+
+   * Identify slow API calls.
+   * Identify unnecessary rebuilds in Flutter.
+   * Identify OCR bottlenecks.
+   * Suggest optimization opportunities.
+
+6. Production Readiness Review
+
+   * Check environment variable usage.
+   * Check Firebase configuration.
+   * Check API key handling.
+   * Check deployment readiness.
+   * List blockers preventing production deployment.
+
+7. Feature Verification
+   Confirm whether these requirements are correctly implemented:
+
+   * English text should simplify in English.
+   * Hindi text should simplify in Hindi.
+   * OCR output should preserve language.
+   * Image uploads should format extracted text into a dyslexia-friendly layout.
+   * TTS should work with synchronized highlighting.
+   * Authentication should protect backend endpoints.
+
+8. Final Report
+
+   * Critical Issues
+   * High Priority Issues
+   * Medium Priority Issues
+   * Low Priority Issues
+   * Recommended Next Steps
+
+Be extremely critical. Assume this project is being reviewed for a hackathon final submission and identify every issue that could cause failure, poor user experience, crashes, security vulnerabilities, or judging penalties.

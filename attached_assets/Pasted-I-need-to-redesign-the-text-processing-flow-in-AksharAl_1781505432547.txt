@@ -1,0 +1,144 @@
+I need to redesign the text processing flow in AksharAlly.
+
+IMPORTANT:
+
+Dyslexia Formatting and Text Simplification are TWO DIFFERENT FEATURES.
+
+CURRENT PROBLEM:
+The system is automatically simplifying, rewriting, and even translating text when an image is uploaded.
+
+I DO NOT WANT THAT.
+
+=================================================
+FEATURE 1: DYSLEXIA FORMATTER
+=================================================
+
+When a user uploads an image/PDF/DOCX/text:
+
+1. Extract the text using OCR or document extraction.
+2. DO NOT change the words.
+3. DO NOT simplify.
+4. DO NOT summarize.
+5. DO NOT translate.
+6. DO NOT rewrite.
+7. Preserve the original language exactly.
+
+The formatter should only make the text easier to read for dyslexic users.
+
+Formatting rules:
+
+- Keep the original text unchanged.
+- Split very long paragraphs into smaller chunks.
+- Limit line length for readability.
+- Preserve sentence order.
+- Add paragraph spacing.
+- Return formatting metadata.
+
+Create reading profiles:
+
+Mild:
+- fontSize: 18
+- lineSpacing: 1.5
+- letterSpacing: 0.5
+
+Moderate:
+- fontSize: 20
+- lineSpacing: 1.8
+- letterSpacing: 1.0
+
+Severe:
+- fontSize: 22
+- lineSpacing: 2.0
+- letterSpacing: 1.5
+
+Example:
+
+Input:
+"As he leaned down, he saw his reflection in the water and gasped in surprise."
+
+Output:
+{
+  "formattedText": "As he leaned down, he saw his reflection in the water and gasped in surprise.",
+  "font": "Lexend",
+  "fontSize": 20,
+  "lineSpacing": 1.8,
+  "letterSpacing": 1.0
+}
+
+The text content MUST remain identical.
+
+=================================================
+FEATURE 2: TEXT SIMPLIFICATION
+=================================================
+
+This should be a completely separate button and API endpoint.
+
+Only when the user presses "Simplify Text":
+
+- Send text to Gemini.
+- Simplify difficult vocabulary.
+- Shorten complex sentences.
+- Keep the meaning intact.
+
+Example:
+
+Original:
+"The mitochondria is the powerhouse of the cell."
+
+Simplified:
+"The mitochondria gives energy to the cell."
+
+=================================================
+BACKEND CHANGES
+=================================================
+
+Create separate endpoints:
+
+POST /api/format-text
+Purpose:
+OCR/document extraction + dyslexia formatting only.
+No AI rewriting.
+No translation.
+No simplification.
+
+POST /api/simplify-text
+Purpose:
+Take already extracted text and simplify it using Gemini.
+
+=================================================
+FRONTEND FLOW
+=================================================
+
+Choose Image
+↓
+OCR Extraction
+↓
+Dyslexia Formatting
+↓
+Display formatted text
+
+ONLY IF USER PRESSES:
+"Simplify Text"
+
+↓
+Call /api/simplify-text
+↓
+Display simplified version
+
+=================================================
+SUCCESS CRITERIA
+=================================================
+
+If the uploaded text is English,
+the output remains English.
+
+If the uploaded text is Hindi,
+the output remains Hindi.
+
+The formatter must never translate languages.
+
+The formatter must never change words.
+
+The formatter only adjusts structure and readability settings.
+
+Please implement this architecture and update both backend and frontend accordingly.

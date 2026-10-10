@@ -1,0 +1,253 @@
+I tested the Accessibility Center implementation and found several issues that need to be addressed before this feature is complete.
+
+Core Goal
+
+The Accessibility Center should allow users to experiment with dyslexia-friendly UI settings before applying them globally.
+
+These settings are intended to affect ONLY the application UI:
+
+Home screen
+Library screen
+Settings screen
+Navigation bar
+Cards
+Buttons
+Dialogs
+App title
+Empty states
+Future UI components
+
+These settings must NOT affect:
+
+OCR output
+Uploaded text
+Reader content
+Simplified text output
+Reading screen content
+
+The existing Reader customization system must remain completely separate.
+
+Issue 1: Accessibility Center is currently only a preview system
+
+Currently:
+
+Font changes appear to work partially.
+The Live Preview updates correctly.
+The actual application UI does not update.
+
+Example:
+
+I selected:
+
+Cream background
+Custom text color
+
+The Live Preview changed correctly.
+
+However:
+
+Home screen stayed blue.
+Library screen stayed unchanged.
+Navigation bar stayed unchanged.
+Cards stayed unchanged.
+Settings screen itself stayed unchanged.
+
+This means the Accessibility Center is not actually controlling the application's UI theme.
+
+Required Architecture Change
+
+Implement a Preview + Apply workflow.
+
+I do NOT want instant application.
+
+The purpose of the Accessibility Center is to let users compare fonts, spacing, colors, and themes before deciding what feels most comfortable.
+
+Desired User Flow
+Preview Mode
+
+When the user changes:
+
+Font family
+Font size
+Letter spacing
+Word spacing
+Line height
+Text color
+Background color
+Accessibility profile
+Color theme
+
+Only the Live Preview should update.
+
+The rest of the application should remain unchanged.
+
+Apply Mode
+
+Add a persistent action area at the bottom:
+
+Changes not yet applied
+
+[ Reset Preview ]    [ Apply Changes ]
+
+When the user presses:
+
+Apply Changes
+
+Then:
+
+Save settings
+Update UIAccessibility
+Rebuild MaterialApp
+Apply settings globally
+Issue 2: Theme propagation is incomplete
+
+The following screens are not consuming the accessibility theme:
+
+HomeScreen
+LibraryScreen
+BottomNavigationBar
+Cards
+Buttons
+Dialogs
+Empty states
+
+Please audit the entire UI and identify remaining uses of:
+
+AppTheme.*
+Colors.*
+LinearGradient(...)
+const TextStyle(...)
+
+Replace them where appropriate with values derived from:
+
+Theme.of(context)
+
+or from the active UIAccessibility theme.
+
+The Accessibility Center cannot be considered complete until all UI screens respond to the applied theme.
+
+Issue 3: Settings screen itself does not reflect applied theme
+
+After pressing Apply:
+
+The Settings screen should also update.
+
+Examples:
+
+If the user chooses:
+
+Cream background
+Dark brown text
+
+Then the Settings screen itself should adopt those colors.
+
+Currently only the preview card changes.
+
+Issue 4: Library Screen does not respond
+
+The Library screen must inherit:
+
+Font family
+Font size
+Text color
+Background color
+Card styling
+
+from the applied accessibility theme.
+
+Currently it remains unchanged.
+
+Please verify LibraryScreen is fully connected to UIAccessibility.
+
+Issue 5: Navigation Bar does not respond
+
+The bottom navigation bar should inherit:
+
+Font family
+Font size
+Text color
+Active item color
+Background color
+
+from the applied accessibility theme.
+
+Currently it remains on the original styling.
+
+Issue 6: RenderFlex Overflow Errors
+
+Overflow warnings are still visible in:
+
+Dyslexia Profile cards
+
+Current warning:
+
+BOTTOM OVERFLOWED BY ...
+Live Preview card
+
+Current warning:
+
+BOTTOM OVERFLOWED BY ...
+
+Remove all overflow warnings.
+
+Adjust layout, sizing, padding, or scrolling as needed.
+
+The Accessibility Center should render cleanly on both mobile and web.
+
+Accessibility Center Behavior
+
+The final workflow should be:
+
+User changes settings
+↓
+Preview updates live
+↓
+User compares options
+↓
+User presses Apply Changes
+↓
+Entire app updates
+↓
+Settings are saved
+
+This is intentional.
+
+Do NOT switch to instant-apply behavior.
+
+The goal is to help dyslexic users experiment with multiple accessibility configurations before committing to one.
+
+Verification Checklist
+
+After implementation:
+
+Preview Mode
+Live Preview updates immediately.
+Application UI remains unchanged.
+Apply Mode
+
+After pressing Apply:
+
+HomeScreen updates.
+LibraryScreen updates.
+SettingsScreen updates.
+Navigation bar updates.
+Cards update.
+Buttons update.
+Dialogs update.
+Empty states update.
+Persistence
+
+After closing and reopening:
+
+Applied settings remain active.
+Reader Separation
+
+Verify:
+
+OCR output remains unchanged.
+Reader content remains unchanged.
+Simplified text remains unchanged.
+
+Only application UI should be affected.
+
+Please complete these fixes before adding any new accessibility features. The priority is making the Accessibility Center fully functional and globally applied after the user explicitly chooses to apply their settings.

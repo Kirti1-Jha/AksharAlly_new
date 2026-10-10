@@ -1,0 +1,443 @@
+# AKSHARALLY COMPLETE FRONTEND-BACKEND INTEGRATION AUDIT
+
+You are working on an existing Flutter + Flask project called **AksharAlly**.
+
+## CRITICAL INSTRUCTION
+
+Do NOT immediately modify code.
+
+First perform a complete project-wide audit and analysis.
+
+Your primary objective is to identify every implemented backend feature and verify whether it is properly connected to the frontend.
+
+Generate a detailed report before making any changes.
+
+---
+
+# PROJECT CONTEXT
+
+AksharAlly is an AI-powered dyslexia-friendly reading companion.
+
+Users can:
+
+* Upload images
+* Upload PDFs
+* Upload documents
+* Extract text using OCR
+* Format text for dyslexic readers
+* Simplify text
+* Use text-to-speech
+* Follow highlighted words while reading
+* Save documents in library
+* Manage accessibility settings
+
+Backend is built using Flask.
+
+Frontend is built using Flutter.
+
+---
+
+# PHASE 1: COMPLETE PROJECT ANALYSIS
+
+Analyze the entire codebase.
+
+Inspect:
+
+## Flutter
+
+* screens
+* widgets
+* services
+* models
+* providers
+* navigation
+* API service files
+* local storage implementation
+* TTS implementation
+
+## Flask
+
+* app.py
+* routes
+* blueprints
+* OCR modules
+* simplifier modules
+* formatting modules
+* auth modules
+* storage modules
+
+Create a map of:
+
+```text
+Frontend Screen
+      ↓
+Flutter Service
+      ↓
+API Call
+      ↓
+Backend Route
+      ↓
+Backend Module
+      ↓
+Response
+      ↓
+Frontend Display
+```
+
+for every feature.
+
+---
+
+# PHASE 2: FEATURE-BY-FEATURE AUDIT
+
+Verify every feature individually.
+
+---
+
+## AUTHENTICATION AUDIT
+
+Check:
+
+* Login screen
+* Signup screen
+* Token storage
+* Logout functionality
+* Protected routes
+* Session persistence
+
+Verify:
+
+* Frontend calls correct backend endpoints
+* Request payloads are correct
+* Responses are handled correctly
+* Errors are displayed correctly
+
+Report:
+
+```text
+CONNECTED
+PARTIALLY CONNECTED
+NOT CONNECTED
+```
+
+for each authentication feature.
+
+---
+
+## OCR AUDIT
+
+Check:
+
+* Image upload flow
+* Camera capture flow
+* OCR endpoint calls
+* OCR response handling
+
+Verify:
+
+* Files are uploaded correctly
+* OCR endpoint is reached
+* Text is returned correctly
+* Text is displayed correctly
+
+Trace the complete OCR pipeline.
+
+---
+
+## FILE UPLOAD AUDIT
+
+This is a high-priority section.
+
+Verify support for:
+
+* Images
+* PDFs
+* DOCX files
+
+For each file type verify:
+
+### Frontend
+
+* File picker exists
+* Upload button exists
+* API call exists
+
+### Backend
+
+* Route exists
+* Route receives files correctly
+* Route processes files correctly
+
+### Integration
+
+* Frontend actually calls backend
+* Response is received
+* Response is displayed
+
+Identify any backend functionality that exists but is not exposed in the frontend.
+
+---
+
+## TEXT FORMATTING AUDIT
+
+Verify:
+
+* Formatting endpoint exists
+* Frontend calls formatting endpoint
+* Formatted text reaches reader screen
+
+Check:
+
+* Line breaks
+* Paragraph formatting
+* Text rendering
+
+Determine whether formatting problems originate from:
+
+* Backend formatting
+* Flutter rendering
+
+---
+
+## TEXT SIMPLIFICATION AUDIT
+
+Verify:
+
+* Simplification endpoint exists
+* Simplification requests are sent correctly
+* Results are displayed correctly
+
+Check:
+
+* Error handling
+* Loading states
+* Empty response handling
+
+---
+
+## READER SCREEN AUDIT
+
+This is a critical section.
+
+Inspect:
+
+* Reader screen
+* Text rendering widgets
+* RichText usage
+* TextSpan usage
+* Highlighting implementation
+
+Determine:
+
+Why words are breaking into separate lines.
+
+Why large gaps appear between words.
+
+Why Hindi text formatting looks incorrect.
+
+Determine whether the issue is caused by:
+
+* Wrap widget
+* Row widget
+* RichText implementation
+* TextSpan implementation
+* Justify alignment
+* Manual word splitting
+* Backend formatting
+
+Provide exact root cause.
+
+---
+
+## TEXT TO SPEECH AUDIT
+
+Verify:
+
+* Play button
+* Pause button
+* Stop button
+* Resume button
+
+Check:
+
+* Text passed into TTS engine
+* Current word highlighting synchronization
+* Playback state management
+
+Confirm whether TTS is fully connected.
+
+---
+
+## LIBRARY AUDIT
+
+Verify:
+
+* Save document functionality
+* Load document functionality
+* Delete functionality
+* Local storage functionality
+
+Check:
+
+* Storage implementation
+* Navigation to reader screen
+
+Confirm whether saved documents can be reopened correctly.
+
+---
+
+## ACCESSIBILITY SETTINGS AUDIT
+
+Verify:
+
+* Font size settings
+* Font family settings
+* Theme settings
+* Reading speed settings
+* Line spacing settings
+* Word spacing settings
+
+Determine:
+
+* Are settings actually applied?
+* Are settings saved locally?
+* Do settings persist after app restart?
+
+---
+
+## NAVIGATION AUDIT
+
+Inspect all screens.
+
+Verify:
+
+* Every button works
+* Every screen is reachable
+* No dead routes exist
+* No orphan screens exist
+
+Report any broken navigation paths.
+
+---
+
+# PHASE 3: API AUDIT
+
+Inspect all backend routes.
+
+For every route determine:
+
+### Route Exists
+
+YES / NO
+
+### Called by Frontend
+
+YES / NO
+
+### Response Handled
+
+YES / NO
+
+### Fully Functional
+
+YES / NO
+
+Create a table listing:
+
+* Route
+* Purpose
+* Called by screen
+* Status
+
+Identify:
+
+* Unused routes
+* Unused APIs
+* Missing integrations
+* Broken API calls
+
+---
+
+# PHASE 4: BUG DETECTION
+
+Search entire codebase for:
+
+* Missing API integrations
+* Incorrect API URLs
+* Missing response handling
+* Missing error handling
+* Null pointer risks
+* State management issues
+* Broken navigation
+* UI rendering issues
+* Accessibility issues
+
+Provide exact file names and line references where possible.
+
+---
+
+# PHASE 5: GENERATE AUDIT REPORT
+
+Generate a report with the following sections:
+
+## Fully Connected Features
+
+List all working features.
+
+---
+
+## Partially Connected Features
+
+List features with incomplete integration.
+
+Explain what is missing.
+
+---
+
+## Unconnected Features
+
+List backend functionality that exists but is not available in the frontend.
+
+---
+
+## Reader Screen Issues
+
+Explain exactly why text formatting currently looks broken.
+
+Provide root cause.
+
+---
+
+## High Priority Fixes
+
+List issues that should be fixed immediately.
+
+---
+
+## Medium Priority Fixes
+
+List issues that should be be fixed after.
+
+---
+
+## Recommended Next Steps
+
+Provide a step-by-step plan to make AksharAlly production-ready.
+
+---
+
+# IMPORTANT
+
+Do NOT redesign UI yet.
+
+Do NOT remove functionality.
+
+Do NOT rewrite backend logic.
+
+Do NOT make assumptions.
+
+First analyze the entire project and generate a detailed audit report.
+
+Only after the report is completed should any code changes be suggested.
+
+

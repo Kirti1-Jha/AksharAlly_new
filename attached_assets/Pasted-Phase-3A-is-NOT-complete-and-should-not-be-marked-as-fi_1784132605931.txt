@@ -1,0 +1,146 @@
+Phase 3A is NOT complete and should not be marked as finished yet.
+
+After reviewing output_screen.dart, I found that the current implementation does not match the approved architecture.
+
+The navigation migration was completed correctly:
+
+ReadingScreen → OutputScreen
+LibraryScreen → OutputScreen
+
+However, OutputScreen is currently a near-copy of ReaderScreen and still contains input-processing responsibilities.
+
+This violates the architecture we agreed on.
+
+--------------------------------------------------
+CORRECT ARCHITECTURE
+--------------------------------------------------
+
+Home
+→ ReadingScreen
+→ OutputScreen
+
+Library Item
+→ OutputScreen
+
+Continue Reading Item
+→ OutputScreen
+
+ReadingScreen = INPUT / PROCESSING SCREEN
+
+OutputScreen = DISPLAY / READING SCREEN
+
+--------------------------------------------------
+PROBLEM IN CURRENT IMPLEMENTATION
+--------------------------------------------------
+
+OutputScreen still contains:
+
+- image picker
+- selectedImage state
+- image preview
+- Choose Image button
+- Format Text button
+- Simplify (AI) button
+- OCR processing logic
+- API calls triggered by buttons
+- file processing responsibilities
+
+These belong to ReadingScreen only.
+
+OutputScreen should never be able to:
+
+- choose an image
+- upload a file
+- run OCR
+- call Gemini
+- trigger formatting
+
+All processing should already be completed before the user reaches OutputScreen.
+
+--------------------------------------------------
+OUTPUTSCREEN RESPONSIBILITIES
+--------------------------------------------------
+
+OutputScreen should ONLY:
+
+- display formatted text
+- display simplified text
+- provide TTS
+- provide word highlighting
+- provide reading controls
+- provide accessibility controls
+- provide formatting/profile information
+- provide save/open functionality
+- render content in a dyslexia-friendly way
+
+OutputScreen should receive already-processed content from:
+
+- ReadingScreen
+- LibraryScreen
+- Continue Reading
+
+and focus entirely on the reading experience.
+
+--------------------------------------------------
+VISUAL POLISH REQUIREMENTS
+--------------------------------------------------
+
+While correcting OutputScreen architecture, also modernize the visual styling.
+
+Do NOT redesign the layout structure yet.
+
+Current issue:
+The screen still uses old yellow gradient buttons that no longer match the redesigned app.
+
+Requirements:
+
+1. Remove all yellow gradient buttons.
+
+2. Use the Phase 1 design system:
+   - primary actions = blue gradient
+   - secondary surfaces = white/cream cards
+   - light blue accents
+
+3. Buttons should visually match ReadingScreen and the rest of the redesign.
+
+4. Reading content should be displayed inside a polished reading card:
+   - white surface
+   - subtle shadow
+   - proper spacing
+   - consistent border radius
+
+5. The formatting info section should remain but be visually aligned with the new design system.
+
+6. Preserve all existing functionality:
+   - TTS
+   - highlighting
+   - accessibility settings
+   - profile controls
+   - library integration
+
+--------------------------------------------------
+DO NOT START PHASE 4
+--------------------------------------------------
+
+Home Dashboard redesign must NOT begin yet.
+
+First:
+
+1. Correct OutputScreen architecture.
+2. Remove all processing responsibilities from OutputScreen.
+3. Complete the visual consistency pass.
+4. Verify feature parity with ReaderScreen.
+
+--------------------------------------------------
+BEFORE WRITING CODE
+--------------------------------------------------
+
+Provide:
+
+1. A correction plan for OutputScreen.
+2. Exact files that will be modified.
+3. Which responsibilities will be removed from OutputScreen.
+4. How content will flow from ReadingScreen into OutputScreen.
+5. Updated verification checklist.
+
+Wait for approval before making any code changes.

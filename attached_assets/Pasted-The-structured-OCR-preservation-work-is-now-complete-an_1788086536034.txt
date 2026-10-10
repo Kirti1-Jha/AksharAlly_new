@@ -1,0 +1,118 @@
+The structured OCR preservation work is now complete and must be treated as stable.
+
+DO NOT modify:
+- OCR recognition
+- OCR preprocessing
+- camera/image selection
+- structure extraction logic
+- structured-text preservation validation
+- authentication
+- Devanagari detection
+- Devanagari fonts
+- accessibility settings
+- simplification rules for protected content
+
+The remaining task is ONLY to improve the actual mobile presentation of the structured output.
+
+I have now tested the app using a large real-world document containing mixed text, tables, numbers, and form-like content.
+
+First inspect the current OutputScreen and StructuredContentView implementation and identify why the formatted output does not visually match the original document structure or fit the phone screen correctly.
+
+Focus on:
+
+1. MOBILE TABLE LAYOUT
+- Tables should fit the available phone width whenever possible.
+- Do not make text unnecessarily tiny.
+- Wrap long text inside cells.
+- Preserve row/column relationships exactly.
+- Preserve empty cells.
+- Keep headers aligned with their columns.
+- Use horizontal scrolling only when genuinely necessary.
+- Avoid horizontal scrolling for simple 2–3 column tables that can reasonably fit.
+
+2. LARGE DOCUMENTS
+- Large structured documents should use the dedicated OutputScreen.
+- The whole document should scroll vertically.
+- Do not force a large document into a small ReaderScreen area.
+- Avoid nested scrolling problems.
+- Make sure the user can reach the complete document.
+
+3. FORM / MIXED CONTENT
+The current test document contains ordinary text as well as table/form-like content.
+
+Do not turn everything into one giant table.
+
+Preserve the distinction between:
+- headings
+- paragraphs
+- labels
+- table headers
+- table cells
+- menu items
+- prices
+- other structured blocks
+
+4. TEXT SIZING
+Do not solve layout problems by simply shrinking the font.
+
+The output must remain readable and dyslexia-friendly.
+
+Respect the user's existing:
+- font
+- font size
+- letter spacing
+- word spacing
+- line spacing
+- paragraph spacing
+- theme
+
+5. DEVANAGARI
+Make sure Hindi and Marathi content renders correctly using the existing Devanagari font system.
+
+Do not change the OCR text.
+
+6. RESPONSIVE WIDTH
+Use the actual available screen width rather than hard-coded desktop/table widths.
+
+The UI should behave correctly on a normal Android phone.
+
+7. IMPORTANT ACCURACY RULE
+
+The renderer must NEVER modify the text.
+
+For example, if the OCR says:
+
+"COVID-19"
+"₹ 1,250"
+"Date of diagnosis"
+"महाराष्ट्र"
+
+the renderer must display those exact strings.
+
+Formatting may change their visual appearance or wrapping, but never their characters/content.
+
+8. TEST WITH REAL CONTENT
+
+Use the existing insurance/COVID document as the primary visual test.
+
+Also test:
+- 2-column table
+- 3-column table
+- 4+ column table
+- long cell text
+- empty cells
+- mixed English + Devanagari
+- large multi-section document
+
+Before making changes, explain briefly which UI problem you found.
+
+Then make only the necessary UI/layout changes.
+
+Afterward report:
+- files changed
+- exact UI problem fixed
+- what was preserved
+- tests/checks performed
+- any remaining limitation
+
+Do NOT modify backend OCR or structured-content accuracy logic unless a genuine UI contract issue makes it absolutely necessary.

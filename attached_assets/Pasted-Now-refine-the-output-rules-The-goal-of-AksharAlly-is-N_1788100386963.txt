@@ -1,0 +1,58 @@
+Now refine the output rules.
+
+The goal of AksharAlly is NOT to convert every document into a table or overly structured layout.
+
+Use this rule:
+
+1. IF the source image genuinely contains a table/grid structure:
+   → reconstruct it as a table.
+   → Preserve rows, columns, headers, cell relationships, and cell content.
+   → Make the table responsive and readable on a phone.
+
+2. IF the source image does NOT contain a genuine table/grid:
+   → DO NOT create a table.
+   → DO NOT force content into columns.
+   → Preserve the natural reading order.
+   → Detect headings/sections when they are visually supported by the document.
+   → Otherwise treat the content as normal text.
+
+3. For ordinary documents, the main goal is readable dyslexia-friendly formatting:
+   - Correct reading order
+   - Logical paragraph/line grouping
+   - Clear heading separation where appropriate
+   - Shorter readable lines
+   - Appropriate spacing between paragraphs/sections
+   - No unnecessary columns
+   - No unnecessary tables
+   - Preserve the actual extracted words
+   - Do not invent or delete content
+
+4. The formatting layer must NOT change the meaning or arbitrarily rewrite OCR text.
+   OCR recognition and document reconstruction should remain separate from dyslexia-friendly presentation.
+
+5. Use the spatial OCR information to determine whether a table actually exists.
+   Do not classify a document as a table merely because:
+   - text is aligned
+   - there are multiple sections
+   - there are short lines
+   - there are headings
+   - there are numbers
+   - there are visually separated blocks
+
+A table should require genuine evidence of a row/column/cell relationship.
+
+For the photographed BRAIN → CARDIOVASCULAR → JOINTS & MUSCLES → IMMUNE SYSTEM → SKIN → GUT → REPRODUCTIVE SYSTEM document I tested:
+- It should NOT become a table.
+- It should be reconstructed as readable section-based text.
+- Each heading should remain associated with its corresponding content.
+- The reading order must remain correct.
+- The final output should be optimized for a dyslexic reader rather than trying to reproduce the original visual layout exactly.
+
+Do not make unrelated changes. First inspect the current implementation from redesign-work and modify only the classification/reconstruction/presentation logic necessary to enforce these rules.
+
+After the change, test at least:
+A. A genuine table document → must remain a table.
+B. A normal section-based document like the photographed BRAIN/CARDIOVASCULAR page → must remain section-based text.
+C. A normal paragraph document → must remain readable text, not a table.
+
+Report which structure was detected for each test and why.

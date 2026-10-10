@@ -1,0 +1,40 @@
+The project is already loaded in this Replit workspace.
+
+Before making any changes, go through the latest updates on the GitHub `redesign-work` branch and understand what has already been implemented there. These updates contain the recent OCR/document-structure work, so do NOT redo or replace that work.
+
+Once you have reviewed the changes, continue working from the current `redesign-work` implementation.
+
+The current issue I need fixed is OCR structural accuracy.
+
+I tested AksharAlly with a reasonably clear photographed document. The OCR recognizes most of the words, but the final structured/simplified output sometimes puts words in the wrong place, separates text that belongs together, associates content with the wrong heading, or changes the reading order.
+
+For example, the source has sections like:
+
+BRAIN
+Difficulty concentrating, anxiety, depression, irritability, mood, mind fog
+
+CARDIOVASCULAR
+higher cholesterol, high blood pressure, increased risk of heart
+
+JOINTS & MUSCLES
+increased inflammation, tension, aches and pains, muscle tightness
+
+The current output can recognize these words but reconstruct their relationships incorrectly.
+
+I want you to continue from the existing implementation and fix this using the OCR spatial information/bounding boxes and the structured document model already introduced in `redesign-work`.
+
+Do NOT:
+- start the OCR implementation from scratch
+- undo the redesign-work changes
+- replace working functionality unnecessarily
+- hardcode this sample document
+- manually add missing words
+- focus only on image clarity
+- remove camera/upload functionality
+- remove the original OCR view
+- break Hindi/Devanagari OCR
+- break the existing table/grid or other document-structure work
+
+First review what was changed on `redesign-work`, then identify where the current word ordering/line grouping/section association is going wrong, and fix that existing implementation.
+
+Keep the changes focused. After fixing it, test the same type of photographed document and make sure the recognized words remain in the correct reading order and under the correct headings.

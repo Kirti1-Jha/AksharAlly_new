@@ -1,0 +1,293 @@
+AKSHARALLY PROJECT UNDERSTANDING AUDIT
+
+Do NOT make any code changes.
+
+Do NOT install packages.
+
+Do NOT edit files.
+
+Do NOT generate patches.
+
+Your task is ONLY to understand the entire project and produce a detailed project audit report.
+
+Read every relevant file in the repository before answering.
+
+Analyze:
+
+Project structure
+Frontend architecture
+Backend architecture
+Data flow
+API flow
+Navigation flow
+Storage flow
+Accessibility system
+OCR pipeline
+Simplification pipeline
+Formatting pipeline
+Library system
+Authentication system
+State management
+Current UI implementation
+Missing features
+Broken features
+Technical debt
+Potential bugs
+
+I want a COMPLETE report with the following sections.
+
+1. Project Overview
+
+Explain:
+
+What AksharAlly does
+Main purpose
+Target users
+Core problem being solved
+Current implementation status
+2. Tech Stack
+
+List:
+
+Frontend:
+
+Flutter version
+Dart version
+Major packages
+
+Backend:
+
+Framework
+AI models
+OCR libraries
+Database/storage
+Authentication
+3. Folder Structure Analysis
+
+Generate a tree of important folders and explain what each folder is responsible for.
+
+Include:
+
+Frontend folders
+Backend folders
+Assets
+Services
+Models
+Screens
+Widgets
+Routes
+Modules
+
+4. Application Flow
+
+Explain the full user journey.
+
+Starting from app launch:
+
+App launch
+↓
+Home Screen
+↓
+Input methods
+↓
+Processing
+↓
+Output
+↓
+Library
+↓
+Continue Reading
+
+Describe every step.
+
+5. Screen-by-Screen Analysis
+
+For every screen:
+
+Purpose
+Navigation entry points
+Navigation exits
+Dependencies
+Data sources
+Current issues
+
+Include:
+
+Home Screen
+Reading Screen
+Output Screen
+Library Screen
+Accessibility Settings
+Login/Auth Screens
+Any additional screens
+
+6. API Architecture
+
+List all APIs.
+
+For each endpoint provide:
+
+Route
+Method
+Request body
+Response body
+Called from which screen
+Used for what purpose
+
+Create a table.
+
+7. OCR Pipeline Analysis
+
+Explain:
+
+Image
+↓
+Preprocessing
+↓
+OCR
+↓
+Text Extraction
+↓
+Formatting
+
+Include:
+
+Libraries used
+Languages supported
+Current limitations
+
+8. Simplification Pipeline Analysis
+
+Explain:
+
+Which model is used
+Prompt structure
+Simplification logic
+Formatting logic
+Current behavior
+
+Specify whether simplification and formatting are currently coupled or separated.
+
+9. Accessibility System Analysis
+
+Explain:
+
+Font controls
+Line spacing
+Word spacing
+Theme support
+Contrast support
+Dyslexia-friendly features
+
+Identify:
+
+What settings currently persist
+What settings do not persist
+10. Library System Analysis
+
+Explain:
+
+How readings are stored
+Data model
+Local storage method
+Continue Reading section
+Recent readings
+
+Identify:
+
+Any refresh issues
+Any persistence issues
+Any duplicate data issues
+11. Navigation Architecture
+
+Create a navigation map.
+
+Example:
+
+Home
+├── New Reading
+├── Continue Reading
+├── Library
+└── Accessibility
+
+Show all routes and transitions.
+
+12. Current Known Issues
+
+Search entire codebase and identify:
+
+UI issues
+State issues
+Persistence issues
+API issues
+Accessibility issues
+Navigation issues
+
+Provide severity:
+
+Critical
+High
+Medium
+Low
+
+13. Missing Features Compared to Intended Product
+
+Based on the codebase, infer:
+
+Features partially implemented
+Features planned but unfinished
+Features missing entirely
+
+14. Code Quality Audit
+
+Identify:
+
+Dead code
+Unused files
+Unused imports
+Duplicated logic
+Overly complex files
+Potential refactoring opportunities
+
+15. Architecture Diagram
+
+Provide a text-based architecture diagram.
+
+Example:
+
+Flutter UI
+↓
+ApiService
+↓
+Flask Backend
+├─ OCR Module
+├─ Simplifier Module
+├─ Formatter Module
+└─ Storage
+
+16. Project Understanding Score
+
+At the end provide:
+
+Understanding Confidence:
+X/100
+
+Files Read:
+[number]
+
+Key Files:
+[list]
+
+Unknown Areas:
+[list]
+
+Questions For Developer:
+[list]
+
+Do NOT make any code changes.
+
+Do NOT propose fixes.
+
+Only produce the report.
+
+Read the entire codebase first.

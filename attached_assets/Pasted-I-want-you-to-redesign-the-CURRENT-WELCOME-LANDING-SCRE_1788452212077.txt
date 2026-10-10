@@ -1,0 +1,471 @@
+I want you to redesign the CURRENT WELCOME / LANDING SCREEN of the AksharAlly Flutter application.
+
+IMPORTANT:
+This is a UI/UX refinement task for ONE SCREEN ONLY.
+
+DO NOT modify or refactor unrelated parts of the application.
+
+DO NOT change:
+- OCR functionality
+- PaddleOCR/EasyOCR integration
+- text extraction
+- text simplification
+- TTS
+- authentication
+- Firebase
+- API services
+- backend
+- navigation logic except where necessary for this screen's existing CTA
+- settings
+- library
+- output screen
+- reading screen
+- other application screens
+- global theme definitions unless absolutely necessary
+
+The goal is to make the existing welcome screen visually polished and consistent with the REST OF THE EXISTING AKSHARALLY APPLICATION.
+
+==================================================
+CURRENT PROBLEM
+==================================================
+
+The current welcome screen has:
+
+- A large blue background that feels visually disconnected from the application's established theme.
+- Excessive empty space.
+- The "AksharAlly" title is floating too low/high relative to the overall composition.
+- The "Get Started" button is positioned almost at the bottom of the screen.
+- The button interferes visually with the phone's bottom system navigation area.
+- There is insufficient safe-area spacing above the bottom navigation/system gesture area.
+- The overall composition does not feel balanced.
+- The screen does not visually communicate the same design language as the rest of AksharAlly.
+
+I want this screen to feel like it belongs to the SAME application as the rest of AksharAlly.
+
+==================================================
+DESIGN DIRECTION
+==================================================
+
+Use the EXISTING AksharAlly application's default theme as the primary source of truth.
+
+Before modifying the screen:
+
+1. Inspect the existing Flutter ThemeData/theme configuration.
+2. Inspect the main application screens.
+3. Identify:
+   - primary color
+   - secondary/accent color
+   - background color
+   - surface/card colors
+   - text colors
+   - typography
+   - button styling
+   - border radius
+   - shadows/elevation
+   - spacing conventions
+4. Reuse those existing design decisions.
+
+DO NOT invent a completely new visual language.
+
+The redesigned welcome screen should look like a natural first screen of the existing AksharAlly application.
+
+If the existing application uses a soft/light background, cards, rounded corners, blue/gold accents, or other established visual elements, reuse those patterns.
+
+The AksharAlly logo/icon should complement those colors.
+
+==================================================
+NEW SCREEN STRUCTURE
+==================================================
+
+The overall visual hierarchy should be:
+
+             [AksharAlly ICON]
+
+               AksharAlly
+
+       [short supporting/catchy line]
+
+          [CTA BUTTON]
+
+The composition should be vertically balanced and centered.
+
+Do NOT place everything at the extreme top or extreme bottom.
+
+There should be comfortable whitespace around each element.
+
+==================================================
+1. AKSHARALLY ICON
+==================================================
+
+Use the provided AksharAlly icon/logo asset for this screen.
+
+The icon should appear ABOVE the "AksharAlly" title.
+
+IMPORTANT:
+DO NOT redesign, redraw, recolor, distort, stretch, or otherwise modify the actual icon artwork.
+
+Preserve the icon's original:
+- colors
+- proportions
+- shapes
+- typography/symbols
+- artwork
+
+Only resize it proportionally as necessary for the screen.
+
+Use a sensible display size appropriate for a welcome screen, approximately 120–180 logical pixels depending on the device and available space.
+
+Do not make the icon so large that it dominates the entire screen.
+
+Maintain sufficient whitespace around the icon.
+
+If the existing icon asset is already available in the project, reuse it rather than creating a duplicate.
+
+If there are multiple icon assets, identify the correct AksharAlly icon asset before making changes.
+
+==================================================
+2. TITLE
+==================================================
+
+Keep the existing title:
+
+"AksharAlly"
+
+Place it directly BELOW the icon.
+
+The title should have a clear visual relationship with the icon.
+
+Do not position the title near the bottom of the screen.
+
+Use the application's existing typography/theme as much as possible.
+
+The title can be prominent, but it should NOT be excessively large.
+
+Maintain a comfortable gap between:
+
+ICON
+↓
+TITLE
+
+The title should feel like the name of the application represented by the icon above it.
+
+==================================================
+3. SUPPORTING / CATCHY TEXT
+==================================================
+
+The current screen contains:
+
+"Assistive Reading for Dyslexia"
+
+Keep this message or improve its presentation if appropriate, but do not make the screen text-heavy.
+
+I would like a short, warm and memorable line underneath the title.
+
+Possible direction:
+
+"Read with confidence."
+"Read. Understand. Thrive."
+"Your AI reading companion."
+"Make every word easier."
+"Read at your own pace."
+"Every word, made easier."
+
+Choose ONE line that fits AksharAlly's purpose and existing application tone.
+
+Do not make it sound like a generic corporate slogan.
+
+The supporting line should be smaller and visually secondary to "AksharAlly".
+
+If the existing application already has a suitable tagline, prefer consistency rather than replacing it unnecessarily.
+
+==================================================
+4. CTA BUTTON
+==================================================
+
+Replace the current "Get Started" button text with a more engaging CTA.
+
+Do NOT use "Continue" unless there is a strong reason.
+
+Preferred options include:
+
+"Let's Begin"
+"Start Reading"
+"Begin Your Journey"
+"Let's Read"
+"Get Started"
+
+Choose the ONE that best fits the application's purpose.
+
+My preferred direction is:
+
+"Let's Begin"
+
+or
+
+"Start Reading"
+
+The CTA must still perform EXACTLY the same navigation/action as the existing "Get Started" button.
+
+Do not break or change its functionality.
+
+The button should be:
+
+- clearly visible
+- comfortably sized
+- aligned with the screen's content
+- visually consistent with the application's existing buttons
+- rounded if that matches the existing theme
+- using the existing primary/accent colors
+
+Do not create an unnecessarily huge button.
+
+==================================================
+5. BUTTON POSITION / SAFE AREA
+==================================================
+
+This is VERY IMPORTANT.
+
+The button must NOT sit directly against the bottom edge of the screen.
+
+The current implementation places it too close to the phone's bottom navigation/system gesture area.
+
+Fix this using proper Flutter layout practices.
+
+The screen MUST respect:
+
+SafeArea
+MediaQuery.viewPadding
+or an equivalent appropriate Flutter safe-area approach.
+
+Do not hardcode a single bottom pixel value that only works on one phone.
+
+The CTA should have comfortable bottom spacing on:
+
+- phones with gesture navigation
+- phones with 3-button navigation
+- phones with different aspect ratios
+- devices with display cutouts/notches
+
+The button should visually feel like it is part of the content layout rather than being attached to the bottom of the phone.
+
+==================================================
+6. VERTICAL LAYOUT
+==================================================
+
+Do NOT use a layout that pushes the button to the absolute bottom of the screen.
+
+Avoid an unnecessary:
+
+Spacer()
+
+or
+
+MainAxisAlignment.spaceBetween
+
+if it causes the CTA to be pushed against the bottom.
+
+Instead, create a visually balanced vertical composition.
+
+Suggested conceptual structure:
+
+SafeArea
+  ↓
+Center / balanced vertical content
+  ↓
+Icon
+  ↓
+moderate spacing
+  ↓
+AksharAlly title
+  ↓
+small spacing
+  ↓
+tagline
+  ↓
+larger intentional spacing
+  ↓
+CTA
+  ↓
+comfortable bottom padding
+
+The exact spacing should be determined by visual balance and responsive layout rather than arbitrary fixed positioning.
+
+The CTA should be clearly separated from the title/tagline, but NOT so far away that the screen looks empty.
+
+==================================================
+7. RESPONSIVENESS
+==================================================
+
+The redesign must work across different screen sizes.
+
+Do not design only for the exact screenshot/device.
+
+Test or reason about:
+
+- small Android phones
+- normal Android phones
+- tall Android phones
+- phones with gesture navigation
+- phones with traditional navigation buttons
+- different text scaling settings
+
+Avoid overflow.
+
+Avoid RenderFlex overflow errors.
+
+Avoid hardcoded absolute positioning wherever possible.
+
+The icon, title, tagline and CTA should remain visually balanced when the screen dimensions change.
+
+If vertical space becomes constrained, reduce spacing gracefully rather than allowing the CTA to collide with the system navigation area.
+
+==================================================
+8. VISUAL STYLE
+==================================================
+
+The screen should feel:
+
+- warm
+- welcoming
+- accessible
+- modern
+- clean
+- friendly
+- professional
+- consistent with AksharAlly
+
+Avoid:
+
+- excessive gradients
+- unnecessary animations
+- excessive shadows
+- excessive decorative elements
+- unrelated illustrations
+- overly bright backgrounds
+- generic template-like onboarding design
+
+The AksharAlly icon should be the visual focal point.
+
+Use the application's existing theme colors rather than introducing unrelated colors.
+
+The blue/gold/cream character of the AksharAlly branding should harmonize with the existing application theme.
+
+==================================================
+9. DO NOT CHANGE THE ACTUAL ICON
+==================================================
+
+This is explicitly important.
+
+The icon supplied for this screen is already finalized.
+
+DO NOT:
+
+- regenerate it
+- redraw it
+- alter its colors
+- add text
+- remove parts
+- change the A
+- change the Devanagari character
+- change the book shape
+- change the decorative elements
+- apply filters
+- apply gradients
+- modify its proportions
+
+Only display the existing icon asset at an appropriate size.
+
+==================================================
+10. EXISTING NAVIGATION
+==================================================
+
+Before changing anything, inspect what the current "Get Started" button does.
+
+Preserve its existing behavior exactly.
+
+The only intended change is the visual presentation/text of the CTA.
+
+For example, if it currently navigates to Login/Home/Onboarding, retain that exact destination and logic.
+
+Do NOT introduce a new navigation flow.
+
+==================================================
+11. IMPLEMENTATION QUALITY
+==================================================
+
+Before editing:
+
+- Locate the exact widget/screen responsible for the screenshot.
+- Inspect its current implementation.
+- Inspect the application's theme.
+- Inspect at least one or two existing screens to understand the visual language.
+
+Then make the minimum necessary changes.
+
+Prefer modifying the existing welcome screen rather than creating an entirely new architecture.
+
+Do not duplicate theme definitions.
+
+Do not create unnecessary new dependencies.
+
+Do not upgrade unrelated packages.
+
+Do not refactor unrelated code.
+
+==================================================
+12. VERIFY THE RESULT
+==================================================
+
+After implementation:
+
+1. Run flutter analyze.
+2. Resolve any errors introduced by your changes.
+3. Run the application.
+4. Verify the welcome screen.
+5. Confirm:
+   - icon appears above title
+   - title is properly aligned
+   - tagline is properly aligned
+   - CTA is below the tagline
+   - CTA is not too close to the title
+   - CTA is NOT at the bottom edge
+   - CTA does NOT overlap the Android navigation/system area
+   - no overflow occurs
+   - screen respects SafeArea
+   - existing CTA navigation still works
+   - colors match the existing application theme
+   - typography is consistent with the rest of AksharAlly
+   - the screen looks like part of the same application
+
+IMPORTANT:
+Do not stop after making the code change. Actually inspect the resulting layout and make spacing adjustments if necessary.
+
+==================================================
+13. FINAL DESIGN GOAL
+==================================================
+
+The final screen should visually communicate something like:
+
+             [AksharAlly ICON]
+
+
+                 AksharAlly
+
+            Read with confidence.
+
+
+              [ Let's Begin ]
+
+with a balanced amount of whitespace.
+
+This is only a conceptual hierarchy — do not literally reproduce this ASCII layout.
+
+The final implementation should feel polished and naturally balanced on the device.
+
+Most importantly:
+
+MAKE IT LOOK LIKE AKSHARALLY.
+
+Do not make it look like a generic Flutter onboarding screen.
+
+Keep the redesign focused, polished, responsive, and consistent with the existing application.

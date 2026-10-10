@@ -1,0 +1,169 @@
+URGENT BUG FIX — OCR REGRESSION
+
+The app's OCR is currently broken.
+
+When I upload/capture a clear image, the app processes for a very long time and eventually shows:
+
+"The image took too long to process. Please send a clearer image."
+
+The image is clear. This appears to be a processing/pipeline regression, not an image-quality problem.
+
+IMPORTANT:
+Do NOT add new features.
+Do NOT redesign the UI.
+Do NOT modify the accessibility/font system.
+Do NOT modify authentication.
+Do NOT modify the camera/image-selection flow unless you prove it is causing this bug.
+Do NOT simply increase the timeout.
+Do NOT hide the problem by changing the error message.
+
+The immediate priority is:
+
+CLEAR IMAGE → OCR → extracted text → existing structure/simplification/output pipeline
+
+must work again.
+
+Before changing anything:
+
+1. Inspect the current Git history and identify the last known working OCR implementation.
+2. Compare the current code with the state before these recent commits:
+   - 4003c9b — feat: add Devanagari reading support and protect structured OCR output
+   - 2e20732 — Refactor structure analyzer and update simplifier logic with development notes
+   - 13a6bf1 — fix: make structured tables responsive on mobile
+3. Do NOT assume these commits are the cause. Trace the actual runtime flow.
+4. Inspect:
+   - OCR route
+   - OCR/input-processing module
+   - pipeline route
+   - image preprocessing
+   - OCR invocation
+   - structure analysis
+   - simplifier
+   - frontend request/response handling
+   - timeout handling
+   - Flask/server logs
+5. Determine exactly where the request is spending its time.
+
+VERY IMPORTANT DIAGNOSTIC REQUIREMENT:
+
+Test the OCR stage independently from the complete pipeline.
+
+For one clear test image, determine:
+
+A. Does the image reach the backend?
+B. Does image decoding/preprocessing complete?
+C. Does the OCR engine actually start?
+D. Does OCR return detections?
+E. How long does OCR itself take?
+F. If OCR succeeds, which subsequent step is hanging or taking too long?
+G. Is Gemini/AI/structure processing being called before or after OCR?
+H. Is any retry loop or blocking operation occurring?
+I. Is the frontend waiting for a backend operation that never completes?
+
+Add temporary timing/logging if necessary, for example:
+
+IMAGE RECEIVED
+IMAGE DECODED
+PREPROCESSING START
+PREPROCESSING COMPLETE
+OCR START
+OCR COMPLETE
+STRUCTURE ANALYSIS START
+STRUCTURE ANALYSIS COMPLETE
+SIMPLIFICATION START
+SIMPLIFICATION COMPLETE
+RESPONSE SENT
+
+Use actual elapsed times so we can identify the bottleneck.
+
+CRITICAL ARCHITECTURAL REQUIREMENT:
+
+OCR must not depend on Gemini, structure reconstruction, or text simplification succeeding.
+
+The pipeline should conceptually behave like:
+
+image
+→ image validation/preprocessing
+→ OCR
+→ raw OCR result
+→ optional positional/structure reconstruction
+→ optional simplification
+→ output
+
+If structure analysis or simplification fails/times out, the application should still be able to return the raw OCR result instead of incorrectly reporting:
+
+"The image took too long to process. Please send a clearer image."
+
+Also verify whether a timeout/error handler is incorrectly converting ANY backend exception or downstream timeout into the "clearer image" message.
+
+PRESERVATION REQUIREMENTS:
+
+The following existing functionality must remain intact:
+
+- EasyOCR / existing OCR engine
+- English OCR
+- Hindi/Devanagari OCR
+- Marathi/Devanagari OCR
+- image upload
+- camera capture
+- preprocessing
+- positional OCR detections
+- structured tables
+- exact table headers/cells
+- exact menu names/prices
+- exact numeric token preservation
+- Devanagari font support
+- accessibility settings
+- OutputScreen
+- responsive table presentation
+
+Do not rewrite the OCR system unless the investigation proves that it is necessary.
+
+REGRESSION TEST:
+
+Find the previous known-working OCR implementation in Git history and use it as the baseline.
+
+If the OCR worked before the recent changes, perform a focused diff to identify what changed in the execution path.
+
+If necessary, temporarily test the current OCR module against the previous version to isolate the regression.
+
+Also test with a simple image containing:
+
+"7 + 8 = 15"
+
+and a clear Hindi/Devanagari sample.
+
+We need to distinguish:
+
+1. OCR itself is broken
+2. OCR works but post-processing hangs
+3. Backend works but frontend waits incorrectly
+4. A timeout is being triggered incorrectly
+5. An external/AI call is blocking the entire request
+6. An exception is being incorrectly reported as an image-quality error
+
+DO NOT COMMIT UNTIL THE ROOT CAUSE IS IDENTIFIED.
+
+First report:
+
+- exact root cause
+- file(s) responsible
+- function/route responsible
+- what changed relative to the last working version
+- why a clear image was incorrectly reported as unclear
+- proposed minimal fix
+
+Then implement ONLY the minimal fix.
+
+After fixing:
+
+1. Run Python syntax checks.
+2. Run a direct OCR test.
+3. Run the full backend pipeline test.
+4. Verify that a clear image completes within a reasonable time.
+5. Verify Hindi/Marathi OCR still works.
+6. Verify structured output still preserves OCR text.
+7. Verify failures in optional post-processing do not masquerade as image-quality failures.
+8. Check git diff and ensure no unrelated files/features were changed.
+
+Do not move on to any new AksharAlly feature until OCR is working reliably again.

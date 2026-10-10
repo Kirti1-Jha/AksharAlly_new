@@ -1,0 +1,365 @@
+---
+
+# AKSHARALLY HIGH PRIORITY FUNCTIONALITY FIXES
+
+You have already completed a full integration audit of the AksharAlly Flutter + Flask project.
+
+Your task is to fix ONLY the high-priority functionality issues identified in the audit.
+
+## CRITICAL RULES
+
+Do NOT redesign the UI yet.
+
+Do NOT change colors, layouts, themes, or visual styling.
+
+Do NOT modify working backend logic.
+
+Do NOT remove any existing functionality.
+
+Focus only on making the existing features work correctly end-to-end.
+
+---
+
+# ISSUE 1: PDF/DOCX FILE UPLOAD NOT CONNECTED
+
+## Current Situation
+
+Backend is already fully implemented.
+
+The backend endpoint:
+
+```text
+POST /api/format-text
+```
+
+already supports:
+
+* PDF
+* DOCX
+* Images
+
+The frontend UploadFileScreen currently:
+
+* Selects files correctly
+* Stores selected file correctly
+* Shows "Simplify File" button
+
+BUT:
+
+```dart
+processFile()
+```
+
+only displays a SnackBar and never calls the API.
+
+---
+
+## Required Fix
+
+Implement complete frontend integration.
+
+When the user presses:
+
+```text
+Simplify File
+```
+
+the app should:
+
+1. Upload the selected file
+2. Call the existing backend endpoint
+3. Receive the response
+4. Parse the response correctly
+5. Open ReaderScreen with processed text
+6. Display the formatted content
+
+Add:
+
+* Loading state
+* Error handling
+* Success handling
+
+Do NOT create new backend routes.
+
+Use the existing backend implementation.
+
+---
+
+# ISSUE 2: LIBRARY NEVER RECEIVES DATA
+
+## Current Situation
+
+Library screen exists.
+
+LibraryStorage exists.
+
+LibraryStorage.getItems() works.
+
+However:
+
+```dart
+LibraryStorage.addItem()
+```
+
+is never called anywhere.
+
+As a result:
+
+```text
+Library is always empty.
+```
+
+---
+
+## Required Fix
+
+Whenever:
+
+* OCR formatting succeeds
+* PDF processing succeeds
+* DOCX processing succeeds
+* Text simplification succeeds
+
+automatically save the processed result into LibraryStorage.
+
+Each saved item should contain:
+
+* Title
+* Content
+* Timestamp
+* Source type
+
+Verify:
+
+```text
+Process Document
+      ↓
+Save To Library
+      ↓
+Open Library
+      ↓
+Document Appears
+      ↓
+Tap Document
+      ↓
+Reader Screen Opens
+```
+
+works correctly.
+
+---
+
+# ISSUE 3: READER SCREEN TEXT FORMATTING BUG
+
+## Root Cause Identified
+
+The current ReaderScreen:
+
+* Splits text by spaces
+* Renders each word as a separate Text widget
+* Uses Wrap
+
+The backend returns text containing:
+
+```text
+\n
+\n\n
+```
+
+These newline characters remain embedded inside individual words.
+
+This causes:
+
+* Broken lines
+* Floating words
+* Huge spacing gaps
+* Poor Hindi rendering
+* Poor paragraph rendering
+
+---
+
+## Required Fix
+
+Implement proper paragraph rendering.
+
+Before rendering:
+
+1. Detect paragraph breaks
+2. Separate paragraphs correctly
+3. Preserve paragraph structure
+4. Remove embedded newline rendering issues
+
+The rendered output must:
+
+* Display complete paragraphs properly
+* Maintain word highlighting
+* Maintain TTS compatibility
+* Support Hindi
+* Support Marathi
+* Support English
+
+Avoid:
+
+```dart
+Wrap + broken newline tokens
+```
+
+Implement a clean solution.
+
+---
+
+# TESTING REQUIREMENTS
+
+After implementing fixes, verify all flows:
+
+## Test 1
+
+Image Upload
+
+```text
+Image
+↓
+OCR
+↓
+Formatting
+↓
+Reader Screen
+↓
+Library Save
+```
+
+Must work.
+
+---
+
+## Test 2
+
+PDF Upload
+
+```text
+PDF
+↓
+Backend Processing
+↓
+Reader Screen
+↓
+Library Save
+```
+
+Must work.
+
+---
+
+## Test 3
+
+DOCX Upload
+
+```text
+DOCX
+↓
+Backend Processing
+↓
+Reader Screen
+↓
+Library Save
+```
+
+Must work.
+
+---
+
+## Test 4
+
+Text Simplification
+
+```text
+Enter Text
+↓
+Simplify
+↓
+Reader Screen
+↓
+Library Save
+```
+
+Must work.
+
+---
+
+## Test 5
+
+Library
+
+```text
+Open Library
+↓
+Saved Items Visible
+↓
+Tap Item
+↓
+Reader Screen Opens
+```
+
+Must work.
+
+---
+
+# FINAL REPORT
+
+After completing all fixes:
+
+Provide a detailed report containing:
+
+## Files Modified
+
+List every file changed.
+
+---
+
+## Changes Made
+
+Explain exactly what was changed.
+
+---
+
+## PDF Upload Status
+
+Working / Not Working
+
+---
+
+## DOCX Upload Status
+
+Working / Not Working
+
+---
+
+## Library Status
+
+Working / Not Working
+
+---
+
+## Reader Formatting Status
+
+Working / Not Working
+
+---
+
+## Remaining Issues
+
+List any remaining problems that still need attention.
+
+Do not begin any UI redesign until these functionality fixes are completed and verified.
+
+---
+
+Before letting Replit apply changes, create a Git checkpoint:
+
+```bash
+git add .
+git commit -m "Before functionality fixes"
+git push
+```
+
+That gives you a safe rollback point if the AI introduces bugs.

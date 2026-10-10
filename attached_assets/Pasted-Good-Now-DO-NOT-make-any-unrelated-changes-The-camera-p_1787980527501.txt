@@ -1,0 +1,121 @@
+Good. Now DO NOT make any unrelated changes.
+
+The camera pipeline fixes are in place, so I want you to do one focused final validation of the actual **camera scanning experience and OCR output quality**.
+
+### 1. FIRST: Re-check the complete camera flow
+
+Trace the exact flow again:
+
+Camera → capture → image → API request → OCR → structured OCR output → formatting/simplification → HighlightedTextView
+
+Make sure the data is not being reformatted or flattened at ANY point between these stages.
+
+Do not just verify that the backend returns HTTP 200. Verify that the actual returned content remains structurally correct all the way to the final display layer.
+
+### 2. TABLES ARE CRITICAL
+
+Use representative table images and verify that:
+
+* Headers remain associated with the correct columns.
+* Each value remains in the correct row.
+* Rows do not get merged.
+* Columns do not get mixed.
+* Numbers remain accurate.
+* ₹ and other symbols remain intact.
+* Empty cells do not cause subsequent values to shift into the wrong column.
+* The formatter does not convert the table into a meaningless paragraph.
+
+For example, if OCR detects:
+
+| Item  | Quantity | Price |
+| ----- | -------: | ----: |
+| Apple |        2 |  ₹100 |
+| Mango |        3 |  ₹150 |
+
+the final output must preserve that relationship.
+
+### 3. CLUTTERED MENU IS CRITICAL
+
+Test a realistic restaurant menu containing:
+
+* Multiple sections
+* Multiple columns
+* Item names
+* Descriptions
+* Prices
+* Vegetarian/non-vegetarian indicators
+* Different font sizes
+* Items that are visually aligned rather than written as normal paragraphs
+
+The system must NOT simply read everything left-to-right/top-to-bottom and produce a jumbled stream.
+
+The final output should preserve logical sections such as:
+
+## Starters
+
+| Item           | Price |
+| -------------- | ----: |
+| Paneer Tikka   |  ₹220 |
+| Veg Manchurian |  ₹180 |
+
+## Main Course
+
+| Item                 | Price |
+| -------------------- | ----: |
+| Paneer Butter Masala |  ₹250 |
+| Dal Tadka            |  ₹180 |
+
+The exact formatting can differ depending on the original image, but the **relationships and structure must be preserved**.
+
+### 4. DO NOT LET SIMPLIFICATION DESTROY OCR
+
+Check the formatter carefully.
+
+Simplification should make text easier to read, but it must NEVER:
+
+* Reorder information
+* Remove table structure
+* Mix rows
+* Mix columns
+* Move prices to another item
+* Remove headings
+* Remove important numbers
+* Merge unrelated sections
+* Turn a structured menu into one giant paragraph
+
+If the formatter cannot safely simplify a particular structured region, it is better to preserve that region's original structure than to produce a bad simplified version.
+
+### 5. CHECK THE FINAL UI
+
+Specifically inspect `HighlightedTextView` and the screen that receives the camera result.
+
+Make sure:
+
+* Newlines are actually rendered as newlines.
+* Headings are visually separated.
+* Lists remain lists.
+* Tables remain readable.
+* Multiple sections remain separated.
+* The final output does not visually collapse into one paragraph.
+* TTS/highlighting changes do not accidentally destroy the formatting.
+
+### 6. IMPORTANT: DON'T FAKE DEVICE TESTING
+
+If you cannot access a physical camera or Flutter device in this environment, say so clearly.
+
+Do NOT claim that the camera itself is completely fixed merely because a backend multipart request returned HTTP 200.
+
+Instead, verify everything that CAN be verified programmatically and tell me exactly what remains to be tested manually on a real device.
+
+### 7. FINAL REPORT
+
+After this validation, give me:
+
+1. Exact camera-path files checked.
+2. Exact remaining issues, if any.
+3. Whether table structure survives the complete pipeline.
+4. Whether cluttered menu structure survives the complete pipeline.
+5. Whether the final UI preserves the structure.
+6. What I need to test manually on my phone.
+
+Again: **do not modify anything unrelated to camera scanning, OCR structure, formatting of camera OCR output, or its final display.**
