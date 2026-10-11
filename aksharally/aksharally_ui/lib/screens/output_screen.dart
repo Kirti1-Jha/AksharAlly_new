@@ -273,12 +273,11 @@ class _OutputScreenState extends State<OutputScreen> {
 
     // Preset selected — apply client-side accessibility settings.
     AccessibilitySettings.applyPreset(profile);
-    await AccessibilitySettings.save();
-
     setState(() {
       _selectedProfile = profile;
       _isCustomize     = false;
     });
+    await AccessibilitySettings.save();
   }
 
   // ── formatting info bar ───────────────────────────────────────────────────
