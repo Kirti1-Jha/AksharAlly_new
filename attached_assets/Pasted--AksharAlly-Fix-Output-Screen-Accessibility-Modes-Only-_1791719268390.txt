@@ -1,0 +1,146 @@
+# AksharAlly — Fix Output Screen Accessibility Modes Only
+
+## Objective
+
+Investigate and fix the existing accessibility features on the **OCR output/reading screen** of AksharAlly. The OCR functionality is currently working properly. However, the reading modes and font customization settings are not updating the displayed output correctly.
+
+This is a **strictly scoped bug-fixing task**, not a redesign, refactoring, or feature-development task.
+
+## 1. Problems to Investigate
+
+### A. Mild, Moderate, and Severe reading modes
+
+The output screen has three existing accessibility modes:
+
+- Mild
+- Moderate
+- Severe
+
+Currently, when I click a different mode, the displayed text does not update immediately and reliably.
+
+Investigate the existing implementation and determine why the selected mode is not being applied to the reading screen.
+
+Requirements:
+
+- Switching between Mild, Moderate, and Severe must update the reading screen immediately after selection.
+- The selected mode must have a clearly visible active state.
+- Each mode must apply its existing intended accessibility formatting, using the project's current implementation and design.
+- Switching between modes repeatedly must work without requiring a screen reload or navigating away and returning.
+- Selecting one mode must correctly replace the previous mode's formatting rather than accumulating conflicting styles.
+- The selected mode and displayed formatting must remain synchronized.
+- Do not invent new mode definitions or change the existing intended behavior of these modes.
+
+### B. Customize Settings — Font selection and Save
+
+The output screen also provides Customize Settings, where users can select a font and save their preferences.
+
+Currently, when I select a different font and click Save, the displayed text does not change.
+
+Investigate why the selected font is not being applied.
+
+Requirements:
+
+- Selecting a font must update the customization selection correctly.
+- Clicking Save must apply the selected font to the output/reading text.
+- The updated font must become visible immediately, without requiring a restart or screen reload.
+- The selected font must be supported by the existing application implementation.
+- The Save action must apply the actual selected value, not a stale or default value.
+- Preserve existing customization options, including text size, spacing, background colour, text colour, and other accessibility settings already implemented.
+- Do not reset other settings when saving a single preference.
+- If the app already persists these settings, ensure that persistence and restoration continue to work correctly.
+- If the existing implementation is supposed to apply settings globally, preserve that behavior. Do not introduce a new settings architecture.
+
+### C. Interaction between reading modes and customization
+
+Investigate how the existing Mild, Moderate, Severe, and Customize Settings options interact.
+
+Requirements:
+
+- Selecting a reading mode must apply its intended formatting.
+- Customizing the font and saving must visibly apply the chosen font.
+- Applying one accessibility setting must not silently discard unrelated user preferences.
+- Avoid stale state, conflicting style values, or delayed UI updates.
+- Ensure that the displayed text always reflects the currently applied accessibility settings.
+- Preserve the existing intended behavior when switching between a preset mode and customized settings. Do not invent new rules for resolving conflicts; inspect the current implementation and correct the bugs while preserving the intended design.
+
+## 2. Required Investigation Before Editing
+
+Before making any changes:
+
+1. Identify the exact Flutter screen/widget responsible for displaying OCR output and reading text.
+2. Locate the implementations of Mild, Moderate, Severe, and Customize Settings.
+3. Trace how a selected mode or font moves from the UI controls into the state used to render the reading text.
+4. Inspect the relevant state-management mechanism, callbacks, widget rebuilds, controllers, and settings persistence.
+5. Check whether the UI is updating a temporary variable while the reading widget uses a different or outdated value.
+6. Check whether Save actually commits the selected font to the state used by the rendered text.
+7. Inspect relevant logs, existing tests, and errors if available.
+
+Identify the actual root cause before changing code. Do not assume that the problem is caused by Flutter state management without verifying it.
+
+## 3. Strict Scope Restrictions — Mandatory
+
+**Modify only the code necessary to repair the accessibility features on the output/reading screen.**
+
+Do NOT modify, refactor, or redesign:
+
+- OCR implementation, OCR preprocessing, image upload, image selection, or text extraction.
+- Hindi, Marathi, or English OCR processing.
+- Text simplification, sentence splitting, or language detection.
+- Backend Python/Flask code, APIs, or API request/response formats.
+- Firebase authentication, login, registration, or onboarding.
+- Global voice assistance, text-to-speech playback, speech recognition, or synchronized highlighting, except where a directly shared accessibility-state bug makes a minimal change strictly necessary.
+- Library, home, profile, or other unrelated screens.
+- Navigation, routing, project configuration, dependencies, or build files unless a change is demonstrably indispensable to fixing these specific bugs.
+- Existing UI layout, colours, icons, typography, or styling beyond what is necessary to restore the intended accessibility functionality.
+- Existing features that are working correctly.
+
+Do not replace existing functionality with a new implementation. Do not introduce new packages. Do not perform broad cleanup, rename unrelated files, or make unrelated improvements.
+
+**If a proposed change could affect functionality outside these accessibility controls, do not make that change. Report the concern instead.**
+
+## 4. Implementation Guidelines
+
+- Reuse the existing accessibility settings and state-management implementation.
+- Make the smallest targeted changes possible.
+- Ensure that mode-selection callbacks update the actual state consumed by the reading widget.
+- Ensure that the widget displaying the text rebuilds when the relevant settings change.
+- Ensure that the font selection and Save callback use the correct selected font value.
+- Preserve the existing persistence mechanism and default settings.
+- Avoid duplicate sources of truth for the same setting.
+- Preserve OCR output text exactly as extracted or processed by the existing pipeline. Accessibility formatting must not alter the underlying content.
+- Do not change the existing reading-mode definitions or customization design unless the current implementation demonstrably contradicts the intended behavior.
+
+## 5. Testing and Regression Checks
+
+Test the following cases using the existing project setup:
+
+1. Open the output screen and select Mild.
+2. Switch from Mild to Moderate and verify that the displayed formatting changes immediately.
+3. Switch from Moderate to Severe and verify the change.
+4. Switch back to Mild and verify that the original Mild formatting is restored.
+5. Open Customize Settings, select another font, and click Save.
+6. Verify that the reading text immediately displays the selected font.
+7. Change the font again and verify that the latest selection is applied.
+8. Change a font and another accessibility setting, then verify that saving does not reset unrelated preferences.
+9. Switch between preset modes and customized settings and verify that the existing intended behavior is preserved.
+10. Navigate away and return to the output screen, or reopen it, to verify persistence if the app is designed to retain these settings.
+11. Confirm that the OCR text remains unchanged and that existing reading functionality, including playback and highlighting, has not regressed.
+
+Run the relevant existing tests and static analysis where feasible. Do not claim that a test passed unless it was actually executed successfully.
+
+## 6. Final Report Required
+
+When finished, report:
+
+1. The exact root cause of each bug.
+2. The exact files modified and the purpose of each modification.
+3. The minimal code changes made.
+4. The tests executed and their actual results.
+5. Confirmation that OCR, text simplification, backend functionality, and unrelated screens were not modified.
+6. Any remaining issue that could not be verified.
+
+Do not merge branches, reset Git history, discard existing work, or make commits unless explicitly instructed.
+
+## Final instruction
+
+Work exclusively on fixing the existing output screen's Mild, Moderate, Severe, and Customize Settings accessibility behavior. Diagnose first, change only the necessary code, and verify the fix. **Do not touch anything else in AksharAlly.**

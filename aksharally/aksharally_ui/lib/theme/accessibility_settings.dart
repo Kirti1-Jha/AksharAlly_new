@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Client-side accessibility preferences for the reader (OutputScreen).
@@ -125,6 +126,77 @@ class AccessibilitySettings {
         RegExp(r'[\u0900-\u097F]').allMatches(text).length;
     final latinCount = RegExp(r'[A-Za-z]').allMatches(text).length;
     return devanagariCount > latinCount;
+  }
+
+  /// Builds a reading style from the active accessibility settings.
+  ///
+  /// Shared by plain-text and structured OCR renderers so both views apply
+  /// the same selected font and typography settings.
+  static TextStyle readingTextStyle({
+    double? fontSize,
+    double? height,
+    double? letterSpacing,
+    double? wordSpacing,
+    required Color color,
+    FontWeight fontWeight = FontWeight.normal,
+  }) {
+    final base = TextStyle(
+      fontSize: fontSize ?? AccessibilitySettings.fontSize,
+      height: height ?? AccessibilitySettings.lineHeight,
+      letterSpacing: letterSpacing ?? AccessibilitySettings.letterSpacing,
+      wordSpacing: wordSpacing ?? AccessibilitySettings.wordSpacing,
+      color: color,
+      fontWeight: fontWeight,
+    );
+
+    switch (AccessibilitySettings.fontFamily) {
+      case 'Atkinson Hyperlegible':
+        return GoogleFonts.atkinsonHyperlegible(textStyle: base);
+      case 'Noto Sans':
+        return GoogleFonts.notoSans(textStyle: base);
+      case 'Inter':
+        return GoogleFonts.inter(textStyle: base);
+      case 'Roboto':
+        return GoogleFonts.roboto(textStyle: base);
+      case 'Comic Neue':
+        return GoogleFonts.comicNeue(textStyle: base);
+      case 'Mukta':
+        return GoogleFonts.mukta(textStyle: base).copyWith(
+          fontFamilyFallback: const ['Noto Sans Devanagari'],
+        );
+      case 'Noto Sans Devanagari':
+        return GoogleFonts.notoSansDevanagari(textStyle: base).copyWith(
+          fontFamilyFallback: const ['Mukta'],
+        );
+      case 'Hind':
+        return GoogleFonts.hind(textStyle: base).copyWith(
+          fontFamilyFallback: const ['Mukta', 'Noto Sans Devanagari'],
+        );
+      case 'Baloo 2':
+        return GoogleFonts.baloo2(textStyle: base).copyWith(
+          fontFamilyFallback: const ['Mukta', 'Noto Sans Devanagari'],
+        );
+      case 'Tiro Devanagari Hindi':
+        return GoogleFonts.tiroDevanagariHindi(textStyle: base).copyWith(
+          fontFamilyFallback: const ['Mukta', 'Noto Sans Devanagari'],
+        );
+      case 'Verdana':
+      case 'Tahoma':
+      case 'Arial':
+      case 'Georgia':
+      case 'Trebuchet MS':
+        return base.copyWith(
+          fontFamily: AccessibilitySettings.fontFamily,
+          fontFamilyFallback: const ['Lexend'],
+        );
+      case 'System Default':
+        return base;
+      case 'OpenDyslexic':
+        return base.copyWith(fontFamily: 'OpenDyslexic');
+      case 'Lexend':
+      default:
+        return GoogleFonts.lexend(textStyle: base);
+    }
   }
 
   // ── Color themes — 21 themes across 4 categories ─────────────────────────

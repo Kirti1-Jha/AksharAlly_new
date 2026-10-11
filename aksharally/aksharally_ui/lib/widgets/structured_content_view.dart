@@ -14,10 +14,8 @@ class StructuredContentView extends StatelessWidget {
     required this.content,
   });
 
-  TextStyle get _bodyStyle => TextStyle(
+  TextStyle get _bodyStyle => AccessibilitySettings.readingTextStyle(
         color: AccessibilitySettings.textColor(),
-        fontSize: 18,
-        height: 1.55,
       );
 
   @override
@@ -32,7 +30,8 @@ class StructuredContentView extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         for (var index = 0; index < blocks.length; index++) ...[
-          if (index > 0) const SizedBox(height: AppTheme.spaceMD),
+          if (index > 0)
+            SizedBox(height: AccessibilitySettings.paragraphSpacing),
           _buildBlock(blocks[index]),
         ],
       ],
@@ -179,7 +178,7 @@ class StructuredContentView extends StatelessWidget {
           style: _bodyStyle.copyWith(
             color: AppTheme.primaryBlue,
             fontWeight: FontWeight.w900,
-            letterSpacing: 0.5,
+            letterSpacing: AccessibilitySettings.letterSpacing + 0.5,
           ),
         ),
         const SizedBox(height: 8),
@@ -201,7 +200,11 @@ class StructuredContentView extends StatelessWidget {
                         padding: const EdgeInsets.only(top: 3),
                         child: Text(
                           items[index]['description'].toString(),
-                          style: _bodyStyle.copyWith(fontSize: 16),
+                          style: _bodyStyle.copyWith(
+                            fontSize: (AccessibilitySettings.fontSize - 2)
+                                .clamp(14, double.infinity)
+                                .toDouble(),
+                          ),
                         ),
                       ),
                   ],
@@ -261,7 +264,7 @@ class StructuredContentView extends StatelessWidget {
           style: _bodyStyle.copyWith(
             color: AppTheme.primaryBlue,
             fontWeight: FontWeight.w900,
-            letterSpacing: 0.4,
+            letterSpacing: AccessibilitySettings.letterSpacing + 0.4,
           ),
         ),
         const SizedBox(height: 8),
