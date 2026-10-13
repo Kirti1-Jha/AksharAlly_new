@@ -1,9 +1,14 @@
+import 'dart:async';
+
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../theme/app_settings.dart';
 import '../theme/ui_accessibility.dart';
 import '../services/library_storage.dart';
 import '../services/auth_service.dart';
+import '../services/onboarding_storage.dart';
+import '../services/user_profile_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -1119,10 +1124,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget _langChip(String label, String code) {
     final sel = _language == code;
     return GestureDetector(
-      onTap: () => setState(() {
-        _language = code;
-        AppSettings.language = code;
-      }),
+      onTap: () {
+        setState(() {
+          _language = code;
+          AppSettings.language = code;
+        });
+        unawaited(_savePreferredLanguage(code));
+      },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
         decoration: BoxDecoration(
@@ -1135,6 +1143,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 fontWeight: FontWeight.w600,
                 fontSize:   13)),
       ),
+    );
+  }
+
+  Future<void> _savePreferredLanguage(String code) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+    final storage = OnboardingStorage();
+    final profile = await storage.load(user.uid);
+    if (profile != null) {
+      final languages = List<String>.from(profile.preferredLanguages);
+      if (!languages.contains(code)) languages.add(code);
+      await storage.save(
+        user.uid,
+        profile.copyWith(
+          preferredLanguages: languages,
+          defaultReadingLanguage: code,
+        ),
+      );
+    }
+    await UserProfileService.save(
+      uid: user.uid,
+      fullName: user.displayName ?? '',
+      preferredLanguage: code,
     );
   }
 

@@ -1,0 +1,82 @@
+### Phase 4 — Comprehensive Personalised Onboarding
+
+Implement AksharAlly's complete first-time onboarding experience on the existing `feature/voice-assistant` branch.
+
+**Start by inspecting the existing onboarding storage, UserProfileService, AccessibilitySettings, AppSettings, navigation, login/register UI, and TTS service. Continue existing work rather than rebuilding it.**
+
+#### A. Five-step onboarding
+
+**Step 1: About You**
+- Preferred name.
+- Optional age group.
+- Preferred interface language.
+- User type: reading for oneself, helping a child, teaching, or supporting another reader.
+- Optional profile picture only if supported by existing infrastructure.
+
+**Step 2: Reading Needs**
+- Self-reported reading comfort: a little challenging, moderately challenging, very challenging, depends on the material, or unsure.
+- Reading challenges: long sentences, crowded text, similar-looking letters, losing one's place, unfamiliar words, or difficulty reading for long periods.
+- Optional self-reported dyslexia/reading-support status, with a prefer-not-to-say option.
+- Languages the user reads and their default reading language.
+
+Do not diagnose users or require medical information.
+
+**Step 3: Reading Appearance and Support**
+- Supported font family.
+- Text size, letter spacing, word spacing, and line spacing.
+- Background/text colour theme and contrast.
+- Long-sentence breakdown and existing simplification options.
+- Word highlighting, focus-line mode, reading ruler, and syllable breakdown where supported.
+- Provide a live or representative preview of the selected reading appearance.
+
+**Step 4: Voice and Accessibility**
+- Voice assistance default preference.
+- Spoken instructions and navigation preference.
+- Supported voice language, speech speed, and reading-highlight preference where supported.
+- Larger controls, high contrast, and reduced motion only where these features already exist or can be implemented safely within scope.
+
+**Step 5: Reading Goals**
+- Goals such as independent reading, understanding text, study support, reading confidence, or multilingual reading.
+- Common material types: textbooks, stories, articles, notes, scanned pages, and other documents.
+- Preferred explanation style: shorter sentences, simpler text, or additional word explanations.
+- Optional daily reading target and reminders. Do not implement reminder scheduling in this phase unless the project already supports it.
+
+Keep the questions simple, welcoming, and appropriate for the selected interface language. Provide sensible defaults and allow users to skip optional questions.
+
+#### B. Persistence and completion
+- Associate onboarding data with the authenticated Firebase UID.
+- Reuse UserProfileService for supported profile fields and existing cloud-backed storage.
+- Reuse onboarding_storage.dart for accessibility preferences and progress where appropriate.
+- Persist the current step and answers so interrupted onboarding can resume.
+- Prevent duplicate profiles and avoid overwriting existing preferences with defaults on every login.
+- Require completion of essential steps before navigating new users to Home.
+- Returning users who completed onboarding should go directly to Home.
+- Handle malformed or missing saved data gracefully.
+- Make saved accessibility settings available throughout the application and allow later changes through existing Settings UI.
+
+Do not claim device-local SharedPreferences data synchronises across devices.
+
+#### C. Authentication restrictions
+My teammate owns the authentication implementation already merged into main. Do not modify auth_service.dart, Firebase sign-in methods, Google/Apple sign-in, registration, login, logout, authentication dependencies, or platform configuration.
+
+Integrate onboarding using the existing authenticated user's UID and current authentication API.
+
+#### D. Theme and voice
+- Inspect the actual existing login/register, Home, Library, Settings, and reader themes.
+- Reuse existing colours, typography, controls, spacing, and theme-aware components.
+- Make login/register and onboarding visually consistent with the rest of AksharAlly; do not create a separate authentication theme or redesign unrelated screens.
+- Preserve the existing welcome narration, replay control, and voice toggle.
+- Reuse the existing TTS service, respect supported languages, and never read sensitive entered values aloud.
+- Do not introduce a second TTS implementation.
+
+#### E. Scope and verification
+- Preserve all existing voice-assistant and Phase 4 changes.
+- Modify only files required for onboarding, preference integration, relevant navigation, theme consistency, and focused tests.
+- Do not modify OCR, text simplification, reader playback, or unrelated modules.
+- Do not add dependencies or a new database without explaining why they are necessary.
+- Add focused tests for progress persistence, resuming, completion, returning users, and applying preferences.
+- Run available formatting, analysis, and tests; clearly report unavailable tooling.
+- Review the complete diff and working tree before committing.
+- Stay on feature/voice-assistant. Do not merge into main, force-push, rewrite history, or push automatically.
+
+Implement incrementally to minimise Replit credit usage. Report implemented steps, changed files, verification results, and remaining limitations.

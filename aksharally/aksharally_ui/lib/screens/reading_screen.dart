@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 
+import '../theme/app_settings.dart';
 import '../theme/app_theme.dart';
 import '../services/api_service.dart';
 import '../models/format_result.dart';
@@ -25,12 +26,13 @@ class ReadingScreen extends StatefulWidget {
 class _ReadingScreenState extends State<ReadingScreen> {
   // ── Local UI state ─────────────────────────────────────────────────────────
   late ReadingTab _tab;
-  _ProcessMode _mode = _ProcessMode.formatOnly;
+  _ProcessMode _mode = AppSettings.autoSimplifyText
+      ? _ProcessMode.simplifyFormat
+      : _ProcessMode.formatOnly;
 
-  // Language and profile are LOCAL to this screen.
-  // They are NEVER written to AppSettings — they are only passed into API
-  // calls via the optional language: and profile: parameters.
-  String _language = 'en';
+  // These remain local to this screen after being initialized from the saved
+  // default language and are passed to API calls explicitly.
+  String _language = AppSettings.language;
   String _profile = 'moderate';
 
   // Input state

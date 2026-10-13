@@ -10,6 +10,7 @@ import '../services/tts_service.dart';
 import '../services/tts_progress_mapper.dart';
 import '../services/voice_command_handler.dart';
 import '../theme/accessibility_settings.dart';
+import '../theme/app_settings.dart';
 import '../widgets/highlighted_text_view.dart';
 import '../widgets/reading_customize_sheet.dart';
 import '../widgets/voice_assistant_controls.dart';
@@ -81,8 +82,8 @@ class _OutputScreenState extends State<OutputScreen> {
   // ── TTS ───────────────────────────────────────────────────────────────────
   final TTSService _tts = TTSService();
   late final Future<bool> _ttsReady;
-  double speechRate = 0.4;
-  bool autoRead = true;
+  double speechRate = AppSettings.speechRate;
+  bool autoRead = AppSettings.voiceAssistanceEnabled;
   String? _voiceMessage;
   bool _resumeAfterVoiceListening = false;
 
@@ -139,11 +140,10 @@ class _OutputScreenState extends State<OutputScreen> {
   }
 
   Future<bool> _initializeTts() async {
-    // Do not assume saved text without language metadata is English. Let the
-    // device choose its system voice unless this content has an explicit
-    // supported reading language.
     await _tts.init(defaultLocale: null);
-    final locale = TTSService.localeForLanguage(widget.readingLanguage);
+    final locale = TTSService.localeForLanguage(
+      widget.readingLanguage ?? AppSettings.voiceLanguage,
+    );
     if (locale == null) {
       final restored = await _tts.resetVoiceToDefault();
       if (!restored) {

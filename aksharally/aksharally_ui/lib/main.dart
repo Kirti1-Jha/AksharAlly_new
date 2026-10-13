@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'firebase_options.dart';
 
 import 'screens/splash_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
+import 'screens/onboarding_gate.dart';
 import 'theme/app_theme.dart';
 import 'theme/accessibility_settings.dart';
 import 'theme/ui_accessibility.dart';
@@ -86,7 +88,9 @@ class AksharAllyApp extends StatelessWidget {
         routes: {
           '/': (context) => const SplashScreen(),
           '/login': (context) => const LoginScreen(),
-          '/home': (context) => const HomeScreen(),
+          '/home': (context) => OnboardingGate(
+            uid: FirebaseAuth.instance.currentUser?.uid,
+          ),
         },
       ),
     );
