@@ -98,6 +98,7 @@ class OnboardingProfile {
           ? value.whereType<String>().toList()
           : List<String>.from(fallback);
     }
+
     const supportedLanguages = ['en', 'hi', 'mr'];
     final languages = stringList(
       'preferredLanguages',
@@ -120,41 +121,51 @@ class OnboardingProfile {
     final savedStep = json['currentStep'];
     return OnboardingProfile(
       fullName: stringValue('fullName', defaults.fullName),
-      ageGroup: const [
-        'under_13',
-        '13_17',
-        '18_24',
-        '25_44',
-        '45_plus',
-      ].contains(stringValue('ageGroup', defaults.ageGroup))
+      ageGroup:
+          const [
+            'under_13',
+            '13_17',
+            '18_24',
+            '25_44',
+            '45_plus',
+          ].contains(stringValue('ageGroup', defaults.ageGroup))
           ? stringValue('ageGroup', defaults.ageGroup)
           : defaults.ageGroup,
-      interfaceLanguage: const ['en', 'hi'].contains(
-        stringValue('interfaceLanguage', defaults.interfaceLanguage),
-      )
+      interfaceLanguage:
+          const ['en', 'hi'].contains(
+            stringValue('interfaceLanguage', defaults.interfaceLanguage),
+          )
           ? stringValue('interfaceLanguage', defaults.interfaceLanguage)
           : defaults.interfaceLanguage,
-      readerRole: const ['self', 'child', 'teacher', 'supporting'].contains(
-        stringValue('readerRole', defaults.readerRole),
-      )
+      readerRole:
+          const [
+            'self',
+            'child',
+            'teacher',
+            'supporting',
+          ].contains(stringValue('readerRole', defaults.readerRole))
           ? stringValue('readerRole', defaults.readerRole)
           : defaults.readerRole,
-      readingComfort: const [
-        'a_little',
-        'moderate',
-        'very',
-        'depends',
-        'unsure',
-      ].contains(stringValue('readingComfort', defaults.readingComfort))
+      readingComfort:
+          const [
+            'a_little',
+            'moderate',
+            'very',
+            'depends',
+            'unsure',
+          ].contains(stringValue('readingComfort', defaults.readingComfort))
           ? stringValue('readingComfort', defaults.readingComfort)
           : defaults.readingComfort,
-      readingChallenges:
-          stringList('readingChallenges', defaults.readingChallenges),
-      supportStatus: const [
-        'diagnosed',
-        'seeking_support',
-        'prefer_not_to_say',
-      ].contains(stringValue('supportStatus', defaults.supportStatus))
+      readingChallenges: stringList(
+        'readingChallenges',
+        defaults.readingChallenges,
+      ),
+      supportStatus:
+          const [
+            'diagnosed',
+            'seeking_support',
+            'prefer_not_to_say',
+          ].contains(stringValue('supportStatus', defaults.supportStatus))
           ? stringValue('supportStatus', defaults.supportStatus)
           : defaults.supportStatus,
       preferredLanguages: languages,
@@ -164,48 +175,59 @@ class OnboardingProfile {
       fontFamily: AccessibilitySettings.fonts.contains(requestedFont)
           ? requestedFont
           : defaults.fontFamily,
-      fontSize: numberValue('fontSize', defaults.fontSize)
-          .clamp(16, 32)
-          .toDouble(),
-      letterSpacing:
-          numberValue('letterSpacing', defaults.letterSpacing)
-              .clamp(0, 2)
-              .toDouble(),
-      wordSpacing:
-          numberValue('wordSpacing', defaults.wordSpacing)
-              .clamp(0, 8)
-              .toDouble(),
-      lineHeight:
-          numberValue('lineHeight', defaults.lineHeight)
-              .clamp(1.2, 2.5)
-              .toDouble(),
+      fontSize: numberValue(
+        'fontSize',
+        defaults.fontSize,
+      ).clamp(16, 32).toDouble(),
+      letterSpacing: numberValue(
+        'letterSpacing',
+        defaults.letterSpacing,
+      ).clamp(0, 2).toDouble(),
+      wordSpacing: numberValue(
+        'wordSpacing',
+        defaults.wordSpacing,
+      ).clamp(0, 8).toDouble(),
+      lineHeight: numberValue(
+        'lineHeight',
+        defaults.lineHeight,
+      ).clamp(1.2, 2.5).toDouble(),
       colorTheme: supportedThemes.contains(requestedTheme)
           ? requestedTheme
           : defaults.colorTheme,
-      wordHighlighting:
-          boolValue('wordHighlighting', defaults.wordHighlighting),
+      wordHighlighting: boolValue(
+        'wordHighlighting',
+        defaults.wordHighlighting,
+      ),
       focusLineMode: boolValue('focusLineMode', defaults.focusLineMode),
       readingRuler: boolValue('readingRuler', defaults.readingRuler),
-      syllableBreakdown:
-          boolValue('syllableBreakdown', defaults.syllableBreakdown),
-      breakLongSentences:
-          boolValue('breakLongSentences', defaults.breakLongSentences),
+      syllableBreakdown: boolValue(
+        'syllableBreakdown',
+        defaults.syllableBreakdown,
+      ),
+      breakLongSentences: boolValue(
+        'breakLongSentences',
+        defaults.breakLongSentences,
+      ),
       simplifyText: boolValue('simplifyText', defaults.simplifyText),
-      voiceAssistance:
-          boolValue('voiceAssistance', defaults.voiceAssistance),
+      voiceAssistance: boolValue('voiceAssistance', defaults.voiceAssistance),
       voiceLanguage: stringValue('voiceLanguage', defaults.voiceLanguage),
-      speechRate: numberValue('speechRate', defaults.speechRate)
-          .clamp(0.1, 1.0)
-          .toDouble(),
-      readingHighlight:
-          boolValue('readingHighlight', defaults.readingHighlight),
+      speechRate: numberValue(
+        'speechRate',
+        defaults.speechRate,
+      ).clamp(0.1, 1.0).toDouble(),
+      readingHighlight: boolValue(
+        'readingHighlight',
+        defaults.readingHighlight,
+      ),
       largerControls: boolValue('largerControls', defaults.largerControls),
       highContrast: boolValue('highContrast', defaults.highContrast),
       reduceMotion: boolValue('reduceMotion', defaults.reduceMotion),
       readingGoals: stringList('readingGoals', defaults.readingGoals),
       materialTypes: stringList('materialTypes', defaults.materialTypes),
-      explanationStyle:
-          stringValue('explanationStyle', defaults.explanationStyle),
+      explanationStyle: stringValue(
+        'explanationStyle',
+        defaults.explanationStyle,
+      ),
       dailyTargetMinutes: json['dailyTargetMinutes'] is int
           ? (json['dailyTargetMinutes'] as int).clamp(0, 180).toInt()
           : defaults.dailyTargetMinutes,
@@ -430,7 +452,9 @@ class OnboardingStorage {
     UIAccessibility.wordSpacing = profile.wordSpacing;
     UIAccessibility.lineHeight = profile.lineHeight;
     UIAccessibility.activeColorTheme = profile.colorTheme;
-    UIAccessibility.backgroundColor = UIAccessibility.themeBg(profile.colorTheme);
+    UIAccessibility.backgroundColor = UIAccessibility.themeBg(
+      profile.colorTheme,
+    );
     UIAccessibility.textColor = UIAccessibility.themeText(profile.colorTheme);
     UIAccessibility.highContrastEnabled = profile.highContrast;
     UIAccessibility.reducedAnimationsEnabled = profile.reduceMotion;
@@ -441,7 +465,10 @@ class OnboardingStorage {
     AppSettings.interfaceLanguage = profile.interfaceLanguage;
     AppSettings.voiceAssistanceEnabled = profile.voiceAssistance;
     await AppSettings.saveVoiceAssistancePreference(profile.voiceAssistance);
-    AppSettings.voiceLanguage = profile.voiceLanguage;
+    await AppSettings.saveVoiceLanguagePreference(
+      profile.voiceLanguage,
+      localeId: null,
+    );
     AppSettings.speechRate = profile.speechRate;
     AppSettings.readingHighlight = profile.readingHighlight;
     AppSettings.autoSimplifyText = profile.simplifyText;

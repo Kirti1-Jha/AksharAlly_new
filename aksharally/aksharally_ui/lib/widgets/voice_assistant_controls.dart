@@ -9,6 +9,7 @@ class VoiceAssistantControls extends StatefulWidget {
   const VoiceAssistantControls({
     super.key,
     required this.initialLanguageCode,
+    this.initialLocaleId,
     required this.onBeforeListening,
     required this.onRecognized,
     required this.onListeningCancelled,
@@ -18,6 +19,7 @@ class VoiceAssistantControls extends StatefulWidget {
   });
 
   final String? initialLanguageCode;
+  final String? initialLocaleId;
   final Future<void> Function() onBeforeListening;
   final Future<void> Function(String transcript, String languageCode)
   onRecognized;
@@ -59,9 +61,7 @@ class _VoiceAssistantControlsState extends State<VoiceAssistantControls> {
     super.dispose();
   }
 
-  Future<void> _cancelSpeechOnDispose({
-    required bool restorePlayback,
-  }) async {
+  Future<void> _cancelSpeechOnDispose({required bool restorePlayback}) async {
     final shouldRestore =
         restorePlayback &&
         (_sessionOpen || _startingListening) &&
@@ -78,7 +78,8 @@ class _VoiceAssistantControlsState extends State<VoiceAssistantControls> {
   @override
   void didUpdateWidget(covariant VoiceAssistantControls oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.initialLanguageCode != widget.initialLanguageCode &&
+    if ((oldWidget.initialLanguageCode != widget.initialLanguageCode ||
+            oldWidget.initialLocaleId != widget.initialLocaleId) &&
         _supportedLocales.isNotEmpty &&
         !_isListening) {
       _selectInitialLocale();
@@ -170,7 +171,10 @@ class _VoiceAssistantControlsState extends State<VoiceAssistantControls> {
       return;
     }
 
-    final selected = matches.first;
+    final selected = matches.firstWhere(
+      (locale) => locale.localeId == widget.initialLocaleId,
+      orElse: () => matches.first,
+    );
     setState(() {
       _selectedLocaleId = selected.localeId;
       _message = 'Voice commands use ${selected.name}.';

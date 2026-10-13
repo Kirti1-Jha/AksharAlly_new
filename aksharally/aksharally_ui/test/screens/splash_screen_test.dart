@@ -1,154 +1,71 @@
 import 'package:aksharally_ui/screens/splash_screen.dart';
-import 'package:aksharally_ui/services/auth_flow.dart';
-import 'package:aksharally_ui/services/onboarding_storage.dart';
 import 'package:aksharally_ui/services/tts_service.dart';
-import 'package:aksharally_ui/services/user_profile_service.dart';
 import 'package:aksharally_ui/theme/app_settings.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
-  TestWidgetsFlutterBinding.ensureInitialized();
-
   setUp(() {
-    SharedPreferences.setMockInitialValues({});
     AppSettings.voiceAssistanceEnabled = false;
   });
 
-  testWidgets('splash plays the welcome once when voice assistance is enabled', (
+  testWidgets('retains the main splash design and stays quiet when disabled', (
+    tester,
+  ) async {
+    final engine = _FakeTtsEngine();
+
+    await tester.pumpWidget(_app(engine));
+    await tester.pumpAndSettle();
+
+    expect(find.text('AksharAlly'), findsOneWidget);
+    expect(find.text('Read with confidence.'), findsOneWidget);
+    expect(find.text("Let's Begin"), findsOneWidget);
+    expect(find.bySemanticsLabel('AksharAlly logo'), findsOneWidget);
+    expect(engine.spoken, isEmpty);
+  });
+
+  testWidgets('speaks the welcome once when voice assistance is enabled', (
     tester,
   ) async {
     AppSettings.voiceAssistanceEnabled = true;
-    final engine = _SplashTtsEngine();
-    final store = _MemoryAccountStore();
+    final engine = _FakeTtsEngine();
 
-    await tester.pumpWidget(
-      MaterialApp(
-        home: SplashScreen(
-          authFlow: _FakeAuthFlow(),
-          accountStore: store,
-          ttsService: TTSService(engine: engine),
-        ),
-      ),
-    );
+    await tester.pumpWidget(_app(engine));
     await tester.pumpAndSettle();
 
     expect(engine.spoken, [SplashScreen.welcomeMessage]);
-    expect(engine.language, 'en-IN');
-    expect(find.text('Get Started'), findsOneWidget);
+    expect(engine.language, TTSService.preferredEnglishLocale);
   });
 
-  testWidgets('signed-in user preferences load before splash welcome and Home', (
-    tester,
-  ) async {
-    final completed = OnboardingProfile.initial(fullName: 'Mira').copyWith(
-      currentStep: 4,
-      completed: true,
-      voiceAssistance: true,
-    );
-    final store = _MemoryAccountStore()
-      ..documents['returning-user'] = {
-        'onboardingCompleted': true,
-        'onboarding': completed.toJson(),
-      };
-    final engine = _SplashTtsEngine();
+  testWidgets('welcome can be replayed and Begin opens login', (tester) async {
+    final engine = _FakeTtsEngine();
 
-    await tester.pumpWidget(
-      MaterialApp(
-        home: SplashScreen(
-          authFlow: _FakeAuthFlow('returning-user'),
-          accountStore: store,
-          ttsService: TTSService(engine: engine),
-        ),
-        onGenerateRoute: (settings) {
-          if (settings.name != '/home') return null;
-          return MaterialPageRoute<void>(
-            builder: (_) => const Scaffold(body: Text('HOME')),
-          );
-        },
-      ),
-    );
+    await tester.pumpWidget(_app(engine));
     await tester.pumpAndSettle();
 
-    expect(engine.spoken, [SplashScreen.welcomeMessage]);
-    expect(engine.language, 'en-IN');
-    expect(find.text('HOME'), findsOneWidget);
-  });
-
-  testWidgets('leaving splash stops an unfinished welcome utterance', (
-    tester,
-  ) async {
-    AppSettings.voiceAssistanceEnabled = true;
-    final engine = _SplashTtsEngine(completeAutomatically: false);
-
-    await tester.pumpWidget(
-      MaterialApp(
-        home: SplashScreen(
-          authFlow: _FakeAuthFlow(),
-          accountStore: _MemoryAccountStore(),
-          ttsService: TTSService(engine: engine),
-        ),
-        onGenerateRoute: (settings) {
-          if (settings.name != '/login') return null;
-          return MaterialPageRoute<void>(
-            builder: (_) => const Scaffold(body: Text('LOGIN')),
-          );
-        },
-      ),
-    );
-    await tester.pump();
-    await tester.tap(find.text('Get Started'));
+    await tester.tap(find.text('Hear welcome message again'));
     await tester.pumpAndSettle();
-
     expect(engine.spoken, [SplashScreen.welcomeMessage]);
-    expect(engine.stopCount, 1);
+
+    await tester.tap(find.text("Let's Begin"));
+    await tester.pumpAndSettle();
     expect(find.text('LOGIN'), findsOneWidget);
   });
 }
 
-class _FakeAuthFlow implements AuthFlow {
-  _FakeAuthFlow([this.currentUserId]);
+Widget _app(_FakeTtsEngine engine) => MaterialApp(
+  home: SplashScreen(ttsService: TTSService(engine: engine)),
+  onGenerateRoute: (settings) {
+    if (settings.name != '/login') return null;
+    return MaterialPageRoute<void>(
+      builder: (_) => const Scaffold(body: Text('LOGIN')),
+    );
+  },
+);
 
-  @override
-  final String? currentUserId;
-
-  @override
-  Future<String?> register(String email, String password) async => null;
-
-  @override
-  Future<String?> login(String email, String password) async => null;
-
-  @override
-  Future<String?> signInWithGoogle() async => null;
-
-  @override
-  Future<String?> signInWithApple() async => null;
-}
-
-class _MemoryAccountStore implements OnboardingAccountStore {
-  final Map<String, Map<String, dynamic>> documents = {};
-
-  @override
-  Future<Map<String, dynamic>> load(String uid) async =>
-      documents[uid] ?? <String, dynamic>{};
-
-  @override
-  Future<void> saveOnboarding(String uid, OnboardingProfile profile) async {
-    documents[uid] = {
-      'onboardingCompleted': profile.completed,
-      'onboarding': profile.toJson(),
-    };
-  }
-}
-
-class _SplashTtsEngine implements TtsEngine {
-  _SplashTtsEngine({this.completeAutomatically = true});
-
-  final bool completeAutomatically;
+class _FakeTtsEngine implements TtsEngine {
   final List<String> spoken = [];
   String? language;
-  int stopCount = 0;
   void Function()? _start;
   void Function()? _complete;
 
@@ -156,9 +73,7 @@ class _SplashTtsEngine implements TtsEngine {
   Future<bool> isLanguageAvailable(String locale) async => true;
 
   @override
-  Future<List<Map<String, dynamic>>> getVoices() async => [
-        {'name': 'Indian English', 'locale': 'en-IN'},
-      ];
+  Future<List<Map<String, dynamic>>> getVoices() async => const [];
 
   @override
   Future<void> setVoice(Map<String, String> voice) async {}
@@ -184,16 +99,14 @@ class _SplashTtsEngine implements TtsEngine {
   Future<void> speak(String text) async {
     spoken.add(text);
     _start?.call();
-    if (completeAutomatically) _complete?.call();
+    _complete?.call();
   }
 
   @override
   Future<bool> pause() async => true;
 
   @override
-  Future<void> stop() async {
-    stopCount++;
-  }
+  Future<void> stop() async {}
 
   @override
   void setStartHandler(void Function() callback) => _start = callback;

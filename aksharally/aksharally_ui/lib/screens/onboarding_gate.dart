@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../services/auth_flow.dart';
 import '../services/onboarding_storage.dart';
+import '../services/tts_service.dart';
 import '../services/user_profile_service.dart';
 import 'home_screen.dart';
 import 'login_screen.dart';
@@ -13,19 +15,22 @@ class OnboardingGate extends StatefulWidget {
     required this.uid,
     this.storage,
     this.accountStore,
+    this.authFlow,
+    this.ttsService,
   });
 
   final String? uid;
   final OnboardingStorage? storage;
   final OnboardingAccountStore? accountStore;
+  final AuthFlow? authFlow;
+  final TTSService? ttsService;
 
   @override
   State<OnboardingGate> createState() => _OnboardingGateState();
 }
 
 class _OnboardingGateState extends State<OnboardingGate> {
-  late final OnboardingStorage _storage =
-      widget.storage ?? OnboardingStorage();
+  late final OnboardingStorage _storage = widget.storage ?? OnboardingStorage();
   late final OnboardingAccountStore _accountStore =
       widget.accountStore ?? const FirestoreOnboardingAccountStore();
   late final Future<_GateResult> _result = _load();
@@ -77,16 +82,15 @@ class _OnboardingGateState extends State<OnboardingGate> {
       return _GateResult.home(completed);
     }
 
-    final draft = remoteProfile?.copyWith(completed: false) ??
+    final draft =
+        remoteProfile?.copyWith(completed: false) ??
         (accountStatus == false
             ? profile?.copyWith(completed: false)
             : profile);
     final savedName = account['fullName'] is String
         ? account['fullName'] as String
         : '';
-    final initial = draft ?? OnboardingProfile.initial(
-      fullName: savedName,
-    );
+    final initial = draft ?? OnboardingProfile.initial(fullName: savedName);
     return _GateResult.onboarding(initial);
   }
 
@@ -122,6 +126,8 @@ class _OnboardingGateState extends State<OnboardingGate> {
                             uid: widget.uid,
                             storage: _storage,
                             accountStore: _accountStore,
+                            authFlow: widget.authFlow,
+                            ttsService: widget.ttsService,
                           ),
                         ),
                       ),
@@ -139,7 +145,12 @@ class _OnboardingGateState extends State<OnboardingGate> {
           );
         }
         final result = snapshot.data!;
-        if (result.showLogin) return const LoginScreen();
+        if (result.showLogin) {
+          return LoginScreen(
+            authFlow: widget.authFlow,
+            ttsService: widget.ttsService,
+          );
+        }
         if (result.profile == null) return const HomeScreen();
         if (result.profile!.completed) return const HomeScreen();
         return OnboardingScreen(
@@ -157,10 +168,9 @@ class _GateResult {
   const _GateResult._({this.profile, this.showLogin = false});
 
   const _GateResult.login() : this._(showLogin: true);
-  const _GateResult.home(OnboardingProfile profile)
-      : this._(profile: profile);
+  const _GateResult.home(OnboardingProfile profile) : this._(profile: profile);
   const _GateResult.onboarding(OnboardingProfile profile)
-      : this._(profile: profile);
+    : this._(profile: profile);
 
   final OnboardingProfile? profile;
   final bool showLogin;

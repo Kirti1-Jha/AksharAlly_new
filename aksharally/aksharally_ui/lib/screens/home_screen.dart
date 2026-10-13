@@ -320,9 +320,11 @@ class _HomeScreenState extends State<HomeScreen> {
             style: _ts(22, FontWeight.w800, _txt),
           ),
           const SizedBox(width: AppTheme.spaceSM),
-          Text(
-            'Total Readings',
-            style: _ts(14, FontWeight.w500, _mutedTxt),
+          Expanded(
+            child: Text(
+              'Total Readings',
+              style: _ts(14, FontWeight.w500, _mutedTxt),
+            ),
           ),
         ],
       ),

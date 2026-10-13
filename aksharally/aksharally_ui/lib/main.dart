@@ -6,7 +6,6 @@ import 'firebase_options.dart';
 import 'screens/splash_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/onboarding_gate.dart';
-import 'theme/app_theme.dart';
 import 'theme/accessibility_settings.dart';
 import 'theme/ui_accessibility.dart';
 import 'services/library_storage.dart';
@@ -47,21 +46,16 @@ class _AppInitializerState extends State<AppInitializer> {
     return FutureBuilder(
       future: _firebaseInit,
       builder: (context, snapshot) {
-
         if (snapshot.connectionState != ConnectionState.done) {
           return const MaterialApp(
-            home: Scaffold(
-              body: Center(child: CircularProgressIndicator()),
-            ),
+            home: Scaffold(body: Center(child: CircularProgressIndicator())),
           );
         }
 
         if (snapshot.hasError) {
           return MaterialApp(
             home: Scaffold(
-              body: Center(
-                child: Text("Firebase Error: ${snapshot.error}"),
-              ),
+              body: Center(child: Text("Firebase Error: ${snapshot.error}")),
             ),
           );
         }

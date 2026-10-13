@@ -5,11 +5,16 @@ import '../theme/app_theme.dart';
 import '../services/library_storage.dart';
 import '../models/library_item.dart';
 import '../models/format_result.dart';
+import '../services/reading_text_segments.dart';
+import '../services/tts_progress_mapper.dart';
 import '../services/tts_service.dart';
+import '../services/voice_command_handler.dart';
+import '../theme/app_settings.dart';
 import '../theme/accessibility_settings.dart';
 import '../widgets/highlighted_text_view.dart';
 import '../widgets/structured_content_view.dart';
 import '../widgets/reading_customize_sheet.dart';
+import '../widgets/voice_assistant_controls.dart';
 
 /// OutputScreen — DISPLAY / READING screen only.
 ///
@@ -60,7 +65,6 @@ class OutputScreen extends StatefulWidget {
 }
 
 class _OutputScreenState extends State<OutputScreen> {
-
   // ── display text state ────────────────────────────────────────────────────
   String simplifiedText = '';
 
@@ -68,14 +72,18 @@ class _OutputScreenState extends State<OutputScreen> {
   // _selectedProfile reflects the active accessibility preset.
   // _isCustomize tracks whether the 'Customize' chip is visually active.
   String _selectedProfile = 'moderate';
-  bool   _isCustomize     = false;
-  bool   _showOriginalOcr = false;
+  bool _isCustomize = false;
+  bool _showOriginalOcr = false;
   FormatResult? _formatResult;
 
   // ── TTS ───────────────────────────────────────────────────────────────────
   final TTSService _tts = TTSService();
-  double speechRate = 0.4;
+  double speechRate = AppSettings.speechRate;
   bool autoRead = true;
+  String? _voiceCommandFeedback;
+  bool _resumeReadingAfterVoiceInput = false;
+  List<int> _activeSpeechWordIndices = const [];
+  TtsProgressMapper? _progressMapper;
 
   List<String> words = [];
   int currentIndex = -1;
@@ -84,13 +92,15 @@ class _OutputScreenState extends State<OutputScreen> {
   // ── accessibility overlays ────────────────────────────────────────────────
   // Initialised lazily in build() once LayoutBuilder provides a real height.
   double? _focusLineY; // centre of the focus band
-  double? _rulerY;     // top edge of the reading ruler
+  double? _rulerY; // top edge of the reading ruler
 
   // ─────────────────────────────────────────────────────────────────────────
   @override
   void initState() {
     super.initState();
-    _tts.init();
+    _tts.init(
+      defaultLocale: TTSService.localeForLanguage(AppSettings.language),
+    );
 
     // Restore active profile from persisted accessibility settings.
     _selectedProfile = (AccessibilitySettings.profile == 'customize')
@@ -119,14 +129,15 @@ class _OutputScreenState extends State<OutputScreen> {
   }
 
   // ── word-splitting — removes embedded \n / \n\n ───────────────────────────
-  List<String> _splitToWords(String text) => HighlightedTextView.splitToWords(text);
+  List<String> _splitToWords(String text) =>
+      HighlightedTextView.splitToWords(text);
 
   // ── load pre-formatted result (from ReadingScreen) ────────────────────────
   void _loadInitialFormatResult(FormatResult r) {
     setState(() {
-      _formatResult  = r;
+      _formatResult = r;
       simplifiedText = r.processedText;
-      words          = _splitToWords(r.processedText);
+      words = _splitToWords(r.processedText);
     });
     _saveToLibrary(r.processedText, r.sourceType);
     if (autoRead) _tts.setRate(speechRate).then((_) => startReading());
@@ -136,7 +147,7 @@ class _OutputScreenState extends State<OutputScreen> {
   void _loadDisplayText(String text) {
     setState(() {
       simplifiedText = text;
-      words          = _splitToWords(text);
+      words = _splitToWords(text);
     });
     // Save only when the caller (ReadingScreen) signals fresh content via
     // saveOnLoad: true. LibraryScreen and HomeScreen leave saveOnLoad at its
@@ -147,20 +158,21 @@ class _OutputScreenState extends State<OutputScreen> {
 
   // ── library save ──────────────────────────────────────────────────────────
   void _saveToLibrary(String content, String sourceType) {
-    if (content.isEmpty ||
-        content.startsWith('❌') ||
-        content.startsWith('⚠️')) return;
+    if (content.isEmpty || content.startsWith('❌') || content.startsWith('⚠️'))
+      return;
 
     final wordCount = content.split(' ').where((w) => w.isNotEmpty).length;
-    final now       = DateTime.now();
-    final label     = sourceType.isEmpty ? 'Document' : _cap(sourceType);
+    final now = DateTime.now();
+    final label = sourceType.isEmpty ? 'Document' : _cap(sourceType);
 
-    LibraryStorage.addItem(LibraryItem(
-      title:      '$label · ${wordCount}w · ${now.day}/${now.month}/${now.year}',
-      content:    content,
-      date:       now,
-      sourceType: sourceType,
-    ));
+    LibraryStorage.addItem(
+      LibraryItem(
+        title: '$label · ${wordCount}w · ${now.day}/${now.month}/${now.year}',
+        content: content,
+        date: now,
+        sourceType: sourceType,
+      ),
+    );
   }
 
   String _cap(String s) =>
@@ -168,28 +180,195 @@ class _OutputScreenState extends State<OutputScreen> {
 
   // ── accessibility theme helpers ───────────────────────────────────────────
   Color getBackgroundColor() => AccessibilitySettings.backgroundColor();
-  Color getTextColor()       => AccessibilitySettings.textColor();
+  Color getTextColor() => AccessibilitySettings.textColor();
 
   // ── TTS ───────────────────────────────────────────────────────────────────
-  void startReading() async {
+  List<int> get _spokenDisplayWordIndices => [
+    for (var index = 0; index < words.length; index++)
+      if (words[index] != HighlightedTextView.paragraphMarker &&
+          words[index] != HighlightedTextView.lineBreakMarker)
+        index,
+  ];
+
+  Future<void> startReading() async {
     if (simplifiedText.isEmpty) return;
-    await _tts.setRate(speechRate);
-    currentIndex = 0;
-    await _tts.speak(simplifiedText);
+    await _speakUtterance(simplifiedText, _spokenDisplayWordIndices);
+  }
+
+  Future<void> _speakUtterance(
+    String text,
+    List<int> displayWordIndices,
+  ) async {
+    if (text.trim().isEmpty || displayWordIndices.isEmpty) return;
     _timer?.cancel();
+    _activeSpeechWordIndices = displayWordIndices;
+    _progressMapper = TtsProgressMapper(
+      text: text,
+      displayWordIndices: displayWordIndices,
+    );
+    if (mounted) {
+      setState(() => currentIndex = displayWordIndices.first);
+    }
+    await _tts.setRate(speechRate);
+    await _tts.speak(
+      text,
+      onProgress: (_, start, end, __) {
+        final displayIndex = _progressMapper?.displayIndexForRange(start, end);
+        if (!mounted || displayIndex == null) return;
+        _timer?.cancel();
+        setState(() => currentIndex = displayIndex);
+      },
+    );
+    _startFallbackHighlightTimer();
+  }
+
+  void _startFallbackHighlightTimer() {
+    _timer?.cancel();
+    var next = _activeSpeechWordIndices.indexWhere(
+      (index) => index > currentIndex,
+    );
+    if (next < 0) return;
     _timer = Timer.periodic(const Duration(milliseconds: 400), (timer) {
-      if (currentIndex < words.length - 1) {
-        setState(() { currentIndex++; });
-      } else {
+      if (!mounted || next >= _activeSpeechWordIndices.length) {
         timer.cancel();
+        return;
       }
+      setState(() => currentIndex = _activeSpeechWordIndices[next++]);
     });
   }
 
-  void stopReading() async {
+  Future<void> stopReading() async {
     await _tts.stop();
     _timer?.cancel();
-    setState(() { currentIndex = -1; });
+    if (mounted) setState(() => currentIndex = -1);
+  }
+
+  Future<void> _pauseReading() async {
+    await _tts.pause();
+    _timer?.cancel();
+  }
+
+  Future<void> _resumeReading() async {
+    if (!_tts.isPaused) {
+      await startReading();
+      return;
+    }
+    if (await _tts.resume()) _startFallbackHighlightTimer();
+  }
+
+  Future<void> _prepareForVoiceInput() async {
+    _resumeReadingAfterVoiceInput = _tts.isSpeaking || _tts.isPaused;
+    if (_tts.isSpeaking) await _tts.pause();
+    _timer?.cancel();
+  }
+
+  Future<void> _restoreReadingAfterVoiceInput() async {
+    if (!_resumeReadingAfterVoiceInput) return;
+    _resumeReadingAfterVoiceInput = false;
+    if (await _tts.resume()) _startFallbackHighlightTimer();
+  }
+
+  Future<void> _handleVoiceCommand(
+    String transcript,
+    String languageCode,
+  ) async {
+    final intent = VoiceCommandHandler.parse(
+      transcript,
+      languageCode: languageCode,
+    );
+    var feedback = 'Command completed.';
+
+    switch (intent) {
+      case VoiceCommandIntent.readCurrentPage:
+        _resumeReadingAfterVoiceInput = false;
+        await startReading();
+        feedback = 'Reading started.';
+      case VoiceCommandIntent.pauseReading:
+        _resumeReadingAfterVoiceInput = false;
+        await _pauseReading();
+        feedback = 'Reading paused.';
+      case VoiceCommandIntent.resumeReading:
+        _resumeReadingAfterVoiceInput = false;
+        await _resumeReading();
+        feedback = 'Reading resumed.';
+      case VoiceCommandIntent.stopReading:
+        _resumeReadingAfterVoiceInput = false;
+        await stopReading();
+        feedback = 'Reading stopped.';
+      case VoiceCommandIntent.repeatSentence:
+        final activeIndex = currentIndex < 0 ? 0 : currentIndex;
+        final range = ReadingTextSegments.sentenceAt(words, activeIndex);
+        if (range == null) {
+          feedback = 'There is no sentence to repeat.';
+        } else {
+          _resumeReadingAfterVoiceInput = false;
+          final displayIndices = [
+            for (
+              var index = range.firstWordIndex;
+              index <= range.lastWordIndex;
+              index++
+            )
+              if (words[index] != HighlightedTextView.paragraphMarker &&
+                  words[index] != HighlightedTextView.lineBreakMarker)
+                index,
+          ];
+          final sentence = displayIndices
+              .map((index) => words[index])
+              .join(' ');
+          await _speakUtterance(sentence, displayIndices);
+          feedback = 'Repeating the current sentence.';
+        }
+      case VoiceCommandIntent.repeatPassage:
+        _resumeReadingAfterVoiceInput = false;
+        await _speakUtterance(simplifiedText, _spokenDisplayWordIndices);
+        feedback = 'Repeating the passage.';
+      case VoiceCommandIntent.increaseSpeechRate:
+      case VoiceCommandIntent.decreaseSpeechRate:
+        final adjustment = intent == VoiceCommandIntent.increaseSpeechRate
+            ? 0.1
+            : -0.1;
+        speechRate = (speechRate + adjustment).clamp(0.1, 1.0).toDouble();
+        AppSettings.speechRate = speechRate;
+        await _tts.setRate(speechRate);
+        await _restoreReadingAfterVoiceInput();
+        feedback = 'Reading speed updated.';
+      case VoiceCommandIntent.increaseFontSize:
+      case VoiceCommandIntent.decreaseFontSize:
+        final adjustment = intent == VoiceCommandIntent.increaseFontSize
+            ? 2.0
+            : -2.0;
+        AccessibilitySettings.fontSize =
+            (AccessibilitySettings.fontSize + adjustment)
+                .clamp(12.0, 48.0)
+                .toDouble();
+        AccessibilitySettings.profile = 'customize';
+        _isCustomize = true;
+        await AccessibilitySettings.save();
+        await _restoreReadingAfterVoiceInput();
+        feedback = 'Text size updated.';
+      case VoiceCommandIntent.changeColors:
+        final themes = AccessibilitySettings.themeLabels.keys.toList();
+        final currentTheme = themes.indexOf(AccessibilitySettings.colorTheme);
+        AccessibilitySettings.colorTheme =
+            themes[(currentTheme + 1) % themes.length];
+        AccessibilitySettings.profile = 'customize';
+        _isCustomize = true;
+        await AccessibilitySettings.save();
+        await _restoreReadingAfterVoiceInput();
+        feedback = 'Reading colors updated.';
+      case VoiceCommandIntent.unsupported:
+        feedback = VoiceCommandHandler.unsupportedFeedback(languageCode);
+        await _restoreReadingAfterVoiceInput();
+    }
+
+    if (mounted) setState(() => _voiceCommandFeedback = feedback);
+  }
+
+  Future<void> _setVoiceLanguage(String languageCode, String localeId) async {
+    await AppSettings.saveVoiceLanguagePreference(
+      languageCode,
+      localeId: localeId,
+    );
   }
 
   @override
@@ -211,23 +390,27 @@ class _OutputScreenState extends State<OutputScreen> {
 
     Widget chip(String value, {IconData? icon}) {
       final isSelected = activeChip == value;
-      final label      = '${value[0].toUpperCase()}${value.substring(1)}';
+      final label = '${value[0].toUpperCase()}${value.substring(1)}';
       return GestureDetector(
         onTap: () => _onProfileChanged(value),
         child: Container(
-          margin:  const EdgeInsets.symmetric(horizontal: 3, vertical: 2),
-          padding: EdgeInsets.symmetric(horizontal: chipPadH, vertical: chipPadV),
+          margin: const EdgeInsets.symmetric(horizontal: 3, vertical: 2),
+          padding: EdgeInsets.symmetric(
+            horizontal: chipPadH,
+            vertical: chipPadV,
+          ),
           decoration: BoxDecoration(
             gradient: isSelected ? AppTheme.brandGradient : null,
-            color:        isSelected ? null : Colors.grey.shade200,
+            color: isSelected ? null : Colors.grey.shade200,
             borderRadius: BorderRadius.circular(AppTheme.radiusLG),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               if (icon != null) ...[
-                Icon(icon,
-                  size:  14,
+                Icon(
+                  icon,
+                  size: 14,
                   color: isSelected ? Colors.white : Colors.black87,
                 ),
                 const SizedBox(width: 4),
@@ -235,9 +418,9 @@ class _OutputScreenState extends State<OutputScreen> {
               Text(
                 label,
                 style: TextStyle(
-                  color:      isSelected ? Colors.white : Colors.black87,
+                  color: isSelected ? Colors.white : Colors.black87,
                   fontWeight: FontWeight.w600,
-                  fontSize:   13,
+                  fontSize: 13,
                 ),
               ),
             ],
@@ -247,8 +430,8 @@ class _OutputScreenState extends State<OutputScreen> {
     }
 
     return Wrap(
-      alignment:  WrapAlignment.center,
-      spacing:    4,
+      alignment: WrapAlignment.center,
+      spacing: 4,
       runSpacing: 4,
       children: [
         for (final p in presets) chip(p),
@@ -265,7 +448,9 @@ class _OutputScreenState extends State<OutputScreen> {
       AccessibilitySettings.profile = 'customize';
       await showReadingCustomizeSheet(
         context,
-        onChanged:    () { if (mounted) setState(() {}); },
+        onChanged: () {
+          if (mounted) setState(() {});
+        },
         detectedText: words.join(' '),
       );
       return;
@@ -275,7 +460,7 @@ class _OutputScreenState extends State<OutputScreen> {
     AccessibilitySettings.applyPreset(profile);
     setState(() {
       _selectedProfile = profile;
-      _isCustomize     = false;
+      _isCustomize = false;
     });
     await AccessibilitySettings.save();
   }
@@ -283,36 +468,47 @@ class _OutputScreenState extends State<OutputScreen> {
   // ── formatting info bar ───────────────────────────────────────────────────
   Widget _formattingInfoBar() {
     final activeProfile = _isCustomize ? 'customize' : _selectedProfile;
-    final font          = AccessibilitySettings.fontFamily == 'Atkinson Hyperlegible'
+    final font = AccessibilitySettings.fontFamily == 'Atkinson Hyperlegible'
         ? 'Atkinson'
         : AccessibilitySettings.fontFamily;
-    final theme = AccessibilitySettings
-        .themeLabels[AccessibilitySettings.colorTheme] ?? 'Custom';
+    final theme =
+        AccessibilitySettings.themeLabels[AccessibilitySettings.colorTheme] ??
+        'Custom';
 
     return Container(
-      padding:   const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color:        AppTheme.accentCream.withOpacity(0.5),
+        color: AppTheme.accentCream.withOpacity(0.5),
         borderRadius: BorderRadius.circular(AppTheme.radiusMD),
-        border:       Border.all(color: AppTheme.primaryBlue.withOpacity(0.15)),
+        border: Border.all(color: AppTheme.primaryBlue.withOpacity(0.15)),
       ),
       child: Wrap(
-        spacing:    8,
+        spacing: 8,
         runSpacing: 6,
         children: [
           _infoBadge('Profile', _cap(activeProfile)),
-          _infoBadge('Font',    font),
-          _infoBadge('Size',
-            '${AccessibilitySettings.fontSize.toStringAsFixed(0)}px'),
-          _infoBadge('Letter',
-            '${AccessibilitySettings.letterSpacing.toStringAsFixed(1)}'),
-          _infoBadge('Word',
-            '${AccessibilitySettings.wordSpacing.toStringAsFixed(1)}px'),
-          _infoBadge('Line',
-            '${AccessibilitySettings.lineHeight.toStringAsFixed(1)}×'),
-          _infoBadge('Para',
-            '${AccessibilitySettings.paragraphSpacing.toStringAsFixed(0)}px'),
-          _infoBadge('Theme',   theme),
+          _infoBadge('Font', font),
+          _infoBadge(
+            'Size',
+            '${AccessibilitySettings.fontSize.toStringAsFixed(0)}px',
+          ),
+          _infoBadge(
+            'Letter',
+            '${AccessibilitySettings.letterSpacing.toStringAsFixed(1)}',
+          ),
+          _infoBadge(
+            'Word',
+            '${AccessibilitySettings.wordSpacing.toStringAsFixed(1)}px',
+          ),
+          _infoBadge(
+            'Line',
+            '${AccessibilitySettings.lineHeight.toStringAsFixed(1)}×',
+          ),
+          _infoBadge(
+            'Para',
+            '${AccessibilitySettings.paragraphSpacing.toStringAsFixed(0)}px',
+          ),
+          _infoBadge('Theme', theme),
         ],
       ),
     );
@@ -322,22 +518,22 @@ class _OutputScreenState extends State<OutputScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color:        Colors.white,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(AppTheme.radiusSM),
-        border:       Border.all(color: AppTheme.primaryBlue.withOpacity(0.2)),
+        border: Border.all(color: AppTheme.primaryBlue.withOpacity(0.2)),
       ),
       child: RichText(
         text: TextSpan(
           children: [
             TextSpan(
-              text:  '$label: ',
+              text: '$label: ',
               style: const TextStyle(fontSize: 11, color: Colors.black54),
             ),
             TextSpan(
-              text:  value,
+              text: value,
               style: const TextStyle(
-                fontSize:   11,
-                color:      Colors.black87,
+                fontSize: 11,
+                color: Colors.black87,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -348,18 +544,14 @@ class _OutputScreenState extends State<OutputScreen> {
   }
 
   // ── primary (blue gradient) button — Start / Stop ─────────────────────────
-  Widget _primaryButton(
-    String text,
-    VoidCallback onTap, {
-    IconData? icon,
-  }) {
+  Widget _primaryButton(String text, VoidCallback onTap, {IconData? icon}) {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(AppTheme.radiusXL),
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 14),
         decoration: BoxDecoration(
-          gradient:     AppTheme.brandGradient,
+          gradient: AppTheme.brandGradient,
           borderRadius: BorderRadius.circular(AppTheme.radiusXL),
         ),
         child: Center(
@@ -373,7 +565,7 @@ class _OutputScreenState extends State<OutputScreen> {
               Text(
                 text,
                 style: const TextStyle(
-                  color:      Colors.white,
+                  color: Colors.white,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -389,21 +581,24 @@ class _OutputScreenState extends State<OutputScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 48, horizontal: 20),
       decoration: BoxDecoration(
-        color:        Colors.white,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(AppTheme.radiusMD),
         boxShadow: [
           BoxShadow(
-            color:      Colors.black.withOpacity(0.06),
+            color: Colors.black.withOpacity(0.06),
             blurRadius: 10,
-            offset:     const Offset(0, 3),
+            offset: const Offset(0, 3),
           ),
         ],
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.menu_book_outlined,
-              size: 44, color: AppTheme.primaryBlue.withOpacity(0.35)),
+          Icon(
+            Icons.menu_book_outlined,
+            size: 44,
+            color: AppTheme.primaryBlue.withOpacity(0.35),
+          ),
           const SizedBox(height: AppTheme.spaceMD),
           Text(
             'Nothing to read yet',
@@ -421,12 +616,14 @@ class _OutputScreenState extends State<OutputScreen> {
             width: double.infinity,
             child: OutlinedButton.icon(
               onPressed: () => Navigator.of(context).maybePop(),
-              icon:  const Icon(Icons.arrow_back, color: AppTheme.primaryBlue),
-              label: const Text('Go Back',
-                  style: TextStyle(color: AppTheme.primaryBlue)),
+              icon: const Icon(Icons.arrow_back, color: AppTheme.primaryBlue),
+              label: const Text(
+                'Go Back',
+                style: TextStyle(color: AppTheme.primaryBlue),
+              ),
               style: OutlinedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 12),
-                side:  const BorderSide(color: AppTheme.primaryBlue, width: 1.5),
+                side: const BorderSide(color: AppTheme.primaryBlue, width: 1.5),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(AppTheme.radiusMD),
                 ),
@@ -442,37 +639,37 @@ class _OutputScreenState extends State<OutputScreen> {
   Widget _readingCard() {
     final structuredBlocks =
         _formatResult?.structuredContent?['blocks'] as List?;
-    final hasStructuredLayout = structuredBlocks?.any((block) =>
-            block is Map && block['type'] != 'paragraph') ??
+    final hasStructuredLayout =
+        structuredBlocks?.any(
+          (block) => block is Map && block['type'] != 'paragraph',
+        ) ??
         false;
     final originalText = _formatResult?.originalText;
 
     return Container(
       padding: const EdgeInsets.all(AppTheme.spaceMD),
       decoration: BoxDecoration(
-        color:        Colors.white,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(AppTheme.radiusMD),
         boxShadow: [
           BoxShadow(
-            color:      Colors.black.withOpacity(0.06),
+            color: Colors.black.withOpacity(0.06),
             blurRadius: 10,
-            offset:     const Offset(0, 3),
+            offset: const Offset(0, 3),
           ),
         ],
       ),
       child: Container(
-        padding:    const EdgeInsets.all(AppTheme.spaceMD),
+        padding: const EdgeInsets.all(AppTheme.spaceMD),
         decoration: BoxDecoration(
-          color:        getBackgroundColor(),
+          color: getBackgroundColor(),
           borderRadius: BorderRadius.circular(AppTheme.radiusSM),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             if (hasStructuredLayout)
-              StructuredContentView(
-                content: _formatResult!.structuredContent!,
-              )
+              StructuredContentView(content: _formatResult!.structuredContent!)
             else
               HighlightedTextView(
                 text: simplifiedText,
@@ -522,15 +719,19 @@ class _OutputScreenState extends State<OutputScreen> {
   // scrolling or text interaction. Only the drag handle absorbs events.
   Widget _focusLineOverlay(double bodyHeight) {
     const bandH = 72.0;
-    final fy    = (_focusLineY ?? bodyHeight * 0.45)
-        .clamp(bandH / 2, bodyHeight - bandH / 2);
+    final fy = (_focusLineY ?? bodyHeight * 0.45).clamp(
+      bandH / 2,
+      bodyHeight - bandH / 2,
+    );
     final bandTop = fy - bandH / 2;
 
     return Stack(
       children: [
         // ── Upper dim ──────────────────────────────────────────────────────
         Positioned(
-          top: 0, left: 0, right: 0,
+          top: 0,
+          left: 0,
+          right: 0,
           height: bandTop,
           child: IgnorePointer(
             child: Container(color: Colors.black.withOpacity(0.30)),
@@ -538,45 +739,55 @@ class _OutputScreenState extends State<OutputScreen> {
         ),
         // ── Lower dim ──────────────────────────────────────────────────────
         Positioned(
-          top: bandTop + bandH, left: 0, right: 0, bottom: 0,
+          top: bandTop + bandH,
+          left: 0,
+          right: 0,
+          bottom: 0,
           child: IgnorePointer(
             child: Container(color: Colors.black.withOpacity(0.30)),
           ),
         ),
         // ── Top border of focus band ───────────────────────────────────────
         Positioned(
-          top: bandTop, left: 0, right: 0, height: 2,
+          top: bandTop,
+          left: 0,
+          right: 0,
+          height: 2,
           child: IgnorePointer(
-            child: Container(
-              color: AppTheme.primaryBlue.withOpacity(0.75)),
+            child: Container(color: AppTheme.primaryBlue.withOpacity(0.75)),
           ),
         ),
         // ── Bottom border of focus band ────────────────────────────────────
         Positioned(
-          top: bandTop + bandH - 2, left: 0, right: 0, height: 2,
+          top: bandTop + bandH - 2,
+          left: 0,
+          right: 0,
+          height: 2,
           child: IgnorePointer(
-            child: Container(
-              color: AppTheme.primaryBlue.withOpacity(0.75)),
+            child: Container(color: AppTheme.primaryBlue.withOpacity(0.75)),
           ),
         ),
         // ── Drag handle — only interactive element ─────────────────────────
         Positioned(
-          top:   bandTop + (bandH / 2) - 16,
+          top: bandTop + (bandH / 2) - 16,
           right: 10,
           child: GestureDetector(
-            behavior:  HitTestBehavior.opaque,
+            behavior: HitTestBehavior.opaque,
             onPanUpdate: (d) => setState(() {
-              _focusLineY = (fy + d.delta.dy)
-                  .clamp(bandH / 2, bodyHeight - bandH / 2);
+              _focusLineY = (fy + d.delta.dy).clamp(
+                bandH / 2,
+                bodyHeight - bandH / 2,
+              );
             }),
             child: Container(
-              width: 32, height: 32,
+              width: 32,
+              height: 32,
               decoration: BoxDecoration(
                 color: AppTheme.primaryBlue,
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color:      Colors.black.withOpacity(0.25),
+                    color: Colors.black.withOpacity(0.25),
                     blurRadius: 4,
                   ),
                 ],
@@ -595,23 +806,25 @@ class _OutputScreenState extends State<OutputScreen> {
   // is IgnorePointer so it never blocks scrolling; only the circular handle
   // on the right absorbs pan events.
   Widget _readingRulerOverlay(double bodyHeight) {
-    final ry = (_rulerY ?? bodyHeight * 0.3)
-        .clamp(4.0, bodyHeight - 4.0);
+    final ry = (_rulerY ?? bodyHeight * 0.3).clamp(4.0, bodyHeight - 4.0);
 
     return Stack(
       children: [
         // ── Ruler line ─────────────────────────────────────────────────────
         Positioned(
-          top: ry, left: 0, right: 48, height: 3,
+          top: ry,
+          left: 0,
+          right: 48,
+          height: 3,
           child: IgnorePointer(
             child: Container(
               decoration: BoxDecoration(
                 color: AppTheme.primaryBlue.withOpacity(0.80),
                 boxShadow: [
                   BoxShadow(
-                    color:      AppTheme.primaryBlue.withOpacity(0.30),
+                    color: AppTheme.primaryBlue.withOpacity(0.30),
                     blurRadius: 4,
-                    offset:     const Offset(0, 2),
+                    offset: const Offset(0, 2),
                   ),
                 ],
               ),
@@ -620,27 +833,31 @@ class _OutputScreenState extends State<OutputScreen> {
         ),
         // ── Drag handle ────────────────────────────────────────────────────
         Positioned(
-          top:   ry - 16,
+          top: ry - 16,
           right: 10,
           child: GestureDetector(
-            behavior:  HitTestBehavior.opaque,
+            behavior: HitTestBehavior.opaque,
             onPanUpdate: (d) => setState(() {
               _rulerY = (ry + d.delta.dy).clamp(4.0, bodyHeight - 4.0);
             }),
             child: Container(
-              width: 32, height: 32,
+              width: 32,
+              height: 32,
               decoration: BoxDecoration(
                 color: AppTheme.primaryBlue,
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color:      Colors.black.withOpacity(0.25),
+                    color: Colors.black.withOpacity(0.25),
                     blurRadius: 4,
                   ),
                 ],
               ),
               child: const Icon(
-                  Icons.drag_indicator, color: Colors.white, size: 16),
+                Icons.drag_indicator,
+                color: Colors.white,
+                size: 16,
+              ),
             ),
           ),
         ),
@@ -657,12 +874,10 @@ class _OutputScreenState extends State<OutputScreen> {
       backgroundColor: AppTheme.background,
 
       appBar: AppBar(
-        elevation:       0,
+        elevation: 0,
         backgroundColor: Colors.transparent,
         flexibleSpace: Container(
-          decoration: const BoxDecoration(
-            gradient: AppTheme.creamGradient,
-          ),
+          decoration: const BoxDecoration(gradient: AppTheme.creamGradient),
         ),
         title: ShaderMask(
           shaderCallback: (bounds) =>
@@ -670,9 +885,9 @@ class _OutputScreenState extends State<OutputScreen> {
           child: const Text(
             'AksharAlly',
             style: TextStyle(
-              fontSize:   24,
+              fontSize: 24,
               fontWeight: FontWeight.w900,
-              color:      Colors.white,
+              color: Colors.white,
             ),
           ),
         ),
@@ -686,7 +901,7 @@ class _OutputScreenState extends State<OutputScreen> {
         builder: (context, constraints) {
           // Lazy initialisation — set once per session, then user can drag.
           _focusLineY ??= constraints.maxHeight * 0.45;
-          _rulerY     ??= constraints.maxHeight * 0.30;
+          _rulerY ??= constraints.maxHeight * 0.30;
 
           return Stack(
             children: [
@@ -695,7 +910,6 @@ class _OutputScreenState extends State<OutputScreen> {
                 padding: const EdgeInsets.all(AppTheme.spaceMD),
                 child: ListView(
                   children: [
-
                     // ── PROFILE SELECTOR ──────────────────────────────────
                     _profileSelector(),
 
@@ -738,9 +952,22 @@ class _OutputScreenState extends State<OutputScreen> {
                           'Auto Read',
                           style: TextStyle(color: getTextColor()),
                         ),
-                        value:     autoRead,
+                        value: autoRead,
                         onChanged: (v) => setState(() => autoRead = v),
                       ),
+
+                      if (AppSettings.voiceAssistanceEnabled) ...[
+                        const SizedBox(height: AppTheme.spaceMD),
+                        VoiceAssistantControls(
+                          initialLanguageCode: AppSettings.voiceLanguage,
+                          initialLocaleId: AppSettings.voiceLocaleId,
+                          onBeforeListening: _prepareForVoiceInput,
+                          onRecognized: _handleVoiceCommand,
+                          onListeningCancelled: _restoreReadingAfterVoiceInput,
+                          onLanguageChanged: _setVoiceLanguage,
+                          feedback: _voiceCommandFeedback,
+                        ),
+                      ],
 
                       const SizedBox(height: AppTheme.spaceMD),
 

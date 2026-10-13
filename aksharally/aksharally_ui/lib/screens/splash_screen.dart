@@ -1,29 +1,33 @@
 import 'package:flutter/material.dart';
 
 import '../services/tts_service.dart';
+import '../theme/app_settings.dart';
 import '../theme/app_theme.dart';
 
 class SplashScreen extends StatefulWidget {
-  const SplashScreen({super.key});
+  const SplashScreen({super.key, this.ttsService});
+
+  final TTSService? ttsService;
+
+  static const String welcomeMessage =
+      'Welcome to AksharAlly, your personalised reading companion. '
+      'Read with confidence. Select Let’s Begin to get started.';
 
   @override
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
 class _SplashScreenState extends State<SplashScreen> {
-  late final TTSService _ttsService;
+  late final TTSService _ttsService = widget.ttsService ?? TTSService();
   bool _welcomeStarted = false;
   bool _isDisposed = false;
-
-  static const String _welcomeMessage =
-      'Welcome to AksharAlly, your personalised reading companion. '
-      'Read with confidence. Select Let’s Begin to get started.';
 
   @override
   void initState() {
     super.initState();
-    _ttsService = TTSService();
-    _playWelcome();
+    if (AppSettings.voiceAssistanceEnabled) {
+      _playWelcome();
+    }
   }
 
   Future<void> _playWelcome() async {
@@ -31,13 +35,11 @@ class _SplashScreenState extends State<SplashScreen> {
     _welcomeStarted = true;
 
     try {
-      await _ttsService.init(
-        defaultLocale: TTSService.preferredEnglishLocale,
-      );
+      await _ttsService.init(defaultLocale: TTSService.preferredEnglishLocale);
 
       if (_isDisposed) return;
 
-      await _ttsService.speak(_welcomeMessage);
+      await _ttsService.speak(SplashScreen.welcomeMessage);
     } catch (error) {
       debugPrint('Splash welcome speech unavailable: $error');
     }
@@ -50,13 +52,11 @@ class _SplashScreenState extends State<SplashScreen> {
       await _ttsService.stop();
       if (_isDisposed) return;
 
-      await _ttsService.init(
-        defaultLocale: TTSService.preferredEnglishLocale,
-      );
+      await _ttsService.init(defaultLocale: TTSService.preferredEnglishLocale);
 
       if (_isDisposed) return;
 
-      await _ttsService.speak(_welcomeMessage);
+      await _ttsService.speak(SplashScreen.welcomeMessage);
     } catch (error) {
       debugPrint('Could not replay splash welcome: $error');
     }
@@ -96,10 +96,10 @@ class _SplashScreenState extends State<SplashScreen> {
             final iconWidth = (constraints.maxWidth * 0.46)
                 .clamp(128.0, 176.0)
                 .toDouble();
-            final minimumContentHeight = (constraints.maxHeight -
-                    verticalPadding * 2)
-                .clamp(0.0, double.infinity)
-                .toDouble();
+            final minimumContentHeight =
+                (constraints.maxHeight - verticalPadding * 2)
+                    .clamp(0.0, double.infinity)
+                    .toDouble();
 
             return SingleChildScrollView(
               padding: EdgeInsets.symmetric(vertical: verticalPadding),
@@ -136,8 +136,9 @@ class _SplashScreenState extends State<SplashScreen> {
                         'Read with confidence.',
                         textAlign: TextAlign.center,
                         style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.textTheme.bodyMedium?.color
-                              ?.withOpacity(0.72),
+                          color: theme.textTheme.bodyMedium?.color?.withOpacity(
+                            0.72,
+                          ),
                           height: 1.4,
                         ),
                       ),
