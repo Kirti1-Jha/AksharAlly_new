@@ -5,7 +5,6 @@ class AppSettings {
   static String language   = 'en';   // 'en' = English | 'hi' = Hindi
   static String interfaceLanguage = 'en';
   static bool voiceAssistanceEnabled = false;
-  static bool spokenNavigationEnabled = false;
   static String voiceLanguage = 'en';
   static double speechRate = 0.4;
   static bool readingHighlight = true;

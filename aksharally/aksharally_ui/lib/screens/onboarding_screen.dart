@@ -669,16 +669,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     _update(_profile.copyWith(voiceAssistance: value)),
               ),
               _toggle(
-                _tr('Spoken instructions and navigation', 'बोले गए निर्देश और नेविगेशन'),
-                _tr(
-                  'Save this preference for voice-enabled app controls.',
-                  'आवाज़-सक्षम ऐप नियंत्रणों के लिए यह प्राथमिकता सहेजें।',
-                ),
-                _profile.spokenNavigation,
-                (value) =>
-                    _update(_profile.copyWith(spokenNavigation: value)),
-              ),
-              _toggle(
                 _tr('Highlight spoken words', 'बोले गए शब्द हाइलाइट करें'),
                 '',
                 _profile.readingHighlight,

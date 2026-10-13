@@ -30,7 +30,6 @@ class OnboardingProfile {
     required this.breakLongSentences,
     required this.simplifyText,
     required this.voiceAssistance,
-    required this.spokenNavigation,
     required this.voiceLanguage,
     required this.speechRate,
     required this.readingHighlight,
@@ -71,7 +70,6 @@ class OnboardingProfile {
     breakLongSentences: true,
     simplifyText: false,
     voiceAssistance: false,
-    spokenNavigation: false,
     voiceLanguage: 'en',
     speechRate: 0.4,
     readingHighlight: true,
@@ -195,8 +193,6 @@ class OnboardingProfile {
       simplifyText: boolValue('simplifyText', defaults.simplifyText),
       voiceAssistance:
           boolValue('voiceAssistance', defaults.voiceAssistance),
-      spokenNavigation:
-          boolValue('spokenNavigation', defaults.spokenNavigation),
       voiceLanguage: stringValue('voiceLanguage', defaults.voiceLanguage),
       speechRate: numberValue('speechRate', defaults.speechRate)
           .clamp(0.1, 1.0)
@@ -240,7 +236,6 @@ class OnboardingProfile {
   final bool breakLongSentences;
   final bool simplifyText;
   final bool voiceAssistance;
-  final bool spokenNavigation;
   final String voiceLanguage;
   final double speechRate;
   final bool readingHighlight;
@@ -277,7 +272,6 @@ class OnboardingProfile {
     bool? breakLongSentences,
     bool? simplifyText,
     bool? voiceAssistance,
-    bool? spokenNavigation,
     String? voiceLanguage,
     double? speechRate,
     bool? readingHighlight,
@@ -314,7 +308,6 @@ class OnboardingProfile {
     breakLongSentences: breakLongSentences ?? this.breakLongSentences,
     simplifyText: simplifyText ?? this.simplifyText,
     voiceAssistance: voiceAssistance ?? this.voiceAssistance,
-    spokenNavigation: spokenNavigation ?? this.spokenNavigation,
     voiceLanguage: voiceLanguage ?? this.voiceLanguage,
     speechRate: speechRate ?? this.speechRate,
     readingHighlight: readingHighlight ?? this.readingHighlight,
@@ -352,7 +345,6 @@ class OnboardingProfile {
     'breakLongSentences': breakLongSentences,
     'simplifyText': simplifyText,
     'voiceAssistance': voiceAssistance,
-    'spokenNavigation': spokenNavigation,
     'voiceLanguage': voiceLanguage,
     'speechRate': speechRate,
     'readingHighlight': readingHighlight,
@@ -448,7 +440,6 @@ class OnboardingStorage {
     AppSettings.language = profile.defaultReadingLanguage;
     AppSettings.interfaceLanguage = profile.interfaceLanguage;
     AppSettings.voiceAssistanceEnabled = profile.voiceAssistance;
-    AppSettings.spokenNavigationEnabled = profile.spokenNavigation;
     AppSettings.voiceLanguage = profile.voiceLanguage;
     AppSettings.speechRate = profile.speechRate;
     AppSettings.readingHighlight = profile.readingHighlight;
