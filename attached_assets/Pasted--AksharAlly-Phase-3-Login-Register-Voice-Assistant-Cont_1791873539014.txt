@@ -1,0 +1,132 @@
+# AksharAlly — Phase 3: Login/Register Voice Assistant Controls
+
+Implement Phase 3 on the existing `feature/voice-assistant` branch.
+
+## 1. Git Safety and Existing Work
+
+- Verify that the active branch is `feature/voice-assistant`.
+- Inspect `git status` before making changes.
+- Preserve all existing commits, staged changes, unstaged changes, and untracked files.
+- Do not reset, clean, discard, overwrite, or revert existing work.
+- Do not switch branches, merge into `main`, or force-push.
+- Do not modify Git remotes, dependencies, or project configuration unnecessarily.
+
+## 2. Strict File and Module Scope — Mandatory
+
+**Modify only files directly required to implement and test the login/register voice-assistant controls. Do not touch, tamper with, refactor, reformat, rename, move, delete, or overwrite any unrelated files, modules, functions, or existing functionality.**
+
+Specifically:
+
+- Restrict implementation changes to `aksharally/aksharally_ui/lib/screens/login_screen.dart` wherever possible.
+- Modify `aksharally/aksharally_ui/lib/services/tts_service.dart` only if the existing service genuinely lacks a necessary capability.
+- Modify or add only focused login-screen tests directly related to this feature.
+- Do not modify `output_screen.dart`, `reader_screen.dart`, OCR modules, text simplification, Flask backend, authentication services, database configuration, global settings, or unrelated widgets.
+- Do not upgrade dependencies, modify `pubspec.yaml`, change SDK constraints, or regenerate lockfiles unless absolutely necessary and explicitly justified.
+- Do not replace existing services or introduce a second TTS engine.
+- Do not rewrite the login/register screen from scratch. Make minimal, targeted changes that preserve its existing design and behaviour.
+- Do not change existing welcome-message wording, replay behaviour, Indian English locale preference, or voice-reset safeguards.
+- Do not remove or alter existing tests unrelated to this task.
+
+Before editing, inspect the relevant code and identify the smallest necessary changes. If a required change would affect an unrelated module, stop and explain the dependency instead of making broader modifications.
+
+After implementation, review `git diff --name-only` and the complete diff. Revert any accidental changes introduced by this task without disturbing pre-existing work.
+
+## 3. Add the Voice-Assistant Toggle
+
+In `aksharally/aksharally_ui/lib/screens/login_screen.dart`, add a compact, clearly visible, clickable voice-assistant toggle in the **top-right corner**.
+
+Requirements:
+- Display a speaker icon and a short label such as "Voice off" or "Voice on".
+- Keep the design polished, accessible, responsive, and visually unobtrusive.
+- Make the enabled and disabled states easy to distinguish.
+- Provide a sufficiently large touch target.
+- Preserve the existing authentication interface and welcome-message replay control.
+- Do not confuse this TTS control with the existing microphone-based speech-recognition controls in the reader.
+
+## 4. Narrate Authentication-Screen Content
+
+Reuse the existing `TTSService`.
+
+When voice assistance is enabled, read relevant screen content aloud:
+- Screen titles and instructions.
+- Email and password field labels, without reading entered values.
+- Sign-in and registration button labels.
+- Existing Google sign-in labels, if present, without implementing Google authentication.
+- Relevant validation and authentication error messages.
+- Instructions for switching between login and registration.
+
+Use **English (India), locale `en-IN`**, whenever an appropriate voice is available. Preserve existing Hindi and Marathi voice behaviour.
+
+Ensure that:
+- Unchanged content is not repeatedly narrated on widget rebuilds.
+- Previous narration is stopped or replaced appropriately when the screen changes.
+- Multiple utterances do not overlap.
+- Users have an accessible way to stop or replay narration.
+- Authentication errors remain visible and functional.
+- Text-to-speech does not require microphone permission.
+
+The existing welcome message must still play by default when the login/register screen opens, even if the ongoing voice-assistant toggle is off.
+
+Enabling the toggle must not cause the welcome message to play twice. Do not change its wording, default playback behaviour, or existing replay functionality.
+
+## 5. Strict Scope Restrictions
+
+This phase implements only the login/register voice-assistant control and associated screen narration.
+
+Do not implement:
+- First-time onboarding or the dyslexia-support questionnaire.
+- Google authentication.
+- User-profile persistence.
+- Global accessibility settings persistence.
+- Changes to OCR, text simplification, document processing, or backend APIs.
+- Changes to reader playback, synchronised highlighting, or existing speech-recognition commands.
+- New application-wide state-management architecture.
+- Unrelated UI redesigns or refactoring.
+
+If the existing code cannot support a requirement without modifying an unrelated module, explain the limitation and ask for approval before expanding the scope.
+
+## 6. Testing and Validation
+
+Add or update only tests directly related to the login/register voice-assistant controls.
+
+Verify, where the available environment permits:
+- The toggle changes between enabled and disabled states.
+- Enabling narration reads relevant screen content.
+- Disabling narration stops ongoing or subsequent screen narration appropriately.
+- The welcome message still plays by default when the toggle is off.
+- Enabling the toggle does not cause duplicate welcome playback.
+- Existing authentication interactions remain functional.
+- TTS utterances do not overlap.
+
+Run formatting on modified Dart files, relevant tests, and `flutter analyze` if Flutter is available.
+
+If Flutter or Dart is unavailable, state that clearly. Do not claim tests or builds passed without running them.
+
+Do not fix unrelated pre-existing test failures as part of this task.
+
+## 7. GitHub Handoff
+
+After implementation:
+
+1. Confirm the branch remains `feature/voice-assistant`.
+2. Review the complete diff and verify that only task-related files changed.
+3. Preserve all unrelated and pre-existing work.
+4. Create a focused commit:
+
+`feat: add login screen voice assistant controls`
+
+5. Check upstream status and push safely to `origin/feature/voice-assistant`.
+6. Never force-push, rewrite history, or merge into `main`.
+7. If a safe push is not possible, preserve the work and explain why.
+
+## 8. Final Report
+
+Provide a concise report containing:
+- The implemented toggle and narration behaviour.
+- Every modified or created file and why it was necessary.
+- Confirmation that unrelated files and modules were not modified.
+- Actual test and analysis results.
+- Commit hash and verified GitHub push status.
+- Any remaining limitations.
+
+**Completion criteria:** The login/register voice-assistant toggle and screen narration work as specified, existing welcome-message and TTS functionality remain intact, only directly relevant files have been changed, and the completed work is committed on `feature/voice-assistant`.
