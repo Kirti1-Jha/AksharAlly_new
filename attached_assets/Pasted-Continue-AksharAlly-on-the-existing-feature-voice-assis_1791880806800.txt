@@ -1,0 +1,45 @@
+Continue AksharAlly on the existing `feature/voice-assistant` branch.
+
+Implement the following Output Screen improvements without regressing the existing TTS word-highlighting fix.
+
+### 1. Mandatory preservation of word highlighting
+- First inspect the current `output_screen.dart`, `tts_service.dart`, `reading_screen.dart`, and relevant tests.
+- Identify and preserve the exact word-highlighting and playback-progress implementation currently in the branch.
+- Do not replace it with timer-based highlighting, approximate word progression, or a newly invented highlighting mechanism.
+- Do not refactor the playback architecture just to introduce speed controls.
+- Preserve pause/resume, stop, replay, language selection, and existing reader behaviour.
+- Add or update focused tests to protect highlighting and playback progression.
+
+### 2. Manual TTS speed control
+- Add compact slower/faster controls and display the selected speech rate.
+- Use sensible bounds and increments, with a default rate of 1.0×.
+- Route rate changes through the existing TTS service and apply them to subsequent playback.
+- Preserve the chosen rate across pause/resume and avoid overlapping utterances.
+- Do not restart the current utterance unexpectedly when the rate changes.
+- Persist the selected rate only if compatible with the existing settings architecture; avoid introducing a new storage system.
+
+### 3. Compact voice-command interface
+- Replace the permanently expanded voice-command UI on the Output Screen with a compact Voice Commands button.
+- Clicking it should open a dialog, bottom sheet, or equivalent compact panel containing the existing voice-command options and microphone control.
+- Reuse the existing voice-command handler, parser, and speech-recognition service.
+- Preserve the available commands and their existing behaviour.
+- Request microphone permission only when the user activates voice-command functionality.
+- Closing the panel must clean up its UI/listening state correctly.
+- Avoid unnecessary interruption of TTS when opening or closing the panel.
+
+### 4. Scope restrictions
+- Modify only files necessary for the Output Screen, TTS rate handling, voice-command presentation, and focused tests.
+- Preserve the existing word-highlighting implementation exactly unless a minimal, demonstrably necessary compatibility change is required.
+- Do not modify authentication, onboarding, OCR, backend, text simplification, or unrelated screens.
+- Preserve existing commits and work. Do not reset, clean, discard, or overwrite changes.
+- Do not add dependencies unless absolutely necessary.
+- Stay on `feature/voice-assistant`. Do not merge into `main`, force-push, or push automatically.
+
+### 5. Verification
+- Add focused tests for speed bounds and updates, voice-command panel behaviour, and preservation of highlighting/playback state.
+- Run formatting, analysis, and tests if Flutter/Dart is available.
+- If tooling is unavailable, state that explicitly; do not claim tests passed.
+- Inspect the final diff and working tree before committing.
+- Report changed files, the exact highlighting mechanism preserved, verification results, and any remaining limitations.
+
+Work incrementally and minimise changes to the existing playback code.

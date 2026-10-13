@@ -186,6 +186,28 @@ void main() {
       expect(engine.speechRates.last, 0.6);
     });
 
+    test('progress remains mapped to source text after a rate change', () async {
+      const text = 'first second third';
+      final progressStarts = <int>[];
+      await service.speak(
+        text,
+        onProgress: (_, start, __, ___) => progressStarts.add(start),
+      );
+
+      final secondWord = text.indexOf('second');
+      engine.emitRange(secondWord, secondWord + 'second'.length);
+      await service.setRate(0.6);
+
+      final thirdWord = text.indexOf('third');
+      engine.emitRange(
+        thirdWord - secondWord,
+        thirdWord - secondWord + 'third'.length,
+      );
+
+      expect(progressStarts, [secondWord, thirdWord]);
+      expect(engine.activeSegment, text.substring(secondWord));
+    });
+
     test('stop ignores late progress and completion callbacks', () async {
       var progressCount = 0;
       var completionCount = 0;

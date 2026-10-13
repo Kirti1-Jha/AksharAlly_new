@@ -14,6 +14,7 @@ class VoiceAssistantControls extends StatefulWidget {
     required this.onListeningCancelled,
     required this.onLanguageChanged,
     this.feedback,
+    this.restorePlaybackOnDispose = false,
   });
 
   final String? initialLanguageCode;
@@ -24,6 +25,7 @@ class VoiceAssistantControls extends StatefulWidget {
   final Future<void> Function(String languageCode, String localeId)
   onLanguageChanged;
   final String? feedback;
+  final bool restorePlaybackOnDispose;
 
   @override
   State<VoiceAssistantControls> createState() => _VoiceAssistantControlsState();
@@ -43,21 +45,34 @@ class _VoiceAssistantControlsState extends State<VoiceAssistantControls> {
   bool _isListening = false;
   bool _sessionOpen = false;
   bool _handledFinalResult = false;
+  bool _listeningCancelledNotified = false;
 
   @override
   void dispose() {
-    if (_sessionOpen || _isListening) {
-      unawaited(_cancelSpeechOnDispose());
+    if (_sessionOpen || _isListening || _startingListening || _preparing) {
+      unawaited(
+        _cancelSpeechOnDispose(
+          restorePlayback: widget.restorePlaybackOnDispose,
+        ),
+      );
     }
     super.dispose();
   }
 
-  Future<void> _cancelSpeechOnDispose() async {
+  Future<void> _cancelSpeechOnDispose({
+    required bool restorePlayback,
+  }) async {
+    final shouldRestore =
+        restorePlayback &&
+        (_sessionOpen || _startingListening) &&
+        !_handledFinalResult;
     try {
       await _speech.cancel();
     } catch (_) {
       // The platform session may already have ended while this widget closes.
     }
+    if (_sessionOpen) _sessionOpen = false;
+    if (shouldRestore) await _notifyListeningCancelled();
   }
 
   @override
@@ -201,6 +216,7 @@ class _VoiceAssistantControlsState extends State<VoiceAssistantControls> {
     }
 
     setState(() => _startingListening = true);
+    _listeningCancelledNotified = false;
     try {
       await widget.onBeforeListening();
       if (!mounted) return;
@@ -307,7 +323,13 @@ class _VoiceAssistantControlsState extends State<VoiceAssistantControls> {
     _sessionOpen = false;
     final shouldRestorePlayback = !_handledFinalResult;
     if (mounted) setState(() => _isListening = false);
-    if (shouldRestorePlayback) await widget.onListeningCancelled();
+    if (shouldRestorePlayback) await _notifyListeningCancelled();
+  }
+
+  Future<void> _notifyListeningCancelled() async {
+    if (_listeningCancelledNotified) return;
+    _listeningCancelledNotified = true;
+    await widget.onListeningCancelled();
   }
 
   static String? _baseLanguage(String? value) {

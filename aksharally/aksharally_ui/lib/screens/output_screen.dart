@@ -55,6 +55,9 @@ class OutputScreen extends StatefulWidget {
   /// Existing library entries may not have language metadata.
   final String? readingLanguage;
 
+  /// Optional engine seam for focused playback-control tests.
+  final TTSService? ttsService;
+
   const OutputScreen({
     super.key,
     this.initialText,
@@ -62,6 +65,7 @@ class OutputScreen extends StatefulWidget {
     this.displayText,
     this.saveOnLoad = false,
     this.readingLanguage,
+    this.ttsService,
   });
 
   @override
@@ -69,6 +73,9 @@ class OutputScreen extends StatefulWidget {
 }
 
 class _OutputScreenState extends State<OutputScreen> {
+  static const double _normalSpeechRate = 0.4;
+  static const double _manualSpeechRateStep = 0.05;
+
   // ── display text state ────────────────────────────────────────────────────
   String simplifiedText = '';
 
@@ -80,9 +87,11 @@ class _OutputScreenState extends State<OutputScreen> {
   FormatResult? _formatResult;
 
   // ── TTS ───────────────────────────────────────────────────────────────────
-  final TTSService _tts = TTSService();
+  late final TTSService _tts = widget.ttsService ?? TTSService();
   late final Future<bool> _ttsReady;
   double speechRate = AppSettings.speechRate;
+  double _playbackSpeechRate = AppSettings.speechRate;
+  double? _pendingSpeechRate;
   bool autoRead = AppSettings.voiceAssistanceEnabled;
   String? _voiceMessage;
   bool _resumeAfterVoiceListening = false;
@@ -242,6 +251,7 @@ class _OutputScreenState extends State<OutputScreen> {
   }) async {
     if (text.trim().isEmpty || wordIndices.isEmpty) return;
     final generation = ++_playbackGeneration;
+    _playbackSpeechRate = speechRate;
     _cancelFallbackTimer();
     _activeSpeechText = text;
     _activeWordIndices = wordIndices;
@@ -274,7 +284,11 @@ class _OutputScreenState extends State<OutputScreen> {
         _fallbackActive = false;
         setState(() => _usingEstimatedHighlight = false);
         final callback = onComplete;
-        callback?.call();
+        if (_pendingSpeechRate == null) {
+          callback?.call();
+        } else {
+          unawaited(_applyPendingSpeechRate(afterApply: callback));
+        }
       },
     );
     if (!mounted ||
@@ -345,7 +359,7 @@ class _OutputScreenState extends State<OutputScreen> {
     _fallbackElapsed = Duration.zero;
     _fallbackWordDuration = TtsProgressMapper.estimateWordDuration(
       mapper.wordAtPosition(_fallbackPosition)!,
-      speechRate,
+      _playbackSpeechRate,
     );
     if (mounted) {
       setState(() {
@@ -380,7 +394,7 @@ class _OutputScreenState extends State<OutputScreen> {
         final nextWord = mapper.wordAtPosition(nextPosition)!;
         _fallbackWordDuration = TtsProgressMapper.estimateWordDuration(
           nextWord,
-          speechRate,
+          _playbackSpeechRate,
         );
         if (mounted) {
           setState(
@@ -429,8 +443,9 @@ class _OutputScreenState extends State<OutputScreen> {
     final willRestartEstimatedWord = _provideEstimatedResumeOffset();
     _freezeFallbackTimer();
     final paused = await _tts.pause();
-    if (paused && willRestartEstimatedWord) {
-      _fallbackElapsed = Duration.zero;
+    if (paused) {
+      if (willRestartEstimatedWord) _fallbackElapsed = Duration.zero;
+      await _applyPendingSpeechRate();
     }
     if (!paused) _resumeFallbackTimer(_playbackGeneration);
     if (!paused && mounted) {
@@ -454,8 +469,14 @@ class _OutputScreenState extends State<OutputScreen> {
     _resumeFallbackTimer(_playbackGeneration);
   }
 
-  Future<void> _changeSpeechRate(double amount) async {
-    final requestedRate = (speechRate + amount).clamp(0.1, 1.0).toDouble();
+  Future<void> _changeSpeechRate(
+    double amount, {
+    double minRate = 0.1,
+    double maxRate = 1.0,
+  }) async {
+    final requestedRate = (speechRate + amount)
+        .clamp(minRate, maxRate)
+        .toDouble();
     if (requestedRate == speechRate) {
       _setVoiceMessage(
         amount > 0
@@ -477,6 +498,8 @@ class _OutputScreenState extends State<OutputScreen> {
         appliedRate,
         restartCurrentWord: restartsEstimatedWord,
       );
+      _pendingSpeechRate = null;
+      AppSettings.speechRate = appliedRate;
       setState(() => speechRate = appliedRate);
       _setVoiceMessage(
         'Speech speed ${amount > 0 ? 'increased' : 'reduced'} to '
@@ -484,6 +507,57 @@ class _OutputScreenState extends State<OutputScreen> {
       );
     } catch (error) {
       _setVoiceMessage('Could not change speech speed: $error');
+    }
+  }
+
+  Future<void> _changeManualSpeechRate(double amount) async {
+    final requestedRate = (speechRate + amount).clamp(0.1, 1.0).toDouble();
+    if (requestedRate == speechRate) {
+      _setVoiceMessage(
+        amount > 0
+            ? 'Speech speed is already at its maximum.'
+            : 'Speech speed is already at its minimum.',
+      );
+      return;
+    }
+
+    // Do not use TTSService.setRate during an active utterance: on platforms
+    // that snapshot rate per utterance it deliberately restarts from the
+    // current word. Queue manual changes for the next utterance instead.
+    if (_tts.isSpeaking && !_tts.isPaused) {
+      _pendingSpeechRate = requestedRate;
+      AppSettings.speechRate = requestedRate;
+      setState(() => speechRate = requestedRate);
+      _setVoiceMessage(
+        'Speech speed will change after the current spoken segment finishes.',
+      );
+      return;
+    }
+
+    await _changeSpeechRate(
+      amount,
+      minRate: 0.1,
+      maxRate: 1.0,
+    );
+  }
+
+  Future<void> _applyPendingSpeechRate({void Function()? afterApply}) async {
+    final pendingRate = _pendingSpeechRate;
+    if (pendingRate == null) {
+      afterApply?.call();
+      return;
+    }
+    _pendingSpeechRate = null;
+    try {
+      final appliedRate = await _tts.setRate(pendingRate);
+      _rescaleFallbackForRate(
+        appliedRate,
+        restartCurrentWord: false,
+      );
+    } catch (error) {
+      _setVoiceMessage('Could not change speech speed: $error');
+    } finally {
+      afterApply?.call();
     }
   }
 
@@ -503,6 +577,7 @@ class _OutputScreenState extends State<OutputScreen> {
     double rate, {
     required bool restartCurrentWord,
   }) {
+    _playbackSpeechRate = rate;
     if (!_fallbackActive) return;
     final mapper = _progressMapper;
     final word = mapper?.wordAtPosition(_fallbackPosition);
@@ -539,9 +614,114 @@ class _OutputScreenState extends State<OutputScreen> {
   }
 
   Future<void> _restoreAfterUnrecognizedListening() async {
-    if (!_resumeAfterVoiceListening) return;
+    if (!mounted || !_resumeAfterVoiceListening) return;
     _resumeAfterVoiceListening = false;
     await resumeReading();
+  }
+
+  String get _speechRateLabel =>
+      '${(speechRate / _normalSpeechRate).toStringAsFixed(1)}×';
+
+  Widget _speechRateControls() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppTheme.spaceSM,
+          vertical: 2,
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.speed, color: AppTheme.primaryBlue),
+            const SizedBox(width: AppTheme.spaceSM),
+            const Text('Reading speed'),
+            const Spacer(),
+            IconButton(
+              key: const ValueKey('speech-rate-slower'),
+              tooltip: 'Slower',
+              onPressed: () =>
+                  _changeManualSpeechRate(-_manualSpeechRateStep),
+              icon: const Icon(Icons.remove),
+            ),
+            Semantics(
+              liveRegion: true,
+              label: 'Speech speed $_speechRateLabel',
+              child: Text(
+                _speechRateLabel,
+                key: const ValueKey('speech-rate-value'),
+                style: const TextStyle(
+                  color: AppTheme.primaryBlue,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            IconButton(
+              key: const ValueKey('speech-rate-faster'),
+              tooltip: 'Faster',
+              onPressed: () => _changeManualSpeechRate(_manualSpeechRateStep),
+              icon: const Icon(Icons.add),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showVoiceCommandPanel() {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (sheetContext) => SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(
+          AppTheme.spaceMD,
+          AppTheme.spaceSM,
+          AppTheme.spaceMD,
+          AppTheme.spaceLG,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Voice commands',
+                    style: Theme.of(sheetContext).textTheme.titleLarge,
+                  ),
+                ),
+                IconButton(
+                  key: const ValueKey('close-voice-commands'),
+                  tooltip: 'Close voice commands',
+                  onPressed: () => Navigator.of(sheetContext).pop(),
+                  icon: const Icon(Icons.close),
+                ),
+              ],
+            ),
+            VoiceAssistantControls(
+              initialLanguageCode: widget.readingLanguage,
+              onBeforeListening: _beforeVoiceListening,
+              onRecognized: _handleVoiceCommand,
+              onListeningCancelled: _restoreAfterUnrecognizedListening,
+              onLanguageChanged: _onVoiceLanguageChanged,
+              feedback: _voiceMessage,
+              restorePlaybackOnDispose: true,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _voiceCommandsButton() {
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton.icon(
+        key: const ValueKey('voice-commands-button'),
+        onPressed: _showVoiceCommandPanel,
+        icon: const Icon(Icons.record_voice_over_outlined),
+        label: const Text('Voice commands'),
+      ),
+    );
   }
 
   Future<void> _handleVoiceCommand(
@@ -714,6 +894,7 @@ class _OutputScreenState extends State<OutputScreen> {
     _fallbackActive = false;
     _progressMapper = null;
     await _tts.stop();
+    await _applyPendingSpeechRate();
     _activeSpeechText = '';
     _activeWordIndices = [];
     if (mounted)
@@ -1272,17 +1453,11 @@ class _OutputScreenState extends State<OutputScreen> {
                         ],
                       ),
 
+                      _speechRateControls(),
+
                       const SizedBox(height: AppTheme.spaceMD),
 
-                      VoiceAssistantControls(
-                        initialLanguageCode: widget.readingLanguage,
-                        onBeforeListening: _beforeVoiceListening,
-                        onRecognized: _handleVoiceCommand,
-                        onListeningCancelled:
-                            _restoreAfterUnrecognizedListening,
-                        onLanguageChanged: _onVoiceLanguageChanged,
-                        feedback: _voiceMessage,
-                      ),
+                      _voiceCommandsButton(),
 
                       if (_usingEstimatedHighlight)
                         Padding(
