@@ -144,7 +144,15 @@ class _OutputScreenState extends State<OutputScreen> {
     // supported reading language.
     await _tts.init(defaultLocale: null);
     final locale = TTSService.localeForLanguage(widget.readingLanguage);
-    if (locale == null) return true;
+    if (locale == null) {
+      final restored = await _tts.resetVoiceToDefault();
+      if (!restored) {
+        _setVoiceMessage(
+          'The system speech voice could not be restored. Playback was not started.',
+        );
+      }
+      return restored;
+    }
     final selected = await _tts.setLanguage(locale);
     if (_tts.localeNotice != null) {
       _setVoiceMessage(_tts.localeNotice!);
@@ -217,7 +225,7 @@ class _OutputScreenState extends State<OutputScreen> {
     if (!mounted) return false;
     if (!languageAvailable) {
       setState(() {
-        _voiceMessage =
+        _voiceMessage ??=
             'Text-to-speech for ${_languageName(widget.readingLanguage)} is not available on this device. The reading language was not changed.';
       });
       return false;

@@ -60,20 +60,29 @@ void main() {
       expect(unknownService.currentLocale, isNull);
     });
 
-    test('resets a temporary welcome locale for untagged reader content',
-        () async {
-      expect(engine.language, 'en-IN');
-      expect(await service.resetVoiceToDefault(), isTrue);
-      expect(engine.language, isNull);
-      expect(engine.selectedVoice, isNull);
-      expect(service.currentLocale, isNull);
+    test(
+      'restores the system voice after welcome before untagged library playback',
+      () async {
+        const welcome = 'Welcome to AksharAlly.';
+        const savedContent = 'Saved content without a language tag.';
 
-      await service.init(defaultLocale: null);
-      await service.speak('Saved content without a language tag.');
+        expect(engine.language, 'en-IN');
+        await service.speak(welcome);
 
-      expect(engine.language, isNull);
-      expect(engine.activeSegment, 'Saved content without a language tag.');
-    });
+        // OutputScreen uses a new service for library playback, but Flutter
+        // TTS retains its selected voice. Match its reset for unknown metadata.
+        final libraryService = TTSService(engine: engine);
+        await libraryService.init(defaultLocale: null);
+        expect(await libraryService.resetVoiceToDefault(), isTrue);
+        await libraryService.speak(savedContent);
+
+        expect(engine.spokenSegments, [welcome, savedContent]);
+        expect(engine.language, isNull);
+        expect(engine.selectedVoice, isNull);
+        expect(libraryService.currentLocale, isNull);
+        expect(engine.activeSegment, savedContent);
+      },
+    );
 
     test('maps Hindi and Marathi to their own locales', () async {
       expect(TTSService.localeForLanguage('hi'), 'hi-IN');
