@@ -1,3 +1,5 @@
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart' show FirebaseException;
 import 'package:flutter/material.dart';
 
 import '../services/auth_flow.dart';
@@ -33,15 +35,43 @@ class _OnboardingGateState extends State<OnboardingGate> {
   late final OnboardingStorage _storage = widget.storage ?? OnboardingStorage();
   late final OnboardingAccountStore _accountStore =
       widget.accountStore ?? const FirestoreOnboardingAccountStore();
-  late final Future<_GateResult> _result = _load();
+  late Future<_GateResult> _result;
+
+  @override
+  void initState() {
+    super.initState();
+    _result = _load();
+  }
+
+  void _retry() {
+    final retry = _load();
+    setState(() {
+      _result = retry;
+    });
+  }
 
   Future<_GateResult> _load() async {
     final uid = widget.uid;
     if (uid == null || uid.isEmpty) return const _GateResult.login();
+    final authenticatedUid =
+        widget.authFlow?.currentUserId ?? FirebaseAuth.instance.currentUser?.uid;
+    if (authenticatedUid != uid) return const _GateResult.login();
 
-    // Firestore is authoritative for completion. SharedPreferences remains a
-    // local draft/cache and is never used to bypass this account check.
-    final account = await _accountStore.load(uid);
+    // The authenticated UID is checked above. Firestore is authoritative when
+    // available; only UID-scoped saved data is used for recovery.
+    late final Map<String, dynamic> account;
+    try {
+      account = await _accountStore.load(uid);
+    } on FirebaseException catch (error, stackTrace) {
+      final cachedProfile = await _loadCachedProfile(uid);
+      if (cachedProfile == null) {
+        Error.throwWithStackTrace(error, stackTrace);
+      }
+      await _storage.applyReadingPreferences(cachedProfile);
+      return cachedProfile.completed
+          ? _GateResult.home(cachedProfile)
+          : _GateResult.onboarding(cachedProfile);
+    }
     final accountStatus = account['onboardingCompleted'];
     if (accountStatus != null && accountStatus is! bool) {
       throw const FormatException(
@@ -51,25 +81,25 @@ class _OnboardingGateState extends State<OnboardingGate> {
     final remoteProfile = _profileFromAccount(account);
 
     if (accountStatus == true) {
-      final profile = remoteProfile;
+      var profile = remoteProfile;
+      if (profile?.completed != true) {
+        final cachedProfile = await _loadCachedProfile(uid);
+        if (cachedProfile?.completed == true) profile = cachedProfile;
+      }
       if (profile == null || !profile.completed) {
         throw const FormatException(
           'The saved account onboarding profile is incomplete.',
         );
+      }
+      if (!identical(profile, remoteProfile)) {
+        await _saveRemoteProfileIfAvailable(uid, profile);
       }
       await _storage.save(uid, profile);
       await _storage.applyReadingPreferences(profile);
       return _GateResult.home(profile);
     }
 
-    OnboardingProfile? profile;
-    try {
-      profile = await _storage.load(uid);
-    } on FormatException {
-      await _storage.clear(uid);
-    } on TypeError {
-      await _storage.clear(uid);
-    }
+    final profile = await _loadCachedProfile(uid);
 
     // Migrate older same-device completions to the account record once. All
     // later decisions are made from the remote completion field.
@@ -77,7 +107,7 @@ class _OnboardingGateState extends State<OnboardingGate> {
         (remoteProfile?.completed == true ||
             (remoteProfile == null && profile?.completed == true))) {
       final completed = remoteProfile ?? profile!;
-      await _accountStore.saveOnboarding(uid, completed);
+      await _saveRemoteProfileIfAvailable(uid, completed);
       await _storage.applyReadingPreferences(completed);
       return _GateResult.home(completed);
     }
@@ -91,7 +121,35 @@ class _OnboardingGateState extends State<OnboardingGate> {
         ? account['fullName'] as String
         : '';
     final initial = draft ?? OnboardingProfile.initial(fullName: savedName);
+    if (remoteProfile == null) {
+      await _storage.save(uid, initial);
+      await _saveRemoteProfileIfAvailable(uid, initial);
+    }
     return _GateResult.onboarding(initial);
+  }
+
+  Future<OnboardingProfile?> _loadCachedProfile(String uid) async {
+    try {
+      return await _storage.load(uid);
+    } on FormatException {
+      await _storage.clear(uid);
+      return null;
+    } on TypeError {
+      await _storage.clear(uid);
+      return null;
+    }
+  }
+
+  Future<void> _saveRemoteProfileIfAvailable(
+    String uid,
+    OnboardingProfile profile,
+  ) async {
+    try {
+      await _accountStore.saveOnboarding(uid, profile);
+    } on FirebaseException {
+      // The authenticated user's local profile remains available. The next
+      // successful profile load or onboarding save can sync it to Firestore.
+    }
   }
 
   OnboardingProfile? _profileFromAccount(Map<String, dynamic> account) {
@@ -120,17 +178,7 @@ class _OnboardingGateState extends State<OnboardingGate> {
                     ),
                     const SizedBox(height: 12),
                     FilledButton(
-                      onPressed: () => Navigator.of(context).pushReplacement(
-                        MaterialPageRoute(
-                          builder: (_) => OnboardingGate(
-                            uid: widget.uid,
-                            storage: _storage,
-                            accountStore: _accountStore,
-                            authFlow: widget.authFlow,
-                            ttsService: widget.ttsService,
-                          ),
-                        ),
-                      ),
+                      onPressed: _retry,
                       child: const Text('Retry'),
                     ),
                   ],

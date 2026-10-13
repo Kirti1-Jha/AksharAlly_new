@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
+import 'onboarding_storage.dart';
 import '../theme/app_settings.dart';
 import 'user_profile_service.dart';
 
@@ -20,7 +21,25 @@ class AuthService {
       email: email,
       password: password,
     );
-    return result.user;
+    final user = result.user;
+    if (user == null) return null;
+
+    final initialProfile = OnboardingProfile.initial(
+      fullName: user.displayName ?? '',
+    );
+    try {
+      await OnboardingStorage().save(user.uid, initialProfile);
+    } catch (error) {
+      debugPrint('Could not cache the initial reading profile: $error');
+    }
+    try {
+      await UserProfileService.saveOnboarding(user.uid, initialProfile);
+    } catch (error) {
+      // Auth succeeded. Keep the UID-scoped local draft so the gate can
+      // recover if Firestore is temporarily unavailable and retry its save.
+      debugPrint('Could not sync the initial reading profile: $error');
+    }
+    return user;
   }
 
   // GOOGLE SIGN-IN
