@@ -1,0 +1,62 @@
+# AksharAlly — Finish Remaining Phase 2 Work Only
+
+Continue the existing Phase 2 implementation on `feature/voice-assistant`. Do not start Phase 3.
+
+## First: inspect the Git state
+
+- Verify the active branch is `feature/voice-assistant`.
+- Inspect local HEAD, `origin/feature/voice-assistant`, `git status`, and recent commits.
+- The previously reported Phase 2 commit is `87a031a`; a subsequent local commit was shown as `7e73dbb`.
+- Determine whether the subsequent commit is already on GitHub.
+- Preserve all staged, unstaged, and untracked files.
+- Never reset, clean, force-push, or overwrite remote changes.
+
+If the latest implementation commit is not on GitHub, do not assume it is safe to discard or recreate. Inspect the differences and preserve the existing work.
+
+## Second: fix the one remaining Phase 2 bug
+
+The previous audit found that the welcome-message playback selects English (India), `en-IN`, but may leave that locale selected for later library reading when the library item has no explicit language metadata.
+
+Inspect `lib/services/tts_service.dart`, `lib/screens/login_screen.dart`, `lib/screens/output_screen.dart`, `lib/screens/reader_screen.dart`, and the existing tests.
+
+Implement the smallest safe fix so that:
+
+1. The welcome message prefers `en-IN`.
+2. Its locale selection does not unintentionally change later reading sessions.
+3. Content with explicit English, Hindi, or Marathi metadata continues to use the appropriate locale.
+4. Content without language metadata follows a deliberate, documented fallback.
+5. The fix does not break TTS callbacks, playback lifecycle, or synchronised highlighting.
+6. No duplicate TTS engine or new dependency is introduced.
+
+Do not blindly restore `en-US` after every welcome message. Inspect the existing `flutter_tts` implementation and platform behaviour to choose a safe solution. If restoring the device's previous voice cannot be done reliably, isolate the welcome-message voice selection and document the platform limitation.
+
+## Third: add a regression test
+
+Add or update a focused test covering the sequence:
+
+- Play the welcome message using the preferred Indian English locale.
+- Start reading a library item without language metadata.
+- Verify that the welcome-message locale does not unintentionally leak into the next reading session.
+- Verify that explicitly selected Hindi and Marathi continue to use their appropriate locales.
+
+Use the existing TTS abstraction and test conventions. Do not claim the actual spoken accent was verified by a unit test.
+
+## Fourth: validate
+
+Run Flutter formatting, relevant tests, `flutter analyze`, and a build check if Flutter is available.
+
+If Flutter is unavailable, report that limitation honestly. Do not claim tests or builds passed without running them.
+
+## Fifth: GitHub handoff
+
+- Stay on `feature/voice-assistant`.
+- Review the final diff.
+- Commit only the remaining Phase 2 fix and relevant tests, if changes are needed.
+- Use the message `fix: isolate welcome TTS locale from reader playback`.
+- Push safely to `origin/feature/voice-assistant` after checking upstream status.
+- Never force-push or merge into `main`.
+- If no code changes are needed, do not create an empty commit.
+
+Finish by reporting the final commit hash, verified push status, changed files, and actual test results.
+
+Do not implement the Phase 3 voice-assistant toggle or onboarding.
