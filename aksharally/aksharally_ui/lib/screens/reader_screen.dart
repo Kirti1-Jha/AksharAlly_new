@@ -69,7 +69,8 @@ class _ReaderScreenState extends State<ReaderScreen> {
   @override
   void initState() {
     super.initState();
-    _tts.init();
+    // This legacy screen has no content-language metadata.
+    _tts.init(defaultLocale: null);
 
     // Restore active profile from persisted accessibility settings.
     _selectedProfile = (AccessibilitySettings.profile == 'customize')

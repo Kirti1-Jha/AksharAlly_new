@@ -1,0 +1,270 @@
+# AksharAlly — Phase 2: Default Welcome Message and English (India) Text-to-Speech
+
+## Objective
+
+Implement the first functional phase of the AksharAlly login/register voice experience.
+
+This phase has two primary goals:
+
+1. Play a default welcome message when the login/register screen opens, even when the global voice assistant is disabled.
+2. Make English (India), locale `en-IN`, the preferred default for English text-to-speech instead of American English (`en-US`).
+
+The existing Flutter application already contains a reusable `TTSService` in `aksharally_ui/lib/services/tts_service.dart`, implemented using `flutter_tts`.
+
+The Phase 1 audit identified these existing behaviours:
+- `TTSService.init()` currently configures `en-US`.
+- The service supports language selection and speech lifecycle callbacks.
+- `OutputScreen` maps English to `en-US`, Hindi to `hi-IN`, and Marathi to `mr-IN`.
+- Reader playback uses TTS progress callbacks for synchronised highlighting.
+- The login screen currently supports email/password authentication.
+- The repository is on `feature/voice-assistant`.
+
+**Extend the existing TTS service. Do not create a second TTS engine or rebuild the voice assistant.**
+
+This phase must remain small enough to test, commit, and push independently before continuing with Phase 3.
+
+---
+
+## 1. Git Safety — Mandatory
+
+Before editing any files:
+
+1. Verify the repository root and current Git branch.
+2. Confirm the branch is `feature/voice-assistant`.
+3. Inspect `git status` and the latest commit.
+4. Inspect any changes made since the Phase 1 audit.
+5. Preserve the untracked Phase 1 audit note and any other existing changes.
+
+Strict rules:
+- Perform all implementation work on `feature/voice-assistant`.
+- Do not switch to `main`.
+- Do not merge into `main`.
+- Do not reset, clean, force-checkout, or discard existing work.
+- Do not overwrite unrelated changes.
+- Do not change Git remotes or credentials.
+- Do not create unnecessary branches.
+
+If the active branch is not `feature/voice-assistant`, stop before editing files and report the issue.
+
+The audit note is not application source code. Do not add it to the implementation commit unless explicitly requested.
+
+---
+
+## 2. Implement the Default Welcome Message
+
+Modify the existing login screen and reuse `TTSService`.
+
+The welcome message must be:
+
+"Welcome to AksharAlly, your personalised reading companion. Sign in to continue or create an account to get started."
+
+Use Indian English pronunciation whenever a suitable `en-IN` voice is available.
+
+### Required behaviour
+
+1. When the login/register screen becomes visible, attempt to play the welcome message automatically.
+2. Do this independently of the global voice-assistant preference.
+3. Do not require microphone permission or speech recognition.
+4. Do not require the user to enable the voice-assistant toggle before hearing the welcome message.
+5. Provide a visible, accessible way to replay the welcome message.
+6. Do not create a large floating panel or redesign the entire authentication screen in this phase.
+7. Do not implement the top-right voice-assistant toggle yet; that belongs to Phase 3.
+8. Do not change the authentication flow, add onboarding, or implement Google sign-in in this phase.
+
+### Playback lifecycle
+
+Prevent unwanted repeated speech.
+
+- Avoid replaying the welcome message on every Flutter widget rebuild.
+- Avoid duplicate playback when switching between login and registration views within the same authentication session.
+- Replaying should be an explicit user action.
+- Handle screen disposal safely.
+- Stop or manage existing speech before starting the welcome message so utterances do not overlap.
+- If TTS is already speaking, do not start a second simultaneous utterance.
+- Handle initialisation errors, unavailable locales, playback failures, and interruptions gracefully.
+- Ensure asynchronous initialisation does not trigger playback after the screen has already been disposed.
+- Do not leave the TTS service in a state that prevents subsequent reader playback.
+
+Use a lifecycle-aware approach appropriate to the existing Flutter screen architecture.
+
+Do not add arbitrary delays or timers unless the existing architecture demonstrates that they are necessary.
+
+If automatic speech cannot start because of platform restrictions, keep the screen usable and let the replay control attempt playback again.
+
+---
+
+## 3. Prefer English (India) — `en-IN`
+
+Update the existing TTS configuration so English speech prefers Indian English.
+
+The default English locale must be:
+
+`en-IN`
+
+Do not deliberately select `en-US` when a suitable Indian English voice is available.
+
+Inspect the existing `TTSService` and all relevant callers before changing locale defaults.
+
+### Required implementation
+
+1. Update the default English TTS configuration from `en-US` to `en-IN` where appropriate.
+2. Inspect how `flutter_tts` supports locale availability and voice selection on the platforms used by this project.
+3. Use the existing package APIs to verify locale availability where supported.
+4. Select a suitable installed Indian English voice if the platform exposes voice metadata and voice selection APIs.
+5. Keep locale selection centralised in the existing TTS service rather than hardcoding it independently in multiple screens.
+6. If `en-IN` is unavailable, use a safe fallback and report that the preferred locale could not be selected.
+7. Do not claim that an American English fallback has an Indian accent.
+8. Do not introduce a paid cloud TTS service or new external API dependency.
+9. Do not hardcode a device-specific voice identifier.
+10. Preserve the existing speech rate, pitch, volume, and lifecycle callback behaviour unless a change is strictly necessary.
+
+A locale setting is not proof of the actual spoken accent. Where supported, inspect the installed voice information. If the platform does not expose enough information to verify the accent, document that limitation.
+
+### Preserve Hindi and Marathi
+
+The existing language mapping must continue to support:
+
+- English: prefer `en-IN`.
+- Hindi: prefer `hi-IN`.
+- Marathi: prefer `mr-IN`.
+
+Do not route Hindi or Marathi text through the English voice simply because English is the default.
+
+Preserve the current language-selection behaviour in the reading-input and output screens.
+
+Do not unintentionally change the pronunciation of Hindi or Marathi text, or break the existing language-selection interface.
+
+---
+
+## 4. Handle Missing Language Metadata Carefully
+
+The Phase 1 audit found that some saved library items pass text to `OutputScreen` without an explicit reading-language value.
+
+Do not blindly change every occurrence of `en-US` to `en-IN` without understanding the caller.
+
+Inspect:
+- TTS service initialisation.
+- Explicit English language selection.
+- Saved library-item playback.
+- Reader playback.
+- Output-screen initialisation.
+- Any tests that assume the current locale.
+
+Where English is explicitly selected, use `en-IN` by default.
+
+Where the language is unknown, use a consistent, documented fallback without incorrectly labelling Hindi or Marathi text as English.
+
+Do not add a new language-detection subsystem in this phase.
+
+---
+
+## 5. Testing Requirements
+
+Update or add focused tests for the welcome message and TTS locale selection.
+
+Reuse the project's existing testing conventions.
+
+At minimum, verify the following behaviours where testable:
+
+### Test A: Default welcome message
+- The correct welcome text is used.
+- The welcome message can play without enabling the global voice assistant.
+- Reopening or rebuilding the widget does not create unintended duplicate playback.
+- The replay action requests another playback.
+
+### Test B: English locale
+- English defaults to `en-IN`.
+- Locale availability is handled safely.
+- The fallback is used only when the preferred locale cannot be selected.
+- An unavailable locale does not crash the screen.
+
+### Test C: Other languages
+- Hindi continues to use the existing Hindi locale configuration.
+- Marathi continues to use the existing Marathi locale configuration.
+- Existing language-selection behaviour is preserved.
+
+### Test D: Existing TTS functionality
+- Existing pause/resume/stop behaviour remains intact.
+- Reader playback and progress callbacks are not broken.
+- The TTS service can play another utterance after the welcome message.
+- No duplicate or overlapping speech is introduced by this change.
+
+Use the existing TTS abstraction or a suitable mock for unit tests. Do not claim that a unit test verifies the actual Indian English accent.
+
+---
+
+## 6. Scope Restrictions
+
+This phase must not implement:
+- The top-right voice-assistant toggle.
+- The full login/register redesign.
+- Google sign-in.
+- First-time onboarding.
+- User-profile database creation.
+- Global settings persistence.
+- Changes to OCR, text simplification, or Flask backend services.
+
+Those features belong to subsequent phases.
+
+Only modify files necessary for the welcome message, English locale configuration, and relevant tests.
+
+Avoid unrelated refactoring, dependency upgrades, and large architectural changes.
+
+---
+
+## 7. Validation and Environment Limitations
+
+First inspect whether Flutter and Dart are available.
+
+If available, run:
+- Dart formatting on modified files.
+- Relevant TTS and login-screen tests.
+- `flutter analyze`.
+- A relevant build check if the environment supports it.
+
+If Flutter is unavailable, do not pretend the tests or build succeeded. Report exactly which checks could not run and why.
+
+Do not alter SDK constraints, dependency versions, or lockfiles just to bypass an unavailable toolchain.
+
+Check the final Git diff for accidental modifications and ensure all changes are related to this phase.
+
+---
+
+## 8. Git Commit and GitHub Handoff
+
+Once the implementation is complete and the diff has been reviewed:
+
+1. Confirm that the current branch is still `feature/voice-assistant`.
+2. Verify that the implementation does not include unrelated files or the untracked audit note.
+3. Run the available tests and report any checks that could not run.
+4. Create one focused commit on `feature/voice-assistant`.
+
+Use this commit message:
+
+`feat: add default welcome message and Indian English TTS`
+
+5. Push the commit to the existing upstream branch `origin/feature/voice-assistant` so the work can be pulled into another Replit account.
+
+Before pushing, inspect the upstream state and handle divergence safely. Never force-push, rewrite history, or overwrite remote changes. If a safe push is not possible, preserve the local commit and report the exact commands or actions needed for manual recovery.
+
+Do not merge into `main`.
+
+If GitHub authentication or network access is unavailable, do not claim that the push succeeded. Leave the local changes and commit intact, and explain how to publish them later.
+
+---
+
+## 9. Final Report
+
+After implementation, report:
+
+1. Files changed.
+2. Welcome-message implementation and replay behaviour.
+3. How `en-IN` is selected and how fallback works.
+4. Confirmation that Hindi and Marathi language mappings remain intact.
+5. Tests and checks actually run, including failures.
+6. Whether the actual Indian English voice was verified on a device.
+7. Commit hash and message, if a commit was created.
+8. Whether the commit was successfully pushed to `origin/feature/voice-assistant`.
+9. Any limitations that should be addressed in Phase 3.
+
+**Acceptance criteria:** The welcome message is attempted automatically on the login/register screen regardless of the global voice-assistant preference, English prefers Indian English (`en-IN`), Hindi and Marathi reading behaviour is preserved, existing reader functionality is not broken, and the changes are independently reviewable on `feature/voice-assistant`.

@@ -14,6 +14,94 @@ void main() {
       await service.init();
     });
 
+    test('prefers en-IN and selects a matching installed voice', () {
+      expect(TTSService.localeForLanguage('en'), 'en-IN');
+      expect(engine.language, 'en-IN');
+      expect(service.currentLocale, 'en-IN');
+      expect(engine.selectedVoice?['locale'], 'en-IN');
+    });
+
+    test(
+      'does not send unavailable Hindi or Marathi to an English voice',
+      () async {
+        final englishOnlyEngine = _FakeTtsEngine(
+          availableLocales: {'en-IN'},
+        );
+        final englishOnlyService = TTSService(engine: englishOnlyEngine);
+
+        await englishOnlyService.init();
+
+        expect(await englishOnlyService.setLanguage('hi-IN'), isFalse);
+        expect(englishOnlyEngine.language, 'en-IN');
+        expect(await englishOnlyService.setLanguage('mr-IN'), isFalse);
+        expect(englishOnlyEngine.language, 'en-IN');
+      },
+    );
+
+    test('falls back to en-US only when en-IN is unavailable', () async {
+      final fallbackEngine = _FakeTtsEngine(availableLocales: {'en-US'});
+      final fallbackService = TTSService(engine: fallbackEngine);
+
+      await fallbackService.init();
+
+      expect(fallbackEngine.language, 'en-US');
+      expect(fallbackService.currentLocale, 'en-US');
+      expect(fallbackService.localeNotice, contains('en-IN'));
+      expect(fallbackService.localeNotice, contains('en-US'));
+    });
+
+    test('leaves unknown-language content to the system voice', () async {
+      final unknownEngine = _FakeTtsEngine();
+      final unknownService = TTSService(engine: unknownEngine);
+
+      await unknownService.init(defaultLocale: null);
+
+      expect(unknownEngine.language, isNull);
+      expect(unknownService.currentLocale, isNull);
+    });
+
+    test('maps Hindi and Marathi to their own locales', () async {
+      expect(TTSService.localeForLanguage('hi'), 'hi-IN');
+      expect(await service.setLanguage('hi-IN'), isTrue);
+      expect(engine.language, 'hi-IN');
+      expect(engine.selectedVoice?['locale'], 'hi-IN');
+
+      expect(TTSService.localeForLanguage('mr'), 'mr-IN');
+      expect(await service.setLanguage('mr-IN'), isTrue);
+      expect(engine.language, 'mr-IN');
+      expect(engine.selectedVoice?['locale'], 'mr-IN');
+    });
+
+    test('does not claim an English fallback when no English locale exists',
+        () async {
+      final unavailableEngine = _FakeTtsEngine(availableLocales: {});
+      final unavailableService = TTSService(engine: unavailableEngine);
+
+      await unavailableService.init();
+
+      expect(unavailableService.currentLocale, isNull);
+      expect(
+        unavailableService.localeNotice,
+        contains('Neither en-IN nor en-US'),
+      );
+    });
+
+    test('tries en-IN when the platform cannot verify available locales',
+        () async {
+      final unsupportedEngine = _FakeTtsEngine(availableLocales: {});
+      unsupportedEngine.availabilityCheckUnsupported = true;
+      final unsupportedService = TTSService(engine: unsupportedEngine);
+
+      await unsupportedService.init();
+
+      expect(unsupportedEngine.language, 'en-IN');
+      expect(unsupportedService.currentLocale, 'en-IN');
+      expect(
+        unsupportedService.localeNotice,
+        contains('does not expose enough voice details'),
+      );
+    });
+
     test('normalizes Android-style resumed progress offsets', () async {
       const text = 'पहला शब्द, फिर एक नया शब्द।';
       final progress = <int>[];
@@ -94,6 +182,19 @@ void main() {
       expect(service.isPaused, isFalse);
     });
 
+    test('reports platform speech failures to the utterance caller', () async {
+      Object? reportedError;
+      await service.speak(
+        'Welcome to AksharAlly.',
+        onError: (error) => reportedError = error,
+      );
+      engine.emitError(StateError('speech failed'));
+
+      expect(reportedError, isA<StateError>());
+      expect(service.lastError, contains('speech failed'));
+      expect(service.isSpeaking, isFalse);
+    });
+
     test('pause failure leaves the active utterance playing', () async {
       await service.speak('Continue reading this passage.');
       engine.pauseError = StateError('pause not supported');
@@ -149,7 +250,13 @@ void main() {
 }
 
 class _FakeTtsEngine implements TtsEngine {
+  _FakeTtsEngine({Set<String>? availableLocales})
+    : availableLocales =
+          availableLocales ?? {'en-IN', 'en-US', 'hi-IN', 'mr-IN'};
+
+  final Set<String> availableLocales;
   String? language;
+  Map<String, dynamic>? selectedVoice;
   double? speechRate;
   String activeSegment = '';
   String? _originalText;
@@ -170,11 +277,30 @@ class _FakeTtsEngine implements TtsEngine {
 
   int progressHandlerRegistrations = 0;
   int startHandlerRegistrations = 0;
+  bool availabilityCheckUnsupported = false;
   final spokenSegments = <String>[];
   final speechRates = <double>[];
 
   @override
-  Future<bool> isLanguageAvailable(String locale) async => true;
+  Future<bool> isLanguageAvailable(String locale) async {
+    if (availabilityCheckUnsupported) {
+      throw UnsupportedError('Locale availability is not supported');
+    }
+    return availableLocales.contains(locale);
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getVoices() async => availableLocales
+      .map((locale) => <String, dynamic>{
+            'name': 'Device $locale',
+            'locale': locale,
+          })
+      .toList();
+
+  @override
+  Future<void> setVoice(Map<String, String> voice) async {
+    selectedVoice = Map<String, dynamic>.from(voice);
+  }
 
   @override
   Future<void> setLanguage(String locale) async {

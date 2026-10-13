@@ -1,9 +1,18 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../services/auth_service.dart';
+import '../services/tts_service.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  static const welcomeMessage =
+      'Welcome to AksharAlly, your personalised reading companion. '
+      'Sign in to continue or create an account to get started.';
+
+  const LoginScreen({super.key, this.ttsService});
+
+  final TTSService? ttsService;
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -12,17 +21,106 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   bool isLogin = true;
   bool obscurePassword = true;
+  bool _welcomeInProgress = false;
+  bool _automaticWelcomeAttempted = false;
+  String? _welcomeNotice;
 
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
 
-late AuthService auth;
+  late final TTSService _tts;
 
-@override
-void initState() {
-  super.initState();
-  auth = AuthService(); 
-}
+  @override
+  void initState() {
+    super.initState();
+    _tts = widget.ttsService ?? TTSService();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) unawaited(_playWelcome());
+    });
+  }
+
+  Future<void> _playWelcome({bool replay = false}) async {
+    if (_welcomeInProgress ||
+        (!replay && _automaticWelcomeAttempted) ||
+        (!replay && (_tts.isSpeaking || _tts.isPaused))) {
+      return;
+    }
+    if (!replay) _automaticWelcomeAttempted = true;
+    _welcomeInProgress = true;
+    if (mounted) {
+      setState(() {
+        _welcomeNotice = null;
+      });
+    }
+
+    try {
+      await _tts.init(defaultLocale: TTSService.preferredEnglishLocale);
+      if (!mounted) return;
+
+      // Retry locale selection when the device was temporarily unavailable.
+      if (_tts.currentLocale == null) {
+        await _tts.setLanguage(TTSService.preferredEnglishLocale);
+      }
+      if (!mounted) return;
+
+      if (_tts.isSpeaking || _tts.isPaused) {
+        if (!replay) return;
+        await _tts.stop();
+        if (!mounted) return;
+      }
+
+      if (_tts.currentLocale == null) {
+        setState(() {
+          _welcomeNotice =
+              _tts.localeNotice ?? 'Welcome audio is unavailable on this device.';
+        });
+        return;
+      }
+
+      await _tts.speak(
+        LoginScreen.welcomeMessage,
+        onError: (_) {
+          if (!mounted) return;
+          setState(() {
+            _welcomeNotice =
+                'Welcome audio could not be played. Tap replay to try again.';
+          });
+        },
+      );
+      if (!mounted) {
+        await _stopTts();
+        return;
+      }
+      if (_tts.localeNotice != null) {
+        setState(() => _welcomeNotice = _tts.localeNotice);
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _welcomeNotice =
+              'Welcome audio could not be played. Tap replay to try again.';
+        });
+      }
+    } finally {
+      if (mounted) setState(() => _welcomeInProgress = false);
+    }
+  }
+
+  Future<void> _stopTts() async {
+    try {
+      await _tts.stop();
+    } catch (_) {
+      // The plugin may already have stopped while this screen is closing.
+    }
+  }
+
+  @override
+  void dispose() {
+    unawaited(_stopTts());
+    emailController.dispose();
+    passwordController.dispose();
+    super.dispose();
+  }
 
   static const gradientColors = [
     Color(0xFF1565C0),
@@ -42,6 +140,7 @@ void initState() {
     }
 
     try {
+      final auth = AuthService();
       if (isLogin) {
         // LOGIN
         final user = await auth.login(email, password);
@@ -176,7 +275,30 @@ void initState() {
                     ),
                   ),
 
-                  const SizedBox(height: 30),
+                  const SizedBox(height: 8),
+
+                  TextButton.icon(
+                    onPressed: _welcomeInProgress
+                        ? null
+                        : () => unawaited(_playWelcome(replay: true)),
+                    icon: const Icon(Icons.volume_up_outlined),
+                    label: const Text('Replay welcome message'),
+                  ),
+
+                  if (_welcomeNotice != null)
+                    Semantics(
+                      liveRegion: true,
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          _welcomeNotice!,
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ),
+                    ),
+
+                  const SizedBox(height: 22),
 
                   // EMAIL FIELD
                   TextField(

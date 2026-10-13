@@ -139,17 +139,17 @@ class _OutputScreenState extends State<OutputScreen> {
   }
 
   Future<bool> _initializeTts() async {
-    await _tts.init();
-    final language = widget.readingLanguage;
-    if (language == null) return true;
-    final locale = switch (language.toLowerCase().split('-').first) {
-      'en' => 'en-US',
-      'hi' => 'hi-IN',
-      'mr' => 'mr-IN',
-      _ => null,
-    };
+    // Do not assume saved text without language metadata is English. Let the
+    // device choose its system voice unless this content has an explicit
+    // supported reading language.
+    await _tts.init(defaultLocale: null);
+    final locale = TTSService.localeForLanguage(widget.readingLanguage);
     if (locale == null) return true;
-    return _tts.setLanguage(locale);
+    final selected = await _tts.setLanguage(locale);
+    if (_tts.localeNotice != null) {
+      _setVoiceMessage(_tts.localeNotice!);
+    }
+    return selected;
   }
 
   // ── word-splitting — removes embedded \n / \n\n ───────────────────────────

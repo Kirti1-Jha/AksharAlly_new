@@ -9,6 +9,8 @@ typedef TTSErrorCallback = void Function(Object? error);
 /// without invoking a device TTS engine.
 abstract interface class TtsEngine {
   Future<bool> isLanguageAvailable(String locale);
+  Future<List<Map<String, dynamic>>> getVoices();
+  Future<void> setVoice(Map<String, String> voice);
   Future<void> setLanguage(String locale);
   Future<void> setSpeechRate(double rate);
   Future<void> setPitch(double pitch);
@@ -33,6 +35,21 @@ class FlutterTtsEngine implements TtsEngine {
   @override
   Future<bool> isLanguageAvailable(String locale) async =>
       await _tts.isLanguageAvailable(locale) == true;
+
+  @override
+  Future<List<Map<String, dynamic>>> getVoices() async {
+    final result = await _tts.getVoices;
+    if (result is! List) return const [];
+    return result
+        .whereType<Map>()
+        .map((voice) => Map<String, dynamic>.from(voice))
+        .toList();
+  }
+
+  @override
+  Future<void> setVoice(Map<String, String> voice) async {
+    await _tts.setVoice(voice);
+  }
 
   @override
   Future<void> setLanguage(String locale) async {
@@ -102,6 +119,21 @@ class FlutterTtsEngine implements TtsEngine {
 class TTSService {
   TTSService({TtsEngine? engine}) : _engine = engine ?? FlutterTtsEngine();
 
+  static const preferredEnglishLocale = 'en-IN';
+  static const fallbackEnglishLocale = 'en-US';
+
+  /// Returns a content locale only for a language the app explicitly knows.
+  /// A null result means callers should keep the device's system voice.
+  static String? localeForLanguage(String? language) {
+    final languageCode = language?.toLowerCase().split(RegExp('[-_]')).first;
+    return switch (languageCode) {
+      'en' => preferredEnglishLocale,
+      'hi' => 'hi-IN',
+      'mr' => 'mr-IN',
+      _ => null,
+    };
+  }
+
   final TtsEngine _engine;
 
   bool isSpeaking = false;
@@ -118,14 +150,41 @@ class TTSService {
   bool _fallbackResumeOffsetPending = false;
   TTSProgressCallback? _progressCallback;
   void Function()? _completionCallback;
+  TTSErrorCallback? _utteranceErrorCallback;
   Future<void>? _initFuture;
   String? lastError;
+  String? _currentLocale;
+  String? _localeNotice;
+
+  String? get currentLocale => _currentLocale;
+  String? get localeNotice => _localeNotice;
 
   /// Configure the platform handlers once for this reader session.
-  Future<void> init() => _initFuture ??= _initialize();
+  ///
+  /// If [defaultLocale] is null, leave locale selection to the device. This is
+  /// used for saved content without language metadata rather than guessing it
+  /// is English.
+  Future<void> init({
+    String? defaultLocale = preferredEnglishLocale,
+  }) async {
+    final pendingInitialization = _initFuture;
+    if (pendingInitialization != null) {
+      await pendingInitialization;
+      return;
+    }
 
-  Future<void> _initialize() async {
-    await _engine.setLanguage('en-US');
+    final initialization = _initialize(defaultLocale);
+    _initFuture = initialization;
+    try {
+      await initialization;
+    } catch (_) {
+      if (identical(_initFuture, initialization)) _initFuture = null;
+      rethrow;
+    }
+  }
+
+  Future<void> _initialize(String? defaultLocale) async {
+    if (defaultLocale != null) await setLanguage(defaultLocale);
     await _engine.setSpeechRate(_speechRate);
     await _engine.setPitch(1.0);
     await _engine.setVolume(1.0);
@@ -145,6 +204,7 @@ class TTSService {
       final callback = _completionCallback;
       _progressCallback = null;
       _completionCallback = null;
+      _utteranceErrorCallback = null;
       callback?.call();
     });
 
@@ -155,6 +215,7 @@ class TTSService {
       isPaused = false;
       _progressCallback = null;
       _completionCallback = null;
+      _utteranceErrorCallback = null;
     });
 
     _engine.setPauseHandler(() {
@@ -178,7 +239,10 @@ class TTSService {
       isPaused = false;
       _progressCallback = null;
       _completionCallback = null;
+      final callback = _utteranceErrorCallback;
+      _utteranceErrorCallback = null;
       lastError = error.toString();
+      callback?.call(error);
     });
   }
 
@@ -247,23 +311,139 @@ class TTSService {
     _fallbackResumeOffsetPending = true;
   }
 
-  /// Changes the output voice only if the device reports that locale as usable.
+  /// Changes the output voice only when the locale is available or an
+  /// installed matching voice can be enumerated on this platform.
   Future<bool> setLanguage(String localeId) async {
     final locale = localeId.replaceAll('_', '-');
+    if (_normalizeLocale(locale) == preferredEnglishLocale.toLowerCase()) {
+      return _setPreferredEnglish();
+    }
+
+    _localeNotice = null;
     try {
-      if (!await _engine.isLanguageAvailable(locale)) return false;
+      final voice = await _findVoiceForLocale(locale);
+      final availability = await _isLocaleAvailable(locale, voice);
+      if (availability == false) {
+        _localeNotice = 'Speech locale $locale is unavailable on this device.';
+        return false;
+      }
       await _engine.setLanguage(locale);
+      _currentLocale = locale;
+      if (availability == null) {
+        _localeNotice =
+            'Locale $locale was requested, but this device does not expose '
+            'enough voice details to verify its accent.';
+      }
+      if (voice != null) await _applyVoice(voice);
       return true;
     } catch (error) {
       lastError = error.toString();
+      _localeNotice = 'Speech locale $locale could not be selected.';
       return false;
     }
   }
+
+  Future<bool> _setPreferredEnglish() async {
+    _localeNotice = null;
+    try {
+      final voice = await _findVoiceForLocale(preferredEnglishLocale);
+      final availability = await _isLocaleAvailable(
+        preferredEnglishLocale,
+        voice,
+      );
+      if (availability != false) {
+        await _engine.setLanguage(preferredEnglishLocale);
+        _currentLocale = preferredEnglishLocale;
+        if (availability == null) {
+          _localeNotice =
+              'Locale en-IN was requested, but this device does not expose '
+              'enough voice details to verify its accent.';
+        }
+        if (voice != null) await _applyVoice(voice);
+        return true;
+      }
+    } catch (error) {
+      lastError = error.toString();
+    }
+
+    try {
+      final fallbackVoice = await _findVoiceForLocale(fallbackEnglishLocale);
+      final availability = await _isLocaleAvailable(
+        fallbackEnglishLocale,
+        fallbackVoice,
+      );
+      if (availability != false) {
+        await _engine.setLanguage(fallbackEnglishLocale);
+        _currentLocale = fallbackEnglishLocale;
+        if (fallbackVoice != null) await _applyVoice(fallbackVoice);
+        _localeNotice =
+            'Preferred locale en-IN is unavailable; using en-US.';
+        return true;
+      }
+    } catch (error) {
+      lastError = error.toString();
+    }
+
+    _currentLocale = null;
+    _localeNotice = 'Neither en-IN nor en-US is available on this device.';
+    return false;
+  }
+
+  Future<bool?> _isLocaleAvailable(
+    String locale,
+    Map<String, dynamic>? matchingVoice,
+  ) async {
+    try {
+      return await _engine.isLanguageAvailable(locale) ||
+          matchingVoice != null;
+    } catch (error) {
+      lastError = error.toString();
+      return matchingVoice == null ? null : true;
+    }
+  }
+
+  Future<Map<String, dynamic>?> _findVoiceForLocale(String locale) async {
+    try {
+      final normalizedLocale = _normalizeLocale(locale);
+      for (final voice in await _engine.getVoices()) {
+        final voiceLocale = voice['locale'];
+        if (voiceLocale is String &&
+            _normalizeLocale(voiceLocale) == normalizedLocale) {
+          return voice;
+        }
+      }
+    } catch (error) {
+      // Voice enumeration is not supported by every platform. Locale
+      // availability can still be checked independently.
+      lastError ??= error.toString();
+    }
+    return null;
+  }
+
+  Future<void> _applyVoice(Map<String, dynamic> voice) async {
+    final selection = <String, String>{};
+    for (final key in ['name', 'locale', 'identifier']) {
+      final value = voice[key];
+      if (value is String && value.isNotEmpty) selection[key] = value;
+    }
+    if (selection.isEmpty) return;
+    try {
+      await _engine.setVoice(selection);
+    } catch (error) {
+      // Keep the selected locale and let the platform choose its default
+      // voice for that locale if explicit voice selection is unsupported.
+      lastError ??= error.toString();
+    }
+  }
+
+  String _normalizeLocale(String locale) =>
+      locale.replaceAll('_', '-').toLowerCase();
 
   Future<void> speak(
     String text, {
     TTSProgressCallback? onProgress,
     void Function()? onComplete,
+    TTSErrorCallback? onError,
   }) async {
     if (text.isEmpty) return;
 
@@ -284,6 +464,7 @@ class TTSService {
     _fallbackResumeOffsetPending = false;
     _progressCallback = onProgress;
     _completionCallback = onComplete;
+    _utteranceErrorCallback = onError;
     _hasStarted = false;
     _hasActiveUtterance = true;
     lastError = null;
@@ -373,6 +554,7 @@ class TTSService {
         isPaused = false;
         _progressCallback = null;
         _completionCallback = null;
+        _utteranceErrorCallback = null;
         lastError = error.toString();
       }
       return false;
@@ -393,6 +575,7 @@ class TTSService {
     _fallbackResumeOffsetPending = false;
     _progressCallback = null;
     _completionCallback = null;
+    _utteranceErrorCallback = null;
     await _engine.stop();
   }
 }
