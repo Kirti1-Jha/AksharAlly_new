@@ -8,6 +8,7 @@ import 'user_profile_service.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  User? get currentUser => _auth.currentUser;
   static const _appleServiceId =
       String.fromEnvironment('APPLE_SERVICE_ID');
   static const _appleRedirectUri =

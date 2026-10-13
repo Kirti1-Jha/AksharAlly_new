@@ -1,9 +1,78 @@
 import 'package:flutter/material.dart';
 
+import '../services/tts_service.dart';
 import '../theme/app_theme.dart';
 
-class SplashScreen extends StatelessWidget {
+class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
+
+  @override
+  State<SplashScreen> createState() => _SplashScreenState();
+}
+
+class _SplashScreenState extends State<SplashScreen> {
+  late final TTSService _ttsService;
+  bool _welcomeStarted = false;
+  bool _isDisposed = false;
+
+  static const String _welcomeMessage =
+      'Welcome to AksharAlly, your personalised reading companion. '
+      'Read with confidence. Select Let’s Begin to get started.';
+
+  @override
+  void initState() {
+    super.initState();
+    _ttsService = TTSService();
+    _playWelcome();
+  }
+
+  Future<void> _playWelcome() async {
+    if (_welcomeStarted || _isDisposed) return;
+    _welcomeStarted = true;
+
+    try {
+      await _ttsService.init(
+        defaultLocale: TTSService.preferredEnglishLocale,
+      );
+
+      if (_isDisposed) return;
+
+      await _ttsService.speak(_welcomeMessage);
+    } catch (error) {
+      debugPrint('Splash welcome speech unavailable: $error');
+    }
+  }
+
+  Future<void> _replayWelcome() async {
+    if (_isDisposed) return;
+
+    try {
+      await _ttsService.stop();
+      if (_isDisposed) return;
+
+      await _ttsService.init(
+        defaultLocale: TTSService.preferredEnglishLocale,
+      );
+
+      if (_isDisposed) return;
+
+      await _ttsService.speak(_welcomeMessage);
+    } catch (error) {
+      debugPrint('Could not replay splash welcome: $error');
+    }
+  }
+
+  void _openLogin() {
+    _ttsService.stop();
+    Navigator.pushNamed(context, '/login');
+  }
+
+  @override
+  void dispose() {
+    _isDisposed = true;
+    _ttsService.stop();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -78,12 +147,16 @@ class SplashScreen extends StatelessWidget {
                         child: SizedBox(
                           width: double.infinity,
                           child: ElevatedButton(
-                            onPressed: () {
-                              Navigator.pushNamed(context, '/login');
-                            },
+                            onPressed: _openLogin,
                             child: const Text("Let's Begin"),
                           ),
                         ),
+                      ),
+                      const SizedBox(height: AppTheme.spaceSM),
+                      TextButton.icon(
+                        onPressed: _replayWelcome,
+                        icon: const Icon(Icons.volume_up_rounded),
+                        label: const Text('Hear welcome message again'),
                       ),
                     ],
                   ),

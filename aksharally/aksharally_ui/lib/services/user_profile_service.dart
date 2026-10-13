@@ -1,14 +1,22 @@
-import 'dart:convert';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
-import 'package:shared_preferences/shared_preferences.dart';
+import 'onboarding_storage.dart';
 
-/// Stores non-sensitive onboarding preferences locally for the signed-in UID.
-///
-/// Firebase Auth remains the source of identity and the full name is also
-/// written to the Firebase user profile. This store only covers optional
-/// preferences because the project does not currently use Firestore.
+/// Account profile fields keyed by Firebase UID.
 class UserProfileService {
-  static String _key(String uid) => 'aksharally_profile_$uid';
+  static const _collection = 'userProfiles';
+
+  static DocumentReference<Map<String, dynamic>> _documentFor(String uid) {
+    if (uid.trim().isEmpty) {
+      throw ArgumentError.value(uid, 'uid', 'A Firebase UID is required.');
+    }
+    return FirebaseFirestore.instance.collection(_collection).doc(uid);
+  }
+
+  static Future<Map<String, dynamic>> load(String uid) async {
+    final snapshot = await _documentFor(uid).get();
+    return snapshot.data() ?? <String, dynamic>{};
+  }
 
   static Future<void> save({
     required String uid,
@@ -16,28 +24,48 @@ class UserProfileService {
     required String preferredLanguage,
     String? ageGroup,
   }) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(
-      _key(uid),
-      jsonEncode({
-        'fullName': fullName.trim(),
-        'preferredLanguage': preferredLanguage,
-        if (ageGroup != null && ageGroup.isNotEmpty) 'ageGroup': ageGroup,
-      }),
-    );
+    final profile = <String, Object?>{
+      if (fullName.trim().isNotEmpty) 'fullName': fullName.trim(),
+      if (preferredLanguage.trim().isNotEmpty)
+        'preferredLanguage': preferredLanguage.trim(),
+      if (ageGroup != null && ageGroup.trim().isNotEmpty)
+        'ageGroup': ageGroup.trim(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    };
+    await _documentFor(uid).set(profile, SetOptions(merge: true));
   }
 
-  static Future<Map<String, dynamic>> load(String uid) async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_key(uid));
-    if (raw == null) return <String, dynamic>{};
-    try {
-      final decoded = jsonDecode(raw);
-      return decoded is Map
-          ? Map<String, dynamic>.from(decoded)
-          : <String, dynamic>{};
-    } catch (_) {
-      return <String, dynamic>{};
-    }
+  static Future<void> saveOnboarding(
+    String uid,
+    OnboardingProfile profile,
+  ) async {
+    await _documentFor(uid).set(
+      {
+        'fullName': profile.fullName.trim(),
+        'preferredLanguage': profile.defaultReadingLanguage,
+        'ageGroup': profile.ageGroup,
+        'onboarding': profile.toJson(),
+        'onboardingCompleted': profile.completed,
+        'updatedAt': FieldValue.serverTimestamp(),
+      },
+      SetOptions(merge: true),
+    );
   }
+}
+
+abstract interface class OnboardingAccountStore {
+  Future<Map<String, dynamic>> load(String uid);
+  Future<void> saveOnboarding(String uid, OnboardingProfile profile);
+}
+
+class FirestoreOnboardingAccountStore implements OnboardingAccountStore {
+  const FirestoreOnboardingAccountStore();
+
+  @override
+  Future<Map<String, dynamic>> load(String uid) =>
+      UserProfileService.load(uid);
+
+  @override
+  Future<void> saveOnboarding(String uid, OnboardingProfile profile) =>
+      UserProfileService.saveOnboarding(uid, profile);
 }
