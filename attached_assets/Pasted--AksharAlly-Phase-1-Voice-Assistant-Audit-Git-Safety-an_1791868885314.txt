@@ -1,0 +1,220 @@
+# AksharAlly — Phase 1: Voice Assistant Audit, Git Safety and Implementation Preparation
+
+## Objective
+
+Prepare the existing AksharAlly Flutter project for a phased implementation of the redesigned login/register experience, default welcome message, Indian English text-to-speech, and unified first-time onboarding.
+
+This is **Phase 1 only**. The objective is to inspect the repository, verify the active branch, understand the existing architecture, establish a baseline, and produce an actionable implementation report.
+
+Do not implement the full feature set in this phase.
+
+## 1. Mandatory Git Branch and Repository Safety
+
+The required working branch is:
+
+`feature/voice-assistant`
+
+The active Flutter application is located in:
+
+`aksharally/aksharally_ui`
+
+First inspect:
+- The current working directory and repository root.
+- The active Git branch.
+- Local and remote branch names.
+- Git working-tree status.
+- Existing uncommitted and untracked changes.
+- Recent commits on `feature/voice-assistant`.
+- Whether the local branch tracks `origin/feature/voice-assistant`.
+
+### Strict Git rules
+
+1. All subsequent implementation work must remain on `feature/voice-assistant`.
+2. Do not switch to `main`, merge into `main`, or start implementation on another branch.
+3. If the current branch is already `feature/voice-assistant`, stay on it.
+4. If the branch is different, STOP before switching branches or changing files. Report the current branch and explain what must be done to return to the required branch safely.
+5. Never discard, overwrite, reset, stash, or revert existing work without explicit approval.
+6. Do not run destructive commands such as `git reset --hard`, `git clean -fd`, or forced checkout operations.
+7. Do not merge unrelated Replit changes into this branch.
+8. Do not push or merge anything during Phase 1.
+9. Do not change Git remotes, credentials, or repository permissions.
+10. Do not create duplicate branches or commits just to make the workflow appear complete.
+
+If the working tree contains uncommitted changes, inspect them without modifying them. Identify which files are already changed and ensure that any later implementation can preserve those changes.
+
+## 2. Inspect the Existing Voice Assistant
+
+Locate and inspect the existing implementation, including these files if they exist:
+
+- `tts_service.dart`
+- `voice_command_handler.dart`
+- `voice_assistant_controls.dart`
+- `reading_screen.dart`
+- `output_screen.dart`
+
+Also inspect any related:
+- Voice-assistant services.
+- Text-to-speech services.
+- Speech-recognition services.
+- Voice-assistant widgets.
+- Settings models and persistence services.
+- Navigation and lifecycle handling.
+- Tests related to speech, playback, or accessibility.
+
+Do not assume that every listed file exists or that its implementation matches its filename.
+
+Document:
+
+1. How TTS is initialised.
+2. Which package provides text-to-speech.
+3. How speech is started, stopped, paused, resumed, and disposed of.
+4. How speech rate, language, locale, and voice are selected.
+5. Whether the existing implementation explicitly uses `en-US`, `en-IN`, or another locale.
+6. How English, Hindi, and Marathi content is handled.
+7. How the current voice-assistant toggle affects speech.
+8. How spoken content interacts with reader playback and synchronised highlighting.
+9. How the app handles interruptions, rapid navigation, and duplicate speech.
+10. Whether existing code already supports reusable screen narration.
+
+Identify the smallest safe changes needed to extend the existing service instead of creating a second TTS implementation.
+
+## 3. Inspect Authentication and User Profiles
+
+Locate the existing:
+- Login screen.
+- Registration screen.
+- Google sign-in implementation.
+- Firebase Authentication integration.
+- Authentication-state listener.
+- Post-login navigation logic.
+- User-profile model.
+- User-profile creation and update services.
+- Global settings model and persistence mechanism.
+- Application home screen and navigation routes.
+
+Determine how a newly authenticated user is currently distinguished from a returning user.
+
+Inspect whether Google sign-in creates or retrieves the same user profile used by email/password registration.
+
+Determine whether the app already has an onboarding-completion flag or an equivalent mechanism.
+
+Document where the following information could safely be stored using the existing architecture:
+
+- Preferred name and age group.
+- User role.
+- Reading languages and reading preferences.
+- Self-reported reading-support preferences.
+- Global accessibility settings.
+- Preferred English TTS locale, defaulting to `en-IN`.
+- Voice-assistant preference.
+- Onboarding progress and completion status.
+
+Do not create a new database, profile collection, authentication system, or settings service in this phase.
+
+Do not print passwords, API keys, tokens, service-account credentials, or other secrets in the report.
+
+## 4. Establish a Flutter Baseline
+
+Inspect the Flutter and Dart SDK versions and existing dependency configuration.
+
+If safe and practical, run the existing project's baseline checks without modifying dependency versions:
+
+- `flutter --version`
+- `dart --version`
+- `flutter analyze`
+- Relevant existing tests, if identifiable.
+
+Run dependency resolution only if necessary and safe. Do not upgrade packages, regenerate lockfiles unnecessarily, or change SDK constraints during this audit.
+
+If a check cannot run because Flutter is unavailable, dependencies are missing, Firebase configuration is absent, or another environment limitation exists, report the exact reason.
+
+Record:
+- Commands executed.
+- Actual results.
+- Existing errors versus errors introduced by this phase.
+- Whether the app can currently build.
+- Any baseline failures that must be considered during later phases.
+
+Do not claim tests or builds passed unless they were actually executed successfully.
+
+## 5. Prepare the Implementation Plan
+
+Based on the actual repository, propose the smallest safe implementation sequence for the following future requirements.
+
+### Phase 2: Welcome message and Indian English TTS
+
+- Play the welcome message by default whenever the login/register screen opens.
+- Default English speech to Indian English, preferring locale `en-IN`.
+- Verify available voices where supported.
+- Preserve appropriate Hindi and Marathi voice selection.
+- Provide replay and safe fallback behaviour.
+- Avoid duplicate or overlapping TTS playback.
+
+### Phase 3: Login/register voice control
+
+- Add a compact, visible, clickable voice-assistant toggle in the top-right corner.
+- Keep the authentication interface clean and responsive.
+- When enabled, support spoken instructions, field labels, button labels, and relevant validation messages.
+
+### Phase 4: Unified first-time onboarding
+
+- Use the same onboarding flow for email/password registration and Google sign-in.
+- Collect the user's profile, self-reported reading-support preferences, reading languages, and reading goals.
+- Allow users to skip optional or sensitive questions.
+- Persist progress so incomplete onboarding can be resumed.
+- Send returning users with completed onboarding directly to the home screen.
+
+### Phase 5: Global accessibility settings
+
+- Let users configure typography, text size, spacing, colours, reading assistance, and voice preferences.
+- Preview the selected appearance.
+- Persist settings using the existing architecture.
+- Apply settings throughout the application without breaking existing reading features.
+
+### Phase 6: Integration and verification
+
+- Verify authentication routing, profile persistence, TTS behaviour, voice selection, onboarding recovery, and existing functionality.
+- Run relevant tests, Flutter analysis, and available build checks.
+
+For each phase, identify:
+- The exact files likely to change.
+- Dependencies on previous phases.
+- Important implementation risks.
+- The smallest independently testable deliverable.
+- A suitable Git commit boundary.
+
+Do not implement these future phases yet.
+
+## 6. Scope Restrictions
+
+This phase is limited to inspection, baseline checks, and implementation planning.
+
+Do not modify:
+- OCR implementation.
+- Text simplification or AI services.
+- Flask backend or API endpoints.
+- Firebase security rules or authentication providers.
+- Existing reader functionality.
+- Unrelated application screens.
+- Package versions or dependency constraints.
+- Git history or remote configuration.
+
+Do not create mock implementations and report them as functional features.
+
+## 7. Required Final Report
+
+At the end of Phase 1, provide a concise, factual report containing:
+
+1. **Branch verification:** Current branch, tracking status, and confirmation that no branch was changed.
+2. **Working-tree status:** Existing modified and untracked files that must be preserved.
+3. **Voice architecture:** Actual TTS package, service entry points, locale selection, and language handling.
+4. **Authentication architecture:** Existing login/register, Google sign-in, profile storage, and routing.
+5. **Global settings architecture:** Current models and persistence mechanism.
+6. **Baseline results:** Actual analysis, test, and build results, including pre-existing failures.
+7. **Phase implementation plan:** Exact files and smallest deliverable for each upcoming phase.
+8. **Risks and blockers:** Anything that could prevent the proposed work from functioning.
+9. **Git readiness:** Whether the repository is in a safe state to begin Phase 2 and what, if anything, needs manual attention.
+
+Do not push, merge, reset, or discard any work.
+
+**Phase 1 acceptance criteria:** The repository has been inspected, the required branch has been verified, existing changes have been preserved, the current implementation is understood, baseline limitations are documented, and a concrete plan exists for Phase 2. No unrelated functionality has been modified.
