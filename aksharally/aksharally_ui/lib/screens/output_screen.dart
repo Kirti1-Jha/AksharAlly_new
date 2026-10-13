@@ -210,42 +210,73 @@ class _OutputScreenState extends State<OutputScreen> {
       setState(() => currentIndex = displayWordIndices.first);
     }
     await _tts.setRate(speechRate);
+    if (!mounted) return;
+    _startFallbackHighlightTimer();
     await _tts.speak(
       text,
-      onProgress: (_, start, end, __) {
-        final displayIndex = _progressMapper?.displayIndexForRange(start, end);
-        if (!mounted || displayIndex == null) return;
+      onProgress: (_, start, end, word) {
+        final mapper = _progressMapper;
+        if (!mounted ||
+            mapper == null ||
+            mapper.isCoarseProgressRange(word, start, end)) {
+          return;
+        }
+        final displayIndex = mapper.displayIndexForRange(start, end);
+        if (displayIndex == null || displayIndex < currentIndex) return;
         _timer?.cancel();
         setState(() => currentIndex = displayIndex);
+        _startFallbackHighlightTimer();
       },
+      onComplete: () => _timer?.cancel(),
+      onError: (_) => _timer?.cancel(),
     );
-    _startFallbackHighlightTimer();
   }
 
   void _startFallbackHighlightTimer() {
     _timer?.cancel();
-    var next = _activeSpeechWordIndices.indexWhere(
+    final mapper = _progressMapper;
+    if (!mounted || currentIndex < 0 || mapper == null) return;
+
+    final currentPosition = mapper.positionForDisplayIndex(currentIndex);
+    if (currentPosition == null) return;
+    final currentWord = mapper.wordAtPosition(currentPosition);
+    if (currentWord == null) return;
+
+    final nextIndex = _activeSpeechWordIndices.indexWhere(
       (index) => index > currentIndex,
     );
-    if (next < 0) return;
-    _timer = Timer.periodic(const Duration(milliseconds: 400), (timer) {
-      if (!mounted || next >= _activeSpeechWordIndices.length) {
-        timer.cancel();
-        return;
-      }
-      setState(() => currentIndex = _activeSpeechWordIndices[next++]);
-    });
+    if (nextIndex < 0) return;
+
+    _timer = Timer(
+      TtsProgressMapper.estimateWordDuration(currentWord, speechRate),
+      () {
+        if (!mounted || _tts.isPaused) return;
+        final nextDisplayIndex = _activeSpeechWordIndices[nextIndex];
+        setState(() => currentIndex = nextDisplayIndex);
+
+        final nextPosition = mapper.positionForDisplayIndex(nextDisplayIndex);
+        final sourceOffset = nextPosition == null
+            ? null
+            : mapper.sourceOffsetAtPosition(nextPosition);
+        if (sourceOffset != null) _tts.setFallbackResumeOffset(sourceOffset);
+        _startFallbackHighlightTimer();
+      },
+    );
   }
 
   Future<void> stopReading() async {
-    await _tts.stop();
     _timer?.cancel();
+    await _tts.stop();
     if (mounted) setState(() => currentIndex = -1);
   }
 
   Future<void> _pauseReading() async {
-    await _tts.pause();
-    _timer?.cancel();
+    final paused = await _tts.pause();
+    if (paused) {
+      _timer?.cancel();
+    } else {
+      _startFallbackHighlightTimer();
+    }
   }
 
   Future<void> _resumeReading() async {
@@ -391,39 +422,48 @@ class _OutputScreenState extends State<OutputScreen> {
     Widget chip(String value, {IconData? icon}) {
       final isSelected = activeChip == value;
       final label = '${value[0].toUpperCase()}${value.substring(1)}';
-      return GestureDetector(
-        onTap: () => _onProfileChanged(value),
-        child: Container(
-          margin: const EdgeInsets.symmetric(horizontal: 3, vertical: 2),
-          padding: EdgeInsets.symmetric(
-            horizontal: chipPadH,
-            vertical: chipPadV,
-          ),
-          decoration: BoxDecoration(
-            gradient: isSelected ? AppTheme.brandGradient : null,
-            color: isSelected ? null : Colors.grey.shade200,
+      return Semantics(
+        button: true,
+        selected: isSelected,
+        label: '$label reading profile',
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
             borderRadius: BorderRadius.circular(AppTheme.radiusLG),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (icon != null) ...[
-                Icon(
-                  icon,
-                  size: 14,
-                  color: isSelected ? Colors.white : Colors.black87,
-                ),
-                const SizedBox(width: 4),
-              ],
-              Text(
-                label,
-                style: TextStyle(
-                  color: isSelected ? Colors.white : Colors.black87,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
-                ),
+            onTap: () => _onProfileChanged(value),
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 3, vertical: 2),
+              padding: EdgeInsets.symmetric(
+                horizontal: chipPadH,
+                vertical: chipPadV,
               ),
-            ],
+              decoration: BoxDecoration(
+                gradient: isSelected ? AppTheme.brandGradient : null,
+                color: isSelected ? null : Colors.grey.shade200,
+                borderRadius: BorderRadius.circular(AppTheme.radiusLG),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (icon != null) ...[
+                    Icon(
+                      icon,
+                      size: 14,
+                      color: isSelected ? Colors.white : Colors.black87,
+                    ),
+                    const SizedBox(width: 4),
+                  ],
+                  Text(
+                    label,
+                    style: TextStyle(
+                      color: isSelected ? Colors.white : Colors.black87,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
       );
@@ -669,7 +709,11 @@ class _OutputScreenState extends State<OutputScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             if (hasStructuredLayout)
-              StructuredContentView(content: _formatResult!.structuredContent!)
+              StructuredContentView(
+                content: _formatResult!.structuredContent!,
+                words: words,
+                currentIndex: currentIndex,
+              )
             else
               HighlightedTextView(
                 text: simplifiedText,

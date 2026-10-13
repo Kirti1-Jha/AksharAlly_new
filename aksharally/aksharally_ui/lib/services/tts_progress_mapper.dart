@@ -4,10 +4,8 @@
 /// supported native platforms. Matching by ranges, rather than matching the
 /// callback's word text, keeps repeated words and punctuation unambiguous.
 class TtsProgressMapper {
-  TtsProgressMapper({
-    required this.text,
-    required List<int> displayWordIndices,
-  }) : _spans = [] {
+  TtsProgressMapper({required this.text, required List<int> displayWordIndices})
+    : _spans = [] {
     final matches = RegExp(r'\S+').allMatches(text);
     var position = 0;
     for (final match in matches) {
@@ -81,6 +79,28 @@ class TtsProgressMapper {
   bool isCoarseProgressWord(String word) =>
       _spans.length > 1 && RegExp(r'\s').hasMatch(word.trim());
 
+  /// Returns true when a platform callback covers multiple spoken words.
+  ///
+  /// Some engines provide a useful range but put only one word in [word], so
+  /// inspect the offsets as well as the callback text before trusting it.
+  bool isCoarseProgressRange(String word, int start, int end) {
+    if (isCoarseProgressWord(word) || _spans.length < 2 || end <= start) {
+      return isCoarseProgressWord(word);
+    }
+
+    final safeStart = start.clamp(0, text.length).toInt();
+    final safeEnd = end.clamp(safeStart, text.length).toInt();
+    var overlappingWords = 0;
+    for (final span in _spans) {
+      if (span.start < safeEnd &&
+          span.end > safeStart &&
+          ++overlappingWords > 1) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   /// Approximate fallback timing for platforms without word-range events.
   ///
   /// This is intentionally an estimate, not a substitute for native progress
@@ -96,8 +116,10 @@ class TtsProgressMapper {
         ? 180
         : 0;
     final baseMilliseconds = 150 + (codePoints * 42) + punctuationPause;
-    final estimatedMilliseconds =
-        (baseMilliseconds * (0.5 / rate)).round().clamp(160, 3000).toInt();
+    final estimatedMilliseconds = (baseMilliseconds * (0.5 / rate))
+        .round()
+        .clamp(160, 3000)
+        .toInt();
     return Duration(milliseconds: estimatedMilliseconds);
   }
 }
