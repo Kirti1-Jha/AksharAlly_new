@@ -1,0 +1,64 @@
+## Phase 4 — Unified First-Time Onboarding
+
+Continue the AksharAlly project on the existing `feature/voice-assistant` branch.
+
+### Objective
+Implement one consistent first-time onboarding flow for every new user, regardless of whether they register using email/password or Google sign-in.
+
+### Required functionality
+
+1. **Unified onboarding**
+   - After successful email registration or Google sign-in, check whether the user's required onboarding is complete.
+   - New users must complete onboarding before reaching Home.
+   - Returning users who have already completed onboarding should proceed directly to Home.
+   - For Google sign-in, prefill the user's available name and email and ask only for the remaining onboarding information.
+   - Do not assume that signing in with Google means onboarding is complete.
+
+2. **Onboarding questions**
+   Collect the following information using a clear, beginner-friendly, step-by-step UI:
+   - Personal profile information, such as full name and age where appropriate.
+   - Preferred reading language(s), including English, Hindi, and Marathi.
+   - Reading display preferences, such as font, text size, spacing, and background colour.
+   - Optional reading-support preferences, such as which adjustments make reading easier.
+   - Any additional questions only if they are necessary for the existing app's accessibility features.
+
+   Keep sensitive or medical information out of the questionnaire. Do not ask users to disclose a formal diagnosis or severity of a medical condition.
+
+3. **Progress and persistence**
+   - Save onboarding answers against the authenticated user's Firebase UID using the project's existing data-storage architecture.
+   - Persist onboarding completion status so users do not have to repeat completed onboarding on subsequent logins.
+   - Preserve partial progress where feasible, so an interrupted onboarding session can resume.
+   - Never store passwords in the user profile.
+   - Avoid duplicate profiles when users sign in repeatedly.
+
+4. **Accessibility and voice**
+   - Reuse the existing voice/TTS service and its current settings.
+   - Keep the existing welcome message and replay functionality unchanged.
+   - If voice assistance is enabled, read onboarding questions, instructions, and relevant control labels without reading sensitive entered values aloud.
+   - Use English (India), `en-IN`, by default. Respect the user's selected language when the existing TTS implementation supports it.
+   - Make the onboarding controls readable, accessible, and easy to navigate.
+
+5. **Navigation and reliability**
+   - Ensure both authentication methods follow the same onboarding-completion check.
+   - Validate required answers and provide clear, accessible error messages.
+   - Do not send users to Home until required onboarding fields are complete.
+   - Do not break existing login, logout, authentication, reader, OCR, or accessibility functionality.
+
+### Strict scope restrictions
+- First inspect the existing authentication flow, route/navigation logic, Firebase profile-storage service, onboarding-related screens, and focused tests.
+- Reuse existing project architecture and services wherever possible. Do not create a parallel authentication or profile-storage system.
+- Modify only files directly required for onboarding, its authentication/navigation integration, persistence, and focused tests.
+- Do not refactor unrelated code or modify OCR, text simplification, reader playback, or other unrelated modules.
+- Preserve all existing changes and uncommitted files. Do not reset, revert, overwrite, or discard work.
+- Do not modify dependencies or configuration unless genuinely required; explain the need before making such a change.
+- Do not merge into `main`, force-push, or rewrite Git history.
+- Do not claim tests passed unless they were actually run.
+
+### Verification and delivery
+- Add or update focused tests for both authentication paths, new versus returning users, incomplete onboarding, saved progress, and onboarding completion.
+- Run relevant tests and formatting checks if Flutter/Dart tooling is available. Otherwise, report exactly what could not be run.
+- Review `git diff` and `git status` to confirm that only relevant files changed and no existing work was lost.
+- Make one focused Phase 4 commit on `feature/voice-assistant` only if verification and the working-tree review are complete.
+- Report changed files, implemented behaviour, test results, commit hash, and any remaining limitations.
+
+Work incrementally. If the existing architecture makes any requirement unclear, inspect and report the issue before making a broad or risky change.
