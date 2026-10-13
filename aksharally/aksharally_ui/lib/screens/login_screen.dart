@@ -23,6 +23,8 @@ class _LoginScreenState extends State<LoginScreen> {
   bool obscurePassword = true;
   bool _welcomeInProgress = false;
   bool _automaticWelcomeAttempted = false;
+  bool _voiceAssistantEnabled = false;
+  int _narrationRequest = 0;
   String? _welcomeNotice;
   Future<void>? _welcomeAttempt;
   Future<void> _voiceRestoreFuture = Future<void>.value();
@@ -153,10 +155,109 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  String get _screenNarration => [
+    isLogin
+        ? 'Welcome Back. Sign in with your email and password.'
+        : 'Create Account. Enter your email and password to register.',
+    'Email field.',
+    'Password field.',
+    isLogin ? 'Login button.' : 'Register button.',
+    'Choose Login to sign in or Register to create an account.',
+    'Replay welcome message button.',
+    'Or continue with.',
+    'Continue with Google button.',
+    'Continue with Apple button.',
+  ].join(' ');
+
+  void _setLoginMode(bool login) {
+    if (isLogin == login) return;
+    setState(() => isLogin = login);
+    if (_voiceAssistantEnabled) {
+      unawaited(_narrateText(_screenNarration));
+    } else {
+      _narrationRequest++;
+    }
+  }
+
+  void _toggleVoiceAssistant() {
+    final enabled = !_voiceAssistantEnabled;
+    setState(() => _voiceAssistantEnabled = enabled);
+    if (enabled) {
+      unawaited(_narrateText(_screenNarration));
+    } else {
+      _narrationRequest++;
+      unawaited(_stopNarration());
+    }
+  }
+
+  bool _isCurrentNarration(int request) =>
+      mounted && _voiceAssistantEnabled && request == _narrationRequest;
+
+  Future<void> _narrateText(String text) async {
+    if (!_voiceAssistantEnabled || text.isEmpty) return;
+    final request = ++_narrationRequest;
+    try {
+      await _voiceRestoreFuture;
+      if (!_isCurrentNarration(request)) return;
+      await _tts.init(defaultLocale: TTSService.preferredEnglishLocale);
+      if (!_isCurrentNarration(request)) return;
+
+      if (_tts.currentLocale == null) {
+        await _tts.setLanguage(TTSService.preferredEnglishLocale);
+        if (!_isCurrentNarration(request)) return;
+      }
+      if (_tts.currentLocale == null) {
+        setState(() {
+          _welcomeNotice = _tts.localeNotice ??
+              'Voice assistance is unavailable on this device.';
+        });
+        return;
+      }
+
+      await _tts.speak(
+        text,
+        onError: (_) {
+          if (!_isCurrentNarration(request)) return;
+          setState(() {
+            _welcomeNotice = 'Voice assistant could not read this screen. '
+                'Turn it off and on to retry.';
+          });
+        },
+      );
+    } catch (_) {
+      if (!_isCurrentNarration(request)) return;
+      setState(() {
+        _welcomeNotice = 'Voice assistant could not read this screen. '
+            'Turn it off and on to retry.';
+      });
+    }
+  }
+
+  Future<void> _stopNarration() async {
+    try {
+      await _tts.stop();
+    } catch (_) {
+      // The platform may already have stopped the current utterance.
+    }
+  }
+
   static const gradientColors = [
     Color(0xFF1565C0),
     Color(0xFF42A5F5),
   ];
+
+  String _withoutEnteredValues(String message) {
+    final email = emailController.text.trim();
+    final password = passwordController.text.trim();
+    var safeMessage = message;
+    if (email.isNotEmpty) {
+      safeMessage = safeMessage.replaceAll(email, 'email');
+    }
+    if (password.isNotEmpty) {
+      safeMessage = safeMessage.replaceAll(password, 'password');
+    }
+    return safeMessage;
+  }
 
   // HANDLE LOGIN / REGISTER
   Future<void> handleAuth() async {
@@ -164,9 +265,11 @@ class _LoginScreenState extends State<LoginScreen> {
     final password = passwordController.text.trim();
 
     if (email.isEmpty || password.isEmpty) {
+      const message = 'Please enter email & password';
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please enter email & password")),
+        const SnackBar(content: Text(message)),
       );
+      unawaited(_narrateText(message));
       return;
     }
 
@@ -189,15 +292,15 @@ class _LoginScreenState extends State<LoginScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text("Registered successfully! Please login")),
           );
-          setState(() {
-            isLogin = true;
-          });
+          _setLoginMode(true);
         }
       }
     } catch (e) {
+      final message = "Error: ${e.toString()}";
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error: ${e.toString()}")),
+        SnackBar(content: Text(message)),
       );
+      unawaited(_narrateText(_withoutEnteredValues(message)));
     }
   }
 
@@ -213,6 +316,41 @@ class _LoginScreenState extends State<LoginScreen> {
               constraints: const BoxConstraints(maxWidth: 420),
               child: Column(
                 children: [
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: Semantics(
+                      button: true,
+                      toggled: _voiceAssistantEnabled,
+                      label: _voiceAssistantEnabled
+                          ? 'Voice assistant on'
+                          : 'Voice assistant off',
+                      child: TextButton.icon(
+                        key: const ValueKey('voice-assistant-toggle'),
+                        onPressed: _toggleVoiceAssistant,
+                        icon: Icon(
+                          _voiceAssistantEnabled
+                              ? Icons.volume_up_rounded
+                              : Icons.volume_off_rounded,
+                        ),
+                        label: Text(
+                          _voiceAssistantEnabled ? 'Voice on' : 'Voice off',
+                        ),
+                        style: TextButton.styleFrom(
+                          foregroundColor: _voiceAssistantEnabled
+                              ? Colors.white
+                              : const Color(0xFF1565C0),
+                          backgroundColor: _voiceAssistantEnabled
+                              ? const Color(0xFF1565C0)
+                              : AppTheme.lightGrey,
+                          minimumSize: const Size(48, 48),
+                          padding: const EdgeInsets.symmetric(horizontal: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(24),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
                   const SizedBox(height: 40),
 
                   // ICON
@@ -242,7 +380,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         Expanded(
                           child: InkWell(
                             borderRadius: BorderRadius.circular(30),
-                            onTap: () => setState(() => isLogin = true),
+                            onTap: () => _setLoginMode(true),
                             child: Container(
                               padding: const EdgeInsets.symmetric(vertical: 14),
                               decoration: BoxDecoration(
@@ -266,7 +404,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         Expanded(
                           child: InkWell(
                             borderRadius: BorderRadius.circular(30),
-                            onTap: () => setState(() => isLogin = false),
+                            onTap: () => _setLoginMode(false),
                             child: Container(
                               padding: const EdgeInsets.symmetric(vertical: 14),
                               decoration: BoxDecoration(
@@ -441,9 +579,11 @@ class _LoginScreenState extends State<LoginScreen> {
     return InkWell(
       borderRadius: BorderRadius.circular(20),
       onTap: () {
+        final message = "$text coming soon";
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("$text coming soon")),
+          SnackBar(content: Text(message)),
         );
+        unawaited(_narrateText(message));
       },
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 14),
