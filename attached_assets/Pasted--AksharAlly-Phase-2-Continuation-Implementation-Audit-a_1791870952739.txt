@@ -1,0 +1,249 @@
+# AksharAlly — Phase 2 Continuation: Implementation Audit and Completion
+
+## Objective
+
+Continue Phase 2 of the AksharAlly voice-assistant project from the latest GitHub version.
+
+The previous Replit account implemented and pushed a commit titled:
+
+`Implement login screen updates and enhance TTS service functionality`
+
+The commit hash reported by the previous account was:
+
+`87a031a`
+
+The work was intended to implement:
+- A default welcome message on the login/register screen.
+- A replay control for the welcome message.
+- Indian English text-to-speech, preferring locale `en-IN`.
+- Safe locale availability and fallback handling.
+- Preservation of Hindi (`hi-IN`) and Marathi (`mr-IN`) voice selection.
+- Language-aware reader/output screen integration.
+- Relevant tests.
+
+However, the previous Replit account ran out of credits before providing a complete final implementation report.
+
+**Your first task is to establish exactly what has already been implemented in the current branch. Do not assume that the previous implementation is complete or correct.**
+
+All work must remain on `feature/voice-assistant`.
+
+---
+
+## PART 1 — Audit and Report What Is Actually Implemented
+
+Before changing any files, inspect the repository.
+
+### A. Verify the Git state
+
+1. Confirm the repository root.
+2. Confirm the active branch is `feature/voice-assistant`.
+3. Confirm that the latest GitHub changes have been pulled.
+4. Inspect the latest commit and its relationship to `origin/feature/voice-assistant`.
+5. Run `git status`.
+6. Identify all staged, unstaged, and untracked files.
+7. Check whether commit `87a031a`, or its equivalent in the current history, contains the Phase 2 changes.
+
+Preserve all existing changes. Do not reset, clean, force-checkout, amend commits, force-push, or switch to `main`.
+
+If the branch is incorrect or the remote has diverged, stop and report the problem before making changes.
+
+### B. Inspect the actual implementation
+
+Inspect the relevant files, including the following where present:
+
+- `aksharally_ui/lib/screens/login_screen.dart`
+- `aksharally_ui/lib/screens/output_screen.dart`
+- `aksharally_ui/lib/screens/reader_screen.dart`
+- `aksharally_ui/lib/services/tts_service.dart`
+- `aksharally_ui/test/screens/login_screen_test.dart`
+- `aksharally_ui/test/services/tts_service_test.dart`
+
+Also inspect any related TTS helpers, language-selection logic, test mocks, and existing voice-assistant code.
+
+### C. Produce a Phase 2 implementation checklist
+
+For each item below, report one of these statuses:
+
+- **Implemented and verified**
+- **Implemented but not verified**
+- **Partially implemented**
+- **Not implemented**
+- **Blocked by environment or platform limitations**
+
+Include the relevant file names and explain the evidence for each status.
+
+#### Requirement 1: Default welcome message
+
+Verify:
+- The exact intended welcome message exists.
+- The message is attempted automatically when the login/register screen opens.
+- Playback does not depend on enabling the global voice assistant.
+- The message is not repeatedly played during ordinary Flutter rebuilds.
+- Switching between login and registration views does not cause unwanted duplicate playback.
+- Screen disposal and asynchronous initialisation are handled safely.
+- Speech failures do not prevent normal authentication.
+
+The intended message is:
+
+"Welcome to AksharAlly, your personalised reading companion. Sign in to continue or create an account to get started."
+
+#### Requirement 2: Replay control
+
+Verify:
+- A visible, accessible replay control exists.
+- Activating it attempts to play the welcome message again.
+- Replay does not create overlapping utterances.
+- The TTS service remains usable for subsequent reader playback.
+
+Do not assume that a control works merely because it is present in the widget tree.
+
+#### Requirement 3: Indian English voice
+
+Verify:
+- English defaults to `en-IN` where appropriate.
+- Locale selection is centralised in the existing `TTSService`.
+- The implementation checks locale availability where supported.
+- Installed voices are inspected and selected where the package and platform support it.
+- The fallback path is safe and does not falsely claim that an American English voice has an Indian accent.
+- The implementation does not introduce a new paid cloud TTS service or unnecessary dependency.
+
+Distinguish between requesting `en-IN` and verifying the actual spoken accent. Do not claim that the accent has been verified unless it has been tested using an appropriate installed voice on a real device.
+
+#### Requirement 4: Hindi and Marathi preservation
+
+Verify:
+- Hindi uses `hi-IN` where supported.
+- Marathi uses `mr-IN` where supported.
+- English changes do not unintentionally force Hindi or Marathi content through English speech.
+- The existing language-selection interface still passes the correct language to the output screen.
+- Marathi does not accidentally switch to Hindi.
+
+#### Requirement 5: Missing language metadata
+
+Verify:
+- Saved library content without an explicit language is handled safely.
+- The service does not blindly interpret unknown-language content as English.
+- Existing fallback behaviour is deliberate and documented.
+- The locale change does not break saved library playback.
+
+#### Requirement 6: Existing reader functionality
+
+Verify:
+- Pause, resume, stop, and speech lifecycle callbacks remain functional.
+- Word-level progress callbacks still support synchronised highlighting.
+- Existing reader/output screens remain compatible with the TTS service.
+- Starting the welcome message does not permanently alter the locale or state used by subsequent reading sessions.
+- Rapid playback changes do not cause overlapping speech or stale callbacks.
+
+#### Requirement 7: Tests and validation
+
+Inspect the actual tests and determine whether they cover:
+- Welcome-message content and playback initiation.
+- Replay behaviour.
+- Duplicate-playback prevention.
+- English locale selection and fallback.
+- Hindi and Marathi locale selection.
+- Existing playback lifecycle behaviour.
+
+Run Flutter analysis and relevant tests only if Flutter and Dart are available in the current environment.
+
+If they are unavailable, report that limitation explicitly. Do not claim tests or builds passed without executing them.
+
+### D. Audit report format
+
+Before modifying any files, provide a concise report containing:
+
+1. Branch and Git status.
+2. Commit verification.
+3. A requirement-by-requirement Phase 2 checklist.
+4. Files that were changed by the previous implementation.
+5. Bugs, omissions, or risks discovered.
+6. Tests actually run and their results.
+7. The exact remaining work required to finish Phase 2.
+
+**Stop after producing this report. Do not begin implementation until the audit is complete and the remaining work is clearly identified.**
+
+---
+
+## PART 2 — Complete Only the Missing Phase 2 Work
+
+After the audit report, continue with implementation of the outstanding Phase 2 requirements only.
+
+Do not redo already-working functionality. Do not rewrite the TTS service unnecessarily.
+
+### Implementation rules
+
+1. Stay on `feature/voice-assistant`.
+2. Preserve all existing changes and commits.
+3. Modify only the files needed to finish Phase 2.
+4. Reuse the existing `TTSService` and `flutter_tts` dependency.
+5. Do not introduce a second TTS engine.
+6. Do not implement the Phase 3 top-right voice-assistant toggle yet.
+7. Do not implement Google sign-in or first-time onboarding yet.
+8. Do not change OCR, text simplification, Flask APIs, or unrelated settings.
+9. Preserve the existing Hindi and Marathi reading behaviour.
+10. Avoid dependency upgrades unless strictly necessary and justified.
+
+If no functional gaps remain, do not modify the code simply to create more changes. Proceed directly to validation and Git handoff.
+
+---
+
+## PART 3 — Validate the Completed Phase 2
+
+Run the available checks:
+
+- Dart formatting on modified files.
+- Relevant TTS service tests.
+- Relevant login-screen tests.
+- `flutter analyze`.
+- A suitable Flutter build check if the environment supports it.
+
+Inspect the final diff for unrelated changes.
+
+If tests cannot run, document exactly why and identify what must be tested in another environment.
+
+Do not claim to have verified the actual Indian English accent without testing on a device with a suitable installed voice.
+
+---
+
+## PART 4 — GitHub Handoff
+
+The objective is to make the completed Phase 2 work available for the next Replit account.
+
+1. Confirm the branch is `feature/voice-assistant`.
+2. Inspect the final Git diff.
+3. Preserve unrelated or pre-existing staged and unstaged changes.
+4. Stage only the intended Phase 2 files.
+5. If additional work was necessary, create a focused follow-up commit:
+
+`fix: complete welcome message and Indian English TTS`
+
+6. If no additional code changes were required, do not create an unnecessary empty commit.
+7. Inspect upstream status before pushing.
+8. Push safely to `origin/feature/voice-assistant` if possible.
+9. Never force-push, rewrite history, or overwrite remote changes.
+10. If the changes are already present remotely, report that instead of pushing duplicate work.
+
+Do not merge into `main`.
+
+If GitHub access is unavailable or the branch has diverged, preserve the local work and explain the safest recovery steps.
+
+---
+
+## PART 5 — Final Report
+
+Provide:
+
+1. What was already implemented before this continuation.
+2. What was missing or incorrect.
+3. What you changed, if anything.
+4. The final Phase 2 requirement checklist.
+5. Actual test and build results.
+6. Whether Indian English was verified on a real device.
+7. The final commit hash, if a commit was created.
+8. Whether the completed work is available on GitHub.
+9. Any remaining limitations.
+
+**Phase 2 is complete only when the code has been audited, outstanding implementation gaps have been addressed, and the current branch is ready for Phase 3.**
+
+Do not start Phase 3 as part of this task.

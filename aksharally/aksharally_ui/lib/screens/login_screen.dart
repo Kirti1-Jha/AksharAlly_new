@@ -24,6 +24,8 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _welcomeInProgress = false;
   bool _automaticWelcomeAttempted = false;
   String? _welcomeNotice;
+  Future<void>? _welcomeAttempt;
+  Future<void> _voiceRestoreFuture = Future<void>.value();
 
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
@@ -35,8 +37,14 @@ class _LoginScreenState extends State<LoginScreen> {
     super.initState();
     _tts = widget.ttsService ?? TTSService();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) unawaited(_playWelcome());
+      if (mounted) _requestWelcome();
     });
+  }
+
+  void _requestWelcome({bool replay = false}) {
+    final attempt = _playWelcome(replay: replay);
+    _welcomeAttempt = attempt;
+    unawaited(attempt);
   }
 
   Future<void> _playWelcome({bool replay = false}) async {
@@ -54,6 +62,8 @@ class _LoginScreenState extends State<LoginScreen> {
     }
 
     try {
+      await _voiceRestoreFuture;
+      if (!mounted) return;
       await _tts.init(defaultLocale: TTSService.preferredEnglishLocale);
       if (!mounted) return;
 
@@ -79,7 +89,9 @@ class _LoginScreenState extends State<LoginScreen> {
 
       await _tts.speak(
         LoginScreen.welcomeMessage,
+        onComplete: _scheduleVoiceRestore,
         onError: (_) {
+          _scheduleVoiceRestore();
           if (!mounted) return;
           setState(() {
             _welcomeNotice =
@@ -95,6 +107,7 @@ class _LoginScreenState extends State<LoginScreen> {
         setState(() => _welcomeNotice = _tts.localeNotice);
       }
     } catch (_) {
+      await _stopAndRestoreVoice();
       if (mounted) {
         setState(() {
           _welcomeNotice =
@@ -106,17 +119,35 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  Future<void> _stopTts() async {
+  void _scheduleVoiceRestore() {
+    final restoration = _restoreVoice();
+    _voiceRestoreFuture = restoration;
+    unawaited(restoration);
+  }
+
+  Future<void> _restoreVoice() async {
+    await _tts.resetVoiceToDefault();
+  }
+
+  Future<void> _stopAndRestoreVoice() async {
     try {
       await _tts.stop();
     } catch (_) {
       // The plugin may already have stopped while this screen is closing.
     }
+    await _tts.resetVoiceToDefault();
+  }
+
+  Future<void> _stopAndRestoreTts() async {
+    final attempt = _welcomeAttempt;
+    if (attempt != null) await attempt;
+    await _voiceRestoreFuture;
+    await _stopAndRestoreVoice();
   }
 
   @override
   void dispose() {
-    unawaited(_stopTts());
+    unawaited(_stopAndRestoreTts());
     emailController.dispose();
     passwordController.dispose();
     super.dispose();
@@ -146,6 +177,8 @@ class _LoginScreenState extends State<LoginScreen> {
         final user = await auth.login(email, password);
 
         if (user != null) {
+          await _stopAndRestoreTts();
+          if (!mounted) return;
           Navigator.pushReplacementNamed(context, '/home');
         }
       } else {
@@ -280,7 +313,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   TextButton.icon(
                     onPressed: _welcomeInProgress
                         ? null
-                        : () => unawaited(_playWelcome(replay: true)),
+                        : () => _requestWelcome(replay: true),
                     icon: const Icon(Icons.volume_up_outlined),
                     label: const Text('Replay welcome message'),
                   ),

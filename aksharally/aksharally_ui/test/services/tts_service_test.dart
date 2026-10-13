@@ -60,6 +60,21 @@ void main() {
       expect(unknownService.currentLocale, isNull);
     });
 
+    test('resets a temporary welcome locale for untagged reader content',
+        () async {
+      expect(engine.language, 'en-IN');
+      expect(await service.resetVoiceToDefault(), isTrue);
+      expect(engine.language, isNull);
+      expect(engine.selectedVoice, isNull);
+      expect(service.currentLocale, isNull);
+
+      await service.init(defaultLocale: null);
+      await service.speak('Saved content without a language tag.');
+
+      expect(engine.language, isNull);
+      expect(engine.activeSegment, 'Saved content without a language tag.');
+    });
+
     test('maps Hindi and Marathi to their own locales', () async {
       expect(TTSService.localeForLanguage('hi'), 'hi-IN');
       expect(await service.setLanguage('hi-IN'), isTrue);
@@ -300,6 +315,12 @@ class _FakeTtsEngine implements TtsEngine {
   @override
   Future<void> setVoice(Map<String, String> voice) async {
     selectedVoice = Map<String, dynamic>.from(voice);
+  }
+
+  @override
+  Future<void> clearVoice() async {
+    language = null;
+    selectedVoice = null;
   }
 
   @override

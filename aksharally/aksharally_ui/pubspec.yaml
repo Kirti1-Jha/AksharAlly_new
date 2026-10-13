@@ -38,7 +38,7 @@ dependencies:
   http: ^1.2.0
   image_picker: ^1.0.7
   cupertino_icons: ^1.0.8
-  flutter_tts: ^3.8.5
+  flutter_tts: ^4.2.5
   speech_to_text:
     path: ../packages/speech_to_text
   file_picker: ^8.0.0

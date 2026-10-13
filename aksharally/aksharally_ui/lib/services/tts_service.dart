@@ -11,6 +11,7 @@ abstract interface class TtsEngine {
   Future<bool> isLanguageAvailable(String locale);
   Future<List<Map<String, dynamic>>> getVoices();
   Future<void> setVoice(Map<String, String> voice);
+  Future<void> clearVoice();
   Future<void> setLanguage(String locale);
   Future<void> setSpeechRate(double rate);
   Future<void> setPitch(double pitch);
@@ -49,6 +50,11 @@ class FlutterTtsEngine implements TtsEngine {
   @override
   Future<void> setVoice(Map<String, String> voice) async {
     await _tts.setVoice(voice);
+  }
+
+  @override
+  Future<void> clearVoice() async {
+    await _tts.clearVoice();
   }
 
   @override
@@ -339,6 +345,27 @@ class TTSService {
     } catch (error) {
       lastError = error.toString();
       _localeNotice = 'Speech locale $locale could not be selected.';
+      return false;
+    }
+  }
+
+  /// Clears an explicit locale/voice selection so later untagged text uses the
+  /// device's default voice instead of inheriting a previous screen's choice.
+  Future<bool> resetVoiceToDefault() async {
+    try {
+      if (_hasActiveUtterance) {
+        try {
+          await stop();
+        } catch (_) {
+          // Still try to clear the selected voice if stop already failed.
+        }
+      }
+      await _engine.clearVoice();
+      _currentLocale = null;
+      _localeNotice = null;
+      return true;
+    } catch (error) {
+      lastError = error.toString();
       return false;
     }
   }
