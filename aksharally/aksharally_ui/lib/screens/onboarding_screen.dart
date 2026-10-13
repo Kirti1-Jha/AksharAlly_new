@@ -12,11 +12,13 @@ class OnboardingScreen extends StatefulWidget {
     required this.uid,
     required this.initialProfile,
     required this.storage,
+    this.accountStore,
   });
 
   final String uid;
   final OnboardingProfile initialProfile;
   final OnboardingStorage storage;
+  final OnboardingAccountStore? accountStore;
 
   @override
   State<OnboardingScreen> createState() => _OnboardingScreenState();
@@ -42,6 +44,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   late OnboardingProfile _profile;
   late final TextEditingController _nameController;
   Future<void> _saveQueue = Future<void>.value();
+  late final OnboardingAccountStore _accountStore =
+      widget.accountStore ?? const FirestoreOnboardingAccountStore();
   String? _saveError;
   bool _finishing = false;
 
@@ -109,6 +113,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   Future<void> _finish() async {
+    if (_finishing) return;
     if (_profile.fullName.trim().isEmpty ||
         _profile.preferredLanguages.isEmpty ||
         !_profile.preferredLanguages.contains(
@@ -130,13 +135,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     });
     try {
       await _saveQueue;
-      await UserProfileService.save(
-        uid: widget.uid,
-        fullName: _profile.fullName,
-        preferredLanguage: _profile.defaultReadingLanguage,
-        ageGroup: _profile.ageGroup.isEmpty ? null : _profile.ageGroup,
-      );
+      if (_saveError != null) {
+        throw StateError('The local onboarding draft could not be saved.');
+      }
       final complete = _profile.copyWith(completed: true, currentStep: 4);
+      await _accountStore.saveOnboarding(widget.uid, complete);
       await widget.storage.save(widget.uid, complete);
       await widget.storage.applyReadingPreferences(complete);
       if (!mounted) return;
@@ -362,6 +365,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         _section(
           _tr('What should we call you?', 'हम आपको किस नाम से बुलाएँ?'),
           TextField(
+            key: const ValueKey('onboarding-name'),
             controller: _nameController,
             textCapitalization: TextCapitalization.words,
             maxLength: 60,
@@ -805,11 +809,47 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     _ => _readingGoals(),
   };
 
+  Widget _backButton(int step) => OutlinedButton(
+        onPressed: _finishing ? null : () => _goTo(step - 1),
+        child: Text(_tr('Back', 'पीछे')),
+      );
+
+  Widget _continueButton(int step, {bool expand = false}) => FilledButton.icon(
+        key: ValueKey(step == 4 ? 'onboarding-finish' : 'onboarding-next'),
+        style: FilledButton.styleFrom(
+          minimumSize: Size(expand ? double.infinity : 136, 52),
+        ),
+        onPressed: _finishing
+            ? null
+            : step == 4
+                ? _finish
+                : () => _goTo(step + 1),
+        icon: _finishing
+            ? const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : Icon(
+                step == 4
+                    ? Icons.check_rounded
+                    : Icons.arrow_forward_rounded,
+              ),
+        label: Text(
+          _finishing
+              ? _tr('Saving…', 'सहेज रहे हैं…')
+              : step == 4
+                  ? _tr('Finish', 'पूरा करें')
+                  : _tr('Continue', 'आगे बढ़ें'),
+        ),
+      );
+
   @override
   Widget build(BuildContext context) {
     final step = _profile.currentStep.clamp(0, 4).toInt();
     return Scaffold(
       backgroundColor: AppTheme.background,
+      resizeToAvoidBottomInset: true,
       appBar: AppBar(
         title: Text(_tr('Personalise your reading', 'अपना पढ़ने का अनुभव बनाएँ')),
         backgroundColor: Colors.white,
@@ -899,46 +939,42 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 Container(
                   color: Colors.white,
                   padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
-                  child: Row(
-                    children: [
-                      if (step > 0)
-                        OutlinedButton(
-                          onPressed: _finishing ? null : () => _goTo(step - 1),
-                          child: Text(_tr('Back', 'पीछे')),
-                        ),
-                      if (step > 0) const SizedBox(width: 10),
-                      if (step > 0 && step < 4)
-                        TextButton(
-                          onPressed: _finishing ? null : () => _goTo(step + 1),
-                          child: Text(_tr('Skip optional', 'वैकल्पिक छोड़ें')),
-                        ),
-                      const Spacer(),
-                      FilledButton.icon(
-                        onPressed: _finishing
-                            ? null
-                            : step == 4
-                                ? _finish
-                                : () => _goTo(step + 1),
-                        icon: _finishing
-                            ? const SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : Icon(step == 4
-                                ? Icons.check_rounded
-                                : Icons.arrow_forward_rounded),
-                        label: Text(
-                          _finishing
-                              ? _tr('Saving…', 'सहेज रहे हैं…')
-                              : step == 4
-                                  ? _tr('Finish', 'पूरा करें')
-                                  : _tr('Continue', 'आगे बढ़ें'),
-                        ),
-                      ),
-                    ],
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final compact = constraints.maxWidth < 400 || step == 4;
+                      if (compact) {
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            if (step > 0) ...[
+                              Align(
+                                alignment: Alignment.centerLeft,
+                                child: _backButton(step),
+                              ),
+                              const SizedBox(height: 8),
+                            ],
+                            _continueButton(step, expand: true),
+                          ],
+                        );
+                      }
+                      return Row(
+                        children: [
+                          if (step > 0) _backButton(step),
+                          if (step > 0) const SizedBox(width: 10),
+                          if (step > 0 && step < 4)
+                            TextButton(
+                              onPressed: _finishing
+                                  ? null
+                                  : () => _goTo(step + 1),
+                              child: Text(
+                                _tr('Skip optional', 'वैकल्पिक छोड़ें'),
+                              ),
+                            ),
+                          const Spacer(),
+                          _continueButton(step),
+                        ],
+                      );
+                    },
                   ),
                 ),
               ],

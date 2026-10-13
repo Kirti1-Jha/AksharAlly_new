@@ -1,17 +1,21 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import '../theme/app_theme.dart';
+
+import '../services/auth_flow.dart';
 import '../services/auth_service.dart';
 import '../services/tts_service.dart';
+import '../theme/app_settings.dart';
+import '../theme/app_theme.dart';
 
 class LoginScreen extends StatefulWidget {
-  static const welcomeMessage =
-      'Welcome to AksharAlly, your personalised reading companion. '
-      'Sign in to continue or create an account to get started.';
+  const LoginScreen({
+    super.key,
+    this.authFlow,
+    this.ttsService,
+  });
 
-  const LoginScreen({super.key, this.ttsService});
-
+  final AuthFlow? authFlow;
   final TTSService? ttsService;
 
   @override
@@ -21,157 +25,53 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   bool isLogin = true;
   bool obscurePassword = true;
-  bool _welcomeInProgress = false;
-  bool _automaticWelcomeAttempted = false;
-  bool _voiceAssistantEnabled = false;
+  bool _authenticating = false;
+  bool _voiceAssistantEnabled = AppSettings.voiceAssistanceEnabled;
   int _narrationRequest = 0;
-  String? _welcomeNotice;
-  Future<void>? _welcomeAttempt;
+  String? _voiceNotice;
   Future<void> _voiceRestoreFuture = Future<void>.value();
 
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
 
+  late final AuthFlow _authFlow;
   late final TTSService _tts;
+
+  static const _gradientColors = [
+    AppTheme.primaryBlue,
+    AppTheme.primaryBlueLight,
+  ];
 
   @override
   void initState() {
     super.initState();
+    _authFlow = widget.authFlow ?? FirebaseAuthFlow();
     _tts = widget.ttsService ?? TTSService();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _requestWelcome();
-    });
-  }
-
-  void _requestWelcome({bool replay = false}) {
-    final attempt = _playWelcome(replay: replay);
-    _welcomeAttempt = attempt;
-    unawaited(attempt);
-  }
-
-  Future<void> _playWelcome({bool replay = false}) async {
-    if (_welcomeInProgress ||
-        (!replay && _automaticWelcomeAttempted) ||
-        (!replay && (_tts.isSpeaking || _tts.isPaused))) {
-      return;
-    }
-    if (!replay) _automaticWelcomeAttempted = true;
-    _welcomeInProgress = true;
-    if (mounted) {
-      setState(() {
-        _welcomeNotice = null;
+    if (_voiceAssistantEnabled) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) unawaited(_narrateText(_screenNarration));
       });
     }
-
-    try {
-      await _voiceRestoreFuture;
-      if (!mounted) return;
-      await _tts.init(defaultLocale: TTSService.preferredEnglishLocale);
-      if (!mounted) return;
-
-      // Retry locale selection when the device was temporarily unavailable.
-      if (_tts.currentLocale == null) {
-        await _tts.setLanguage(TTSService.preferredEnglishLocale);
-      }
-      if (!mounted) return;
-
-      if (_tts.isSpeaking || _tts.isPaused) {
-        if (!replay) return;
-        await _tts.stop();
-        if (!mounted) return;
-      }
-
-      if (_tts.currentLocale == null) {
-        setState(() {
-          _welcomeNotice =
-              _tts.localeNotice ?? 'Welcome audio is unavailable on this device.';
-        });
-        return;
-      }
-
-      await _tts.speak(
-        LoginScreen.welcomeMessage,
-        onComplete: _scheduleVoiceRestore,
-        onError: (_) {
-          _scheduleVoiceRestore();
-          if (!mounted) return;
-          setState(() {
-            _welcomeNotice =
-                'Welcome audio could not be played. Tap replay to try again.';
-          });
-        },
-      );
-      if (!mounted) {
-        await _stopTts();
-        return;
-      }
-      if (_tts.localeNotice != null) {
-        setState(() => _welcomeNotice = _tts.localeNotice);
-      }
-    } catch (_) {
-      await _stopAndRestoreVoice();
-      if (mounted) {
-        setState(() {
-          _welcomeNotice =
-              'Welcome audio could not be played. Tap replay to try again.';
-        });
-      }
-    } finally {
-      if (mounted) setState(() => _welcomeInProgress = false);
-    }
-  }
-
-  void _scheduleVoiceRestore() {
-    final restoration = _restoreVoice();
-    _voiceRestoreFuture = restoration;
-    unawaited(restoration);
-  }
-
-  Future<void> _restoreVoice() async {
-    await _tts.resetVoiceToDefault();
-  }
-
-  Future<void> _stopAndRestoreVoice() async {
-    try {
-      await _tts.stop();
-    } catch (_) {
-      // The plugin may already have stopped while this screen is closing.
-    }
-    await _tts.resetVoiceToDefault();
-  }
-
-  Future<void> _stopAndRestoreTts() async {
-    final attempt = _welcomeAttempt;
-    if (attempt != null) await attempt;
-    await _voiceRestoreFuture;
-    await _stopAndRestoreVoice();
-  }
-
-  @override
-  void dispose() {
-    unawaited(_stopAndRestoreTts());
-    emailController.dispose();
-    passwordController.dispose();
-    super.dispose();
   }
 
   String get _screenNarration => [
     isLogin
-        ? 'Welcome Back. Sign in with your email and password.'
+        ? 'Sign in with your email and password.'
         : 'Create Account. Enter your email and password to register.',
     'Email field.',
     'Password field.',
     isLogin ? 'Login button.' : 'Register button.',
     'Choose Login to sign in or Register to create an account.',
-    'Replay welcome message button.',
-    'Or continue with.',
     'Continue with Google button.',
     'Continue with Apple button.',
   ].join(' ');
 
   void _setLoginMode(bool login) {
-    if (isLogin == login) return;
-    setState(() => isLogin = login);
+    if (isLogin == login || _authenticating) return;
+    setState(() {
+      isLogin = login;
+      _voiceNotice = null;
+    });
     if (_voiceAssistantEnabled) {
       unawaited(_narrateText(_screenNarration));
     } else {
@@ -181,7 +81,11 @@ class _LoginScreenState extends State<LoginScreen> {
 
   void _toggleVoiceAssistant() {
     final enabled = !_voiceAssistantEnabled;
-    setState(() => _voiceAssistantEnabled = enabled);
+    setState(() {
+      _voiceAssistantEnabled = enabled;
+      _voiceNotice = null;
+    });
+    unawaited(AppSettings.saveVoiceAssistancePreference(enabled));
     if (enabled) {
       unawaited(_narrateText(_screenNarration));
     } else {
@@ -208,7 +112,7 @@ class _LoginScreenState extends State<LoginScreen> {
       }
       if (_tts.currentLocale == null) {
         setState(() {
-          _welcomeNotice = _tts.localeNotice ??
+          _voiceNotice = _tts.localeNotice ??
               'Voice assistance is unavailable on this device.';
         });
         return;
@@ -216,53 +120,75 @@ class _LoginScreenState extends State<LoginScreen> {
 
       await _tts.speak(
         text,
+        onComplete: _restoreVoice,
         onError: (_) {
+          _restoreVoice();
           if (!_isCurrentNarration(request)) return;
           setState(() {
-            _welcomeNotice = 'Voice assistant could not read this screen. '
-                'Turn it off and on to retry.';
+            _voiceNotice =
+                'Voice assistant could not read this screen. Turn it off and on to retry.';
           });
         },
       );
+      if (_isCurrentNarration(request) && _tts.localeNotice != null) {
+        setState(() => _voiceNotice = _tts.localeNotice);
+      }
     } catch (_) {
-      if (!_isCurrentNarration(request)) return;
-      setState(() {
-        _welcomeNotice = 'Voice assistant could not read this screen. '
-            'Turn it off and on to retry.';
-      });
+      if (_isCurrentNarration(request)) {
+        setState(() {
+          _voiceNotice = 'Voice assistant could not read this screen. '
+              'Turn it off and on to retry.';
+        });
+      }
     }
   }
 
+  void _restoreVoice() {
+    final restore = _tts.resetVoiceToDefault();
+    _voiceRestoreFuture = restore;
+    unawaited(restore);
+  }
+
   Future<void> _stopNarration() async {
+    if (!_tts.isSpeaking && !_tts.isPaused) return;
     try {
       await _tts.stop();
     } catch (_) {
       // The platform may already have stopped the current utterance.
     }
+    await _tts.resetVoiceToDefault();
   }
 
-  static const gradientColors = [
-    Color(0xFF1565C0),
-    Color(0xFF42A5F5),
-  ];
+  Future<void> _stopAndRestoreTts() async {
+    _narrationRequest++;
+    await _voiceRestoreFuture;
+    await _stopNarration();
+  }
+
+  @override
+  void dispose() {
+    _narrationRequest++;
+    unawaited(_stopAndRestoreTts());
+    emailController.dispose();
+    passwordController.dispose();
+    super.dispose();
+  }
 
   String _withoutEnteredValues(String message) {
     final email = emailController.text.trim();
     final password = passwordController.text.trim();
     var safeMessage = message;
-    if (email.isNotEmpty) {
-      safeMessage = safeMessage.replaceAll(email, 'email');
-    }
+    if (email.isNotEmpty) safeMessage = safeMessage.replaceAll(email, 'email');
     if (password.isNotEmpty) {
       safeMessage = safeMessage.replaceAll(password, 'password');
     }
     return safeMessage;
   }
 
-  // HANDLE LOGIN / REGISTER
   Future<void> handleAuth() async {
     final email = emailController.text.trim();
     final password = passwordController.text.trim();
+    if (_authenticating) return;
 
     if (email.isEmpty || password.isEmpty) {
       const message = 'Please enter email & password';
@@ -273,299 +199,58 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
+    await _authenticate(
+      () => isLogin
+          ? _authFlow.login(email, password)
+          : _authFlow.register(email, password),
+    );
+  }
+
+  Future<void> _authenticate(Future<String?> Function() signIn) async {
+    if (_authenticating) return;
+    setState(() {
+      _authenticating = true;
+      _voiceNotice = null;
+    });
     try {
-      final auth = AuthService();
-      if (isLogin) {
-        // LOGIN
-        final user = await auth.login(email, password);
-
-        if (user != null) {
-          await _stopAndRestoreTts();
-          if (!mounted) return;
-          Navigator.pushReplacementNamed(context, '/home');
-        }
-      } else {
-        // REGISTER
-        final user = await auth.register(email, password);
-
-        if (user != null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Registered successfully! Please login")),
-          );
-          _setLoginMode(true);
-        }
-      }
-    } catch (e) {
-      final message = "Error: ${e.toString()}";
+      final uid = await signIn();
+      if (uid == null) return;
+      await _stopAndRestoreTts();
+      if (!mounted) return;
+      Navigator.of(context).pushReplacementNamed('/home', arguments: uid);
+    } catch (error) {
+      final message = _withoutEnteredValues(AuthService.friendlyError(error));
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(message)),
       );
-      unawaited(_narrateText(_withoutEnteredValues(message)));
+      unawaited(_narrateText(message));
+    } finally {
+      if (mounted) setState(() => _authenticating = false);
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppTheme.background,
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 420),
-              child: Column(
-                children: [
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: Semantics(
-                      button: true,
-                      toggled: _voiceAssistantEnabled,
-                      label: _voiceAssistantEnabled
-                          ? 'Voice assistant on'
-                          : 'Voice assistant off',
-                      child: TextButton.icon(
-                        key: const ValueKey('voice-assistant-toggle'),
-                        onPressed: _toggleVoiceAssistant,
-                        icon: Icon(
-                          _voiceAssistantEnabled
-                              ? Icons.volume_up_rounded
-                              : Icons.volume_off_rounded,
-                        ),
-                        label: Text(
-                          _voiceAssistantEnabled ? 'Voice on' : 'Voice off',
-                        ),
-                        style: TextButton.styleFrom(
-                          foregroundColor: _voiceAssistantEnabled
-                              ? Colors.white
-                              : const Color(0xFF1565C0),
-                          backgroundColor: _voiceAssistantEnabled
-                              ? const Color(0xFF1565C0)
-                              : AppTheme.lightGrey,
-                          minimumSize: const Size(48, 48),
-                          padding: const EdgeInsets.symmetric(horizontal: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(24),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 40),
-
-                  // ICON
-                  Container(
-                    padding: const EdgeInsets.all(18),
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: LinearGradient(colors: gradientColors),
-                    ),
-                    child: const Icon(
-                      Icons.menu_book_rounded,
-                      size: 40,
-                      color: Colors.white,
-                    ),
-                  ),
-
-                  const SizedBox(height: 30),
-
-                  // LOGIN / REGISTER TOGGLE
-                  Container(
-                    decoration: BoxDecoration(
-                      color: AppTheme.lightGrey,
-                      borderRadius: BorderRadius.circular(30),
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: InkWell(
-                            borderRadius: BorderRadius.circular(30),
-                            onTap: () => _setLoginMode(true),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              decoration: BoxDecoration(
-                                gradient: isLogin
-                                    ? const LinearGradient(colors: gradientColors)
-                                    : null,
-                                borderRadius: BorderRadius.circular(30),
-                              ),
-                              child: Center(
-                                child: Text(
-                                  "Login",
-                                  style: TextStyle(
-                                    color: isLogin ? Colors.white : Colors.black,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                        Expanded(
-                          child: InkWell(
-                            borderRadius: BorderRadius.circular(30),
-                            onTap: () => _setLoginMode(false),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              decoration: BoxDecoration(
-                                gradient: !isLogin
-                                    ? const LinearGradient(colors: gradientColors)
-                                    : null,
-                                borderRadius: BorderRadius.circular(30),
-                              ),
-                              child: Center(
-                                child: Text(
-                                  "Register",
-                                  style: TextStyle(
-                                    color: !isLogin ? Colors.white : Colors.black,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 40),
-
-                  // TITLE
-                  ShaderMask(
-                    shaderCallback: (bounds) =>
-                        const LinearGradient(colors: gradientColors)
-                            .createShader(bounds),
-                    child: Text(
-                      isLogin ? "Welcome Back!" : "Create Account",
-                      style: const TextStyle(
-                        fontSize: 26,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 8),
-
-                  TextButton.icon(
-                    onPressed: _welcomeInProgress
-                        ? null
-                        : () => _requestWelcome(replay: true),
-                    icon: const Icon(Icons.volume_up_outlined),
-                    label: const Text('Replay welcome message'),
-                  ),
-
-                  if (_welcomeNotice != null)
-                    Semantics(
-                      liveRegion: true,
-                      child: Padding(
-                        padding: const EdgeInsets.only(top: 4),
-                        child: Text(
-                          _welcomeNotice!,
-                          textAlign: TextAlign.center,
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                      ),
-                    ),
-
-                  const SizedBox(height: 22),
-
-                  // EMAIL FIELD
-                  TextField(
-                    controller: emailController,
-                    decoration: InputDecoration(
-                      hintText: "Email",
-                      filled: true,
-                      fillColor: Colors.white,
-                      prefixIcon: const Icon(Icons.email_outlined),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(20),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  // PASSWORD FIELD
-                  TextField(
-                    controller: passwordController,
-                    obscureText: obscurePassword,
-                    decoration: InputDecoration(
-                      hintText: "Password",
-                      filled: true,
-                      fillColor: Colors.white,
-                      prefixIcon: const Icon(Icons.lock_outline),
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          obscurePassword
-                              ? Icons.visibility_off
-                              : Icons.visibility,
-                        ),
-                        onPressed: () {
-                          setState(() {
-                            obscurePassword = !obscurePassword;
-                          });
-                        },
-                      ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(20),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 25),
-
-                  // LOGIN / REGISTER BUTTON
-                  InkWell(
-                    borderRadius: BorderRadius.circular(30),
-                    onTap: handleAuth,
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [
-                            Color(0xFF66BB6A),
-                            Color(0xFF43A047),
-                          ],
-                        ),
-                        borderRadius: BorderRadius.circular(30),
-                      ),
-                      child: Center(
-                        child: Text(
-                          isLogin ? "Login" : "Register",
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 30),
-
-                  const Text(
-                    "Or continue with",
-                    style: TextStyle(color: Colors.grey),
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  // GOOGLE BUTTON (placeholder)
-                  _socialButton("Continue with Google"),
-
-                  const SizedBox(height: 15),
-
-                  // APPLE BUTTON (placeholder)
-                  _socialButton("Continue with Apple"),
-
-                  const SizedBox(height: 40),
-                ],
+  Widget _modeButton(String label, bool selected, VoidCallback onTap) {
+    return Expanded(
+      child: Semantics(
+        button: true,
+        selected: selected,
+        child: InkWell(
+          key: ValueKey('login-mode-${label.toLowerCase()}'),
+          borderRadius: BorderRadius.circular(AppTheme.radiusLG),
+          onTap: _authenticating ? null : onTap,
+          child: Container(
+            constraints: const BoxConstraints(minHeight: 48),
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: selected ? AppTheme.primaryBlue : Colors.transparent,
+              borderRadius: BorderRadius.circular(AppTheme.radiusLG),
+            ),
+            child: Text(
+              label,
+              style: TextStyle(
+                color: selected ? Colors.white : AppTheme.textDark,
+                fontWeight: FontWeight.w700,
               ),
             ),
           ),
@@ -574,29 +259,312 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // SOCIAL BUTTON UI
-  Widget _socialButton(String text) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(20),
-      onTap: () {
-        final message = "$text coming soon";
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(message)),
-        );
-        unawaited(_narrateText(message));
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(colors: gradientColors),
-          borderRadius: BorderRadius.all(Radius.circular(20)),
+  Widget _socialButton({
+    required String label,
+    required bool apple,
+  }) {
+    return OutlinedButton.icon(
+      key: ValueKey(apple ? 'sign-in-apple' : 'sign-in-google'),
+      onPressed: _authenticating
+          ? null
+          : () => unawaited(
+                _authenticate(
+                  apple
+                      ? _authFlow.signInWithApple
+                      : _authFlow.signInWithGoogle,
+                ),
+              ),
+      icon: apple
+          ? const Icon(Icons.phone_iphone_outlined)
+          : const Text(
+              'G',
+              style: TextStyle(
+                color: AppTheme.primaryBlue,
+                fontWeight: FontWeight.w800,
+                fontSize: 18,
+              ),
+            ),
+      label: Text(label),
+      style: OutlinedButton.styleFrom(
+        foregroundColor: AppTheme.textDark,
+        backgroundColor: Colors.white,
+        minimumSize: const Size(double.infinity, 52),
+        side: BorderSide(color: AppTheme.primaryBlue.withOpacity(0.18)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppTheme.radiusLG),
         ),
-        child: Center(
-          child: Text(
-            text,
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w600,
+        textStyle: AppTheme.bodyStrongStyle,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppTheme.background,
+      resizeToAvoidBottomInset: true,
+      body: SafeArea(
+        child: LayoutBuilder(
+          builder: (context, constraints) => SingleChildScrollView(
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            padding: EdgeInsets.fromLTRB(
+              20,
+              constraints.maxHeight < 620 ? 8 : 20,
+              20,
+              24,
+            ),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 420),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: Semantics(
+                        button: true,
+                        toggled: _voiceAssistantEnabled,
+                        label: _voiceAssistantEnabled
+                            ? 'Voice assistant on'
+                            : 'Voice assistant off',
+                        child: TextButton.icon(
+                          key: const ValueKey('voice-assistant-toggle'),
+                          onPressed: _toggleVoiceAssistant,
+                          icon: Icon(
+                            _voiceAssistantEnabled
+                                ? Icons.volume_up_rounded
+                                : Icons.volume_off_rounded,
+                            size: 18,
+                          ),
+                          label: Text(
+                            _voiceAssistantEnabled ? 'Voice on' : 'Voice off',
+                          ),
+                          style: TextButton.styleFrom(
+                            foregroundColor: AppTheme.primaryBlue,
+                            backgroundColor: AppTheme.lightGrey,
+                            minimumSize: const Size(44, 40),
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius:
+                                  BorderRadius.circular(AppTheme.radiusFull),
+                            ),
+                            textStyle: AppTheme.labelStyle,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Center(
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: _gradientColors,
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius:
+                              BorderRadius.circular(AppTheme.radiusLG),
+                        ),
+                        child: const Icon(
+                          Icons.menu_book_rounded,
+                          size: 36,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Text(
+                      'AksharAlly',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            color: AppTheme.primaryBlue,
+                            fontWeight: FontWeight.w800,
+                          ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Read with confidence.',
+                      textAlign: TextAlign.center,
+                      style: AppTheme.bodyStyle.copyWith(
+                        color: AppTheme.textMuted,
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    Card(
+                      color: Colors.white,
+                      elevation: 1,
+                      margin: EdgeInsets.zero,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppTheme.radiusLG),
+                        side: BorderSide(
+                          color: AppTheme.primaryBlue.withOpacity(0.08),
+                        ),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color: AppTheme.lightGrey,
+                                borderRadius:
+                                    BorderRadius.circular(AppTheme.radiusLG),
+                              ),
+                              child: Row(
+                                children: [
+                                  _modeButton(
+                                    'Login',
+                                    isLogin,
+                                    () => _setLoginMode(true),
+                                  ),
+                                  _modeButton(
+                                    'Register',
+                                    !isLogin,
+                                    () => _setLoginMode(false),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 22),
+                            Text(
+                              isLogin ? 'Welcome Back!' : 'Create Account',
+                              textAlign: TextAlign.center,
+                              style: AppTheme.headingStyle.copyWith(
+                                color: AppTheme.textDark,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              isLogin
+                                  ? 'Sign in to continue reading.'
+                                  : 'Create your account to personalise your reading.',
+                              textAlign: TextAlign.center,
+                              style: AppTheme.bodyStyle.copyWith(
+                                color: AppTheme.textMuted,
+                              ),
+                            ),
+                            if (_voiceNotice != null) ...[
+                              const SizedBox(height: 8),
+                              Semantics(
+                                liveRegion: true,
+                                child: Text(
+                                  _voiceNotice!,
+                                  textAlign: TextAlign.center,
+                                  style: Theme.of(context).textTheme.bodySmall,
+                                ),
+                              ),
+                            ],
+                            const SizedBox(height: 20),
+                            TextField(
+                              key: const ValueKey('email-field'),
+                              controller: emailController,
+                              keyboardType: TextInputType.emailAddress,
+                              textInputAction: TextInputAction.next,
+                              autocorrect: false,
+                              decoration: const InputDecoration(
+                                labelText: 'Email',
+                                prefixIcon: Icon(Icons.email_outlined),
+                              ),
+                            ),
+                            const SizedBox(height: 14),
+                            TextField(
+                              key: const ValueKey('password-field'),
+                              controller: passwordController,
+                              obscureText: obscurePassword,
+                              textInputAction: TextInputAction.done,
+                              onSubmitted: (_) {
+                                if (!_authenticating) unawaited(handleAuth());
+                              },
+                              decoration: InputDecoration(
+                                labelText: 'Password',
+                                prefixIcon: const Icon(Icons.lock_outline),
+                                suffixIcon: IconButton(
+                                  tooltip: obscurePassword
+                                      ? 'Show password'
+                                      : 'Hide password',
+                                  icon: Icon(
+                                    obscurePassword
+                                        ? Icons.visibility_off
+                                        : Icons.visibility,
+                                  ),
+                                  onPressed: () {
+                                    setState(() {
+                                      obscurePassword = !obscurePassword;
+                                    });
+                                  },
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            FilledButton(
+                              key: const ValueKey('auth-submit'),
+                              onPressed:
+                                  _authenticating ? null : () => handleAuth(),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: AppTheme.primaryGreen,
+                                foregroundColor: Colors.white,
+                                minimumSize:
+                                    const Size(double.infinity, AppTheme.buttonHeight),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius:
+                                      BorderRadius.circular(AppTheme.radiusXL),
+                                ),
+                                textStyle: AppTheme.buttonTextStyle,
+                              ),
+                              child: _authenticating
+                                  ? const SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : Text(isLogin ? 'Login' : 'Register'),
+                            ),
+                            const SizedBox(height: 20),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Divider(
+                                    color: AppTheme.primaryBlue.withOpacity(0.15),
+                                  ),
+                                ),
+                                Padding(
+                                  padding:
+                                      const EdgeInsets.symmetric(horizontal: 12),
+                                  child: Text(
+                                    'Or continue with',
+                                    style: AppTheme.captionStyle,
+                                  ),
+                                ),
+                                Expanded(
+                                  child: Divider(
+                                    color: AppTheme.primaryBlue.withOpacity(0.15),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            _socialButton(
+                              label: 'Continue with Google',
+                              apple: false,
+                            ),
+                            const SizedBox(height: 10),
+                            _socialButton(
+                              label: 'Continue with Apple',
+                              apple: true,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
         ),

@@ -1,0 +1,49 @@
+Fix the AksharAlly Flutter app's onboarding completion, authentication routing, splash-screen welcome narration, and login/register visual consistency.
+
+**Work on the existing `feature/voice-assistant` branch. Do not merge branches, push changes, or commit automatically. Inspect the existing implementation before editing.**
+
+### 1. Fix the final onboarding step
+- Inspect `lib/screens/onboarding_screen.dart` and the existing five-step onboarding navigation.
+- Ensure Step 5 of 5 has a clearly visible, accessible **Finish** button at the bottom of the page.
+- Ensure the button is reachable on smaller screens and does not get hidden behind the viewport, keyboard, or bottom system area.
+- Keep Previous/Next navigation working on the earlier steps.
+- On Finish, validate as appropriate, persist all onboarding answers and accessibility preferences, mark onboarding as completed, and navigate directly to Home.
+- Prevent accidental duplicate submissions while saving.
+- Do not redirect a successfully onboarded user to Login/Register.
+
+### 2. Correct first-time and returning-user routing
+- Inspect the existing Firebase authentication, `AuthService`, onboarding gate, and profile/onboarding persistence services before changing anything.
+- First-time email/password registrations must complete onboarding before entering Home.
+- First-time Google sign-ins must also complete onboarding.
+- Returning authenticated users whose onboarding is complete must bypass onboarding and enter Home directly.
+- Incomplete onboarding should resume or reopen onboarding, not force a returning user to register again.
+- Use a reliable, user-specific onboarding-completion status. Do not rely solely on a device-local flag to decide whether an account has completed onboarding, since that can become inconsistent across devices.
+- Preserve the existing email/password, Google, and Apple authentication implementations. Do not rewrite or remove authentication methods.
+- Avoid duplicate navigation calls, including competing navigation from the login screen and onboarding gate.
+
+### 3. Move welcome narration to the splash screen
+- Locate the existing splash screen and current welcome narration implementation.
+- Play the welcome message when the app opens on the splash screen, using the existing TTS service where appropriate.
+- Remove automatic welcome narration from the login/register screen. Keep the existing sign-in message there.
+- Respect the user's voice-assistant setting and avoid overlapping speech or duplicate playback when navigating between splash, login, onboarding, and Home.
+- Clean up TTS playback appropriately when the relevant screen is disposed.
+- Preserve the preferred English (India) voice (`en-IN`) and existing Hindi/Marathi locale handling.
+
+### 4. Match the main branch's visual theme
+- Inspect the existing splash and Home screens on `main` as reference only; do not merge `main`.
+- Update only the login/register screen styling needed to match the established app theme: typography, colors, backgrounds, cards, buttons, spacing, and visual hierarchy.
+- Preserve all existing authentication functionality, validation, and sign-in options.
+- Keep the voice-assistant toggle visible but unobtrusive.
+
+### 5. Testing and scope
+- Add or update focused tests for:
+  - The Finish button being visible and completing onboarding.
+  - First-time email registration routing to onboarding and then Home.
+  - First-time Google sign-in routing to onboarding and then Home.
+  - Returning users skipping onboarding.
+  - Welcome narration occurring on the splash screen, not login/register.
+  - Login/register theme changes without breaking existing authentication.
+- Run the relevant Flutter tests and analyze the changed code if the Flutter toolchain is available.
+- Preserve the Output Screen's synchronized word highlighting, `TtsProgressMapper`, existing playback controls, voice-command sheet, and speech-rate behavior. Do not refactor these unrelated components.
+- Do not modify OCR, text simplification, backend services, or unrelated screens.
+- Report the exact files changed, tests run and their results, and any remaining limitations. Do not claim tests passed if they were not run.

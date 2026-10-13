@@ -5,12 +5,12 @@ import 'firebase_options.dart';
 
 import 'screens/splash_screen.dart';
 import 'screens/login_screen.dart';
-import 'screens/home_screen.dart';
 import 'screens/onboarding_gate.dart';
 import 'theme/app_theme.dart';
 import 'theme/accessibility_settings.dart';
 import 'theme/ui_accessibility.dart';
 import 'services/library_storage.dart';
+import 'theme/app_settings.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -20,6 +20,7 @@ void main() async {
   await UIAccessibility.load();
   // Hydrate reading history from SharedPreferences before the first frame.
   await LibraryStorage.load();
+  await AppSettings.loadVoiceAssistancePreference();
   runApp(const AppInitializer());
 }
 
@@ -88,9 +89,13 @@ class AksharAllyApp extends StatelessWidget {
         routes: {
           '/': (context) => const SplashScreen(),
           '/login': (context) => const LoginScreen(),
-          '/home': (context) => OnboardingGate(
-            uid: FirebaseAuth.instance.currentUser?.uid,
-          ),
+          '/home': (context) {
+            final requestedUid =
+                ModalRoute.of(context)?.settings.arguments as String?;
+            return OnboardingGate(
+              uid: requestedUid ?? FirebaseAuth.instance.currentUser?.uid,
+            );
+          },
         },
       ),
     );

@@ -440,6 +440,7 @@ class OnboardingStorage {
     AppSettings.language = profile.defaultReadingLanguage;
     AppSettings.interfaceLanguage = profile.interfaceLanguage;
     AppSettings.voiceAssistanceEnabled = profile.voiceAssistance;
+    await AppSettings.saveVoiceAssistancePreference(profile.voiceAssistance);
     AppSettings.voiceLanguage = profile.voiceLanguage;
     AppSettings.speechRate = profile.speechRate;
     AppSettings.readingHighlight = profile.readingHighlight;

@@ -12,10 +12,12 @@ class OnboardingGate extends StatefulWidget {
     super.key,
     required this.uid,
     this.storage,
+    this.accountStore,
   });
 
   final String? uid;
   final OnboardingStorage? storage;
+  final OnboardingAccountStore? accountStore;
 
   @override
   State<OnboardingGate> createState() => _OnboardingGateState();
@@ -24,11 +26,36 @@ class OnboardingGate extends StatefulWidget {
 class _OnboardingGateState extends State<OnboardingGate> {
   late final OnboardingStorage _storage =
       widget.storage ?? OnboardingStorage();
+  late final OnboardingAccountStore _accountStore =
+      widget.accountStore ?? const FirestoreOnboardingAccountStore();
   late final Future<_GateResult> _result = _load();
 
   Future<_GateResult> _load() async {
     final uid = widget.uid;
     if (uid == null || uid.isEmpty) return const _GateResult.login();
+
+    // Firestore is authoritative for completion. SharedPreferences remains a
+    // local draft/cache and is never used to bypass this account check.
+    final account = await _accountStore.load(uid);
+    final accountStatus = account['onboardingCompleted'];
+    if (accountStatus != null && accountStatus is! bool) {
+      throw const FormatException(
+        'The saved account onboarding status is invalid.',
+      );
+    }
+    final remoteProfile = _profileFromAccount(account);
+
+    if (accountStatus == true) {
+      final profile = remoteProfile;
+      if (profile == null || !profile.completed) {
+        throw const FormatException(
+          'The saved account onboarding profile is incomplete.',
+        );
+      }
+      await _storage.save(uid, profile);
+      await _storage.applyReadingPreferences(profile);
+      return _GateResult.home(profile);
+    }
 
     OnboardingProfile? profile;
     try {
@@ -39,22 +66,34 @@ class _OnboardingGateState extends State<OnboardingGate> {
       await _storage.clear(uid);
     }
 
-    if (profile?.completed == true) {
-      await _storage.applyReadingPreferences(profile!);
-      final savedProfile = await UserProfileService.load(uid);
-      return _GateResult.home(
-        profile.copyWith(
-          fullName: profile.fullName.isNotEmpty
-              ? profile.fullName
-              : (savedProfile['fullName'] as String? ?? ''),
-        ),
-      );
+    // Migrate older same-device completions to the account record once. All
+    // later decisions are made from the remote completion field.
+    if (accountStatus == null &&
+        (remoteProfile?.completed == true ||
+            (remoteProfile == null && profile?.completed == true))) {
+      final completed = remoteProfile ?? profile!;
+      await _accountStore.saveOnboarding(uid, completed);
+      await _storage.applyReadingPreferences(completed);
+      return _GateResult.home(completed);
     }
-    final existing = await UserProfileService.load(uid);
-    final initial = profile ?? OnboardingProfile.initial(
-      fullName: existing['fullName'] as String? ?? '',
+
+    final draft = remoteProfile?.copyWith(completed: false) ??
+        (accountStatus == false
+            ? profile?.copyWith(completed: false)
+            : profile);
+    final savedName = account['fullName'] is String
+        ? account['fullName'] as String
+        : '';
+    final initial = draft ?? OnboardingProfile.initial(
+      fullName: savedName,
     );
     return _GateResult.onboarding(initial);
+  }
+
+  OnboardingProfile? _profileFromAccount(Map<String, dynamic> account) {
+    final data = account['onboarding'];
+    if (data is! Map) return null;
+    return OnboardingProfile.fromJson(Map<String, dynamic>.from(data));
   }
 
   @override
@@ -82,6 +121,7 @@ class _OnboardingGateState extends State<OnboardingGate> {
                           builder: (_) => OnboardingGate(
                             uid: widget.uid,
                             storage: _storage,
+                            accountStore: _accountStore,
                           ),
                         ),
                       ),
@@ -106,6 +146,7 @@ class _OnboardingGateState extends State<OnboardingGate> {
           uid: widget.uid!,
           initialProfile: result.profile!,
           storage: _storage,
+          accountStore: _accountStore,
         );
       },
     );
