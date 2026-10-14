@@ -1,6 +1,7 @@
 import 'package:aksharally_ui/screens/home_screen.dart';
 import 'package:aksharally_ui/screens/login_screen.dart';
 import 'package:aksharally_ui/screens/onboarding_gate.dart';
+import 'package:aksharally_ui/screens/onboarding_screen.dart';
 import 'package:aksharally_ui/services/auth_flow.dart';
 import 'package:aksharally_ui/services/onboarding_storage.dart';
 import 'package:aksharally_ui/services/user_profile_service.dart';
@@ -97,6 +98,48 @@ void main() {
     expect(find.byType(HomeScreen), findsOneWidget);
   });
 
+  testWidgets(
+    'completed account with missing optional profile fields opens home',
+    (tester) async {
+      tester.view.physicalSize = const Size(1080, 960);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      const uid = 'partial-reader';
+      final store = _MemoryAccountStore()
+        ..documents[uid] = {
+          'onboardingCompleted': true,
+          'fullName': 'Mira',
+          'preferredLanguage': 'mr',
+          'ageGroup': '25_44',
+          // Older profiles may omit most nested fields, including completed.
+          'onboarding': <String, dynamic>{'fontFamily': 'Lexend'},
+        };
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: OnboardingGate(
+            uid: uid,
+            accountStore: store,
+            authFlow: _FakeAuthFlow(authenticatedUid: uid),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final cached = await OnboardingStorage().load(uid);
+      expect(find.byType(HomeScreen), findsOneWidget);
+      expect(cached?.completed, isTrue);
+      expect(cached?.currentStep, 4);
+      expect(cached?.fullName, 'Mira');
+      expect(cached?.preferredLanguages, ['mr']);
+      expect(cached?.defaultReadingLanguage, 'mr');
+      expect(cached?.ageGroup, '25_44');
+      expect(cached?.fontSize, OnboardingProfile.initial().fontSize);
+    },
+  );
+
   testWidgets('cached saved profile is used when Firestore is unavailable', (
     tester,
   ) async {
@@ -187,6 +230,117 @@ void main() {
     expect(store.documents[uid]?['onboardingCompleted'], isFalse);
   });
 
+  testWidgets('Finish saves selected preferences before navigating home', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1080, 960);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    const uid = 'finished-reader';
+    final store = _MemoryAccountStore();
+    final selected = OnboardingProfile.initial(fullName: 'Mira').copyWith(
+      currentStep: 4,
+      preferredLanguages: ['hi', 'mr'],
+      defaultReadingLanguage: 'mr',
+      ageGroup: '25_44',
+      fontSize: 28,
+      letterSpacing: 1.5,
+      wordSpacing: 6,
+      lineHeight: 2.1,
+      colorTheme: 'pale_blue_navy',
+      focusLineMode: true,
+      readingRuler: true,
+      syllableBreakdown: true,
+      simplifyText: true,
+      voiceAssistance: true,
+      voiceLanguage: 'hi',
+      speechRate: 0.7,
+      highContrast: true,
+      reduceMotion: true,
+      readingGoals: ['understanding'],
+      materialTypes: ['books'],
+      dailyTargetMinutes: 30,
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: OnboardingScreen(
+          uid: uid,
+          initialProfile: selected,
+          storage: OnboardingStorage(),
+          accountStore: store,
+        ),
+        routes: {'/home': (_) => const Scaffold(body: Text('Home reached'))},
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('onboarding-finish')));
+    await tester.pumpAndSettle();
+
+    final saved = store.documents[uid]!;
+    final savedProfile = saved['onboarding'] as Map<String, dynamic>;
+    expect(find.text('Home reached'), findsOneWidget);
+    expect(saved['onboardingCompleted'], isTrue);
+    expect(
+      savedProfile.keys,
+      containsAll(OnboardingProfile.initial().toJson().keys),
+    );
+    expect(savedProfile['preferredLanguages'], ['hi', 'mr']);
+    expect(savedProfile['defaultReadingLanguage'], 'mr');
+    expect(savedProfile['fontSize'], 28);
+    expect(savedProfile['colorTheme'], 'pale_blue_navy');
+    expect(savedProfile['voiceAssistance'], isTrue);
+    expect(savedProfile['speechRate'], 0.7);
+    expect(savedProfile['dailyTargetMinutes'], 30);
+  });
+
+  testWidgets('profile save failure keeps onboarding open with debug detail', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1080, 960);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    const uid = 'save-failure-reader';
+    final store = _MemoryAccountStore()
+      ..saveError = FirebaseException(
+        plugin: 'cloud_firestore',
+        code: 'permission-denied',
+        message: 'Missing or insufficient permissions.',
+      );
+    final profile = OnboardingProfile.initial(
+      fullName: 'Mira',
+    ).copyWith(currentStep: 4);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: OnboardingScreen(
+          uid: uid,
+          initialProfile: profile,
+          storage: OnboardingStorage(),
+          accountStore: store,
+        ),
+        routes: {'/home': (_) => const Scaffold(body: Text('Home reached'))},
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('onboarding-finish')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Home reached'), findsNothing);
+    expect(
+      find.text('Your profile could not be saved. Please try again.'),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('cloud_firestore/permission-denied'),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('existing-user login opens home with the saved profile', (
     tester,
   ) async {
@@ -232,11 +386,8 @@ Widget _loginApp(_FakeAuthFlow auth, _MemoryAccountStore store) {
       if (settings.name != '/home') return null;
       final uid = settings.arguments as String?;
       return MaterialPageRoute<void>(
-        builder: (_) => OnboardingGate(
-          uid: uid,
-          accountStore: store,
-          authFlow: auth,
-        ),
+        builder: (_) =>
+            OnboardingGate(uid: uid, accountStore: store, authFlow: auth),
       );
     },
   );
@@ -245,6 +396,7 @@ Widget _loginApp(_FakeAuthFlow auth, _MemoryAccountStore store) {
 class _MemoryAccountStore implements OnboardingAccountStore {
   final Map<String, Map<String, dynamic>> documents = {};
   int loadCount = 0;
+  FirebaseException? saveError;
 
   @override
   Future<Map<String, dynamic>> load(String uid) async {
@@ -254,7 +406,12 @@ class _MemoryAccountStore implements OnboardingAccountStore {
 
   @override
   Future<void> saveOnboarding(String uid, OnboardingProfile profile) async {
+    final currentError = saveError;
+    if (currentError != null) throw currentError;
     documents[uid] = {
+      'fullName': profile.fullName,
+      'preferredLanguage': profile.defaultReadingLanguage,
+      'ageGroup': profile.ageGroup,
       'onboardingCompleted': profile.completed,
       'onboarding': profile.toJson(),
     };

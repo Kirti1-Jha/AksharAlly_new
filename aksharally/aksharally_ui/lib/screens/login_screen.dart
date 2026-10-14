@@ -1,5 +1,8 @@
 import 'dart:async';
 
+import 'package:firebase_auth/firebase_auth.dart' show FirebaseAuthException;
+import 'package:flutter/foundation.dart'
+    show debugPrint, debugPrintStack, kDebugMode;
 import 'package:flutter/material.dart';
 
 import '../services/auth_flow.dart';
@@ -9,11 +12,7 @@ import '../theme/app_settings.dart';
 import '../theme/app_theme.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({
-    super.key,
-    this.authFlow,
-    this.ttsService,
-  });
+  const LoginScreen({super.key, this.authFlow, this.ttsService});
 
   final AuthFlow? authFlow;
   final TTSService? ttsService;
@@ -112,7 +111,8 @@ class _LoginScreenState extends State<LoginScreen> {
       }
       if (_tts.currentLocale == null) {
         setState(() {
-          _voiceNotice = _tts.localeNotice ??
+          _voiceNotice =
+              _tts.localeNotice ??
               'Voice assistance is unavailable on this device.';
         });
         return;
@@ -136,7 +136,8 @@ class _LoginScreenState extends State<LoginScreen> {
     } catch (_) {
       if (_isCurrentNarration(request)) {
         setState(() {
-          _voiceNotice = 'Voice assistant could not read this screen. '
+          _voiceNotice =
+              'Voice assistant could not read this screen. '
               'Turn it off and on to retry.';
         });
       }
@@ -192,9 +193,9 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (email.isEmpty || password.isEmpty) {
       const message = 'Please enter email & password';
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text(message)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text(message)));
       unawaited(_narrateText(message));
       return;
     }
@@ -218,12 +219,25 @@ class _LoginScreenState extends State<LoginScreen> {
       await _stopAndRestoreTts();
       if (!mounted) return;
       Navigator.of(context).pushReplacementNamed('/home', arguments: uid);
-    } catch (error) {
+    } catch (error, stackTrace) {
+      if (kDebugMode) {
+        if (error is FirebaseAuthException) {
+          debugPrint(
+            'Firebase authentication failed: '
+            '${error.code}${error.message == null ? '' : ': ${error.message}'}',
+          );
+        } else {
+          debugPrint(
+            'Authentication/navigation failed (${error.runtimeType}).',
+          );
+          debugPrintStack(stackTrace: stackTrace);
+        }
+      }
       final message = _withoutEnteredValues(AuthService.friendlyError(error));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
       unawaited(_narrateText(message));
     } finally {
       if (mounted) setState(() => _authenticating = false);
@@ -259,21 +273,16 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _socialButton({
-    required String label,
-    required bool apple,
-  }) {
+  Widget _socialButton({required String label, required bool apple}) {
     return OutlinedButton.icon(
       key: ValueKey(apple ? 'sign-in-apple' : 'sign-in-google'),
       onPressed: _authenticating
           ? null
           : () => unawaited(
-                _authenticate(
-                  apple
-                      ? _authFlow.signInWithApple
-                      : _authFlow.signInWithGoogle,
-                ),
+              _authenticate(
+                apple ? _authFlow.signInWithApple : _authFlow.signInWithGoogle,
               ),
+            ),
       icon: apple
           ? const Icon(Icons.phone_iphone_outlined)
           : const Text(
@@ -345,8 +354,9 @@ class _LoginScreenState extends State<LoginScreen> {
                             minimumSize: const Size(44, 40),
                             padding: const EdgeInsets.symmetric(horizontal: 12),
                             shape: RoundedRectangleBorder(
-                              borderRadius:
-                                  BorderRadius.circular(AppTheme.radiusFull),
+                              borderRadius: BorderRadius.circular(
+                                AppTheme.radiusFull,
+                              ),
                             ),
                             textStyle: AppTheme.labelStyle,
                           ),
@@ -363,8 +373,9 @@ class _LoginScreenState extends State<LoginScreen> {
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                           ),
-                          borderRadius:
-                              BorderRadius.circular(AppTheme.radiusLG),
+                          borderRadius: BorderRadius.circular(
+                            AppTheme.radiusLG,
+                          ),
                         ),
                         child: const Icon(
                           Icons.menu_book_rounded,
@@ -378,9 +389,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       'AksharAlly',
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            color: AppTheme.primaryBlue,
-                            fontWeight: FontWeight.w800,
-                          ),
+                        color: AppTheme.primaryBlue,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Text(
@@ -410,8 +421,9 @@ class _LoginScreenState extends State<LoginScreen> {
                               padding: const EdgeInsets.all(4),
                               decoration: BoxDecoration(
                                 color: AppTheme.lightGrey,
-                                borderRadius:
-                                    BorderRadius.circular(AppTheme.radiusLG),
+                                borderRadius: BorderRadius.circular(
+                                  AppTheme.radiusLG,
+                                ),
                               ),
                               child: Row(
                                 children: [
@@ -501,16 +513,20 @@ class _LoginScreenState extends State<LoginScreen> {
                             const SizedBox(height: 20),
                             FilledButton(
                               key: const ValueKey('auth-submit'),
-                              onPressed:
-                                  _authenticating ? null : () => handleAuth(),
+                              onPressed: _authenticating
+                                  ? null
+                                  : () => handleAuth(),
                               style: FilledButton.styleFrom(
                                 backgroundColor: AppTheme.primaryGreen,
                                 foregroundColor: Colors.white,
-                                minimumSize:
-                                    const Size(double.infinity, AppTheme.buttonHeight),
+                                minimumSize: const Size(
+                                  double.infinity,
+                                  AppTheme.buttonHeight,
+                                ),
                                 shape: RoundedRectangleBorder(
-                                  borderRadius:
-                                      BorderRadius.circular(AppTheme.radiusXL),
+                                  borderRadius: BorderRadius.circular(
+                                    AppTheme.radiusXL,
+                                  ),
                                 ),
                                 textStyle: AppTheme.buttonTextStyle,
                               ),
@@ -530,12 +546,15 @@ class _LoginScreenState extends State<LoginScreen> {
                               children: [
                                 Expanded(
                                   child: Divider(
-                                    color: AppTheme.primaryBlue.withOpacity(0.15),
+                                    color: AppTheme.primaryBlue.withOpacity(
+                                      0.15,
+                                    ),
                                   ),
                                 ),
                                 Padding(
-                                  padding:
-                                      const EdgeInsets.symmetric(horizontal: 12),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                  ),
                                   child: Text(
                                     'Or continue with',
                                     style: AppTheme.captionStyle,
@@ -543,7 +562,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ),
                                 Expanded(
                                   child: Divider(
-                                    color: AppTheme.primaryBlue.withOpacity(0.15),
+                                    color: AppTheme.primaryBlue.withOpacity(
+                                      0.15,
+                                    ),
                                   ),
                                 ),
                               ],

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show debugPrint, kDebugMode;
+import 'package:firebase_core/firebase_core.dart' show FirebaseException;
 
 import '../services/onboarding_storage.dart';
 import '../services/user_profile_service.dart';
@@ -47,6 +49,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   late final OnboardingAccountStore _accountStore =
       widget.accountStore ?? const FirestoreOnboardingAccountStore();
   String? _saveError;
+  String? _saveDiagnostics;
   bool _finishing = false;
 
   bool get _hindi => _profile.interfaceLanguage == 'hi';
@@ -70,39 +73,46 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     setState(() {
       _profile = next;
       _saveError = null;
+      _saveDiagnostics = null;
     });
     _persist(next);
   }
 
   void _persist(OnboardingProfile snapshot) {
-    _saveQueue = _saveQueue.then((_) async {
-      await widget.storage.save(widget.uid, snapshot);
-    }).catchError((Object error) {
-      if (mounted) {
-        setState(() {
-          _saveError = _tr(
-            'Your progress could not be saved. Check your device storage and try again.',
-            'आपकी प्रगति सहेजी नहीं जा सकी। डिवाइस स्टोरेज जाँचें और फिर कोशिश करें।',
-          );
+    _saveQueue = _saveQueue
+        .then((_) async {
+          await widget.storage.save(widget.uid, snapshot);
+        })
+        .catchError((Object error, StackTrace stackTrace) {
+          _logSaveFailure('draft save', error, stackTrace);
+          if (mounted) {
+            setState(() {
+              _saveError = _tr(
+                'Your progress could not be saved. Check your device storage and try again.',
+                'आपकी प्रगति सहेजी नहीं जा सकी। डिवाइस स्टोरेज जाँचें और फिर कोशिश करें।',
+              );
+              _saveDiagnostics = kDebugMode ? _saveFailureDetails(error) : null;
+            });
+          }
         });
-      }
-    });
   }
 
   Future<void> _goTo(int step) async {
     if (_saveError != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_saveError!)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(_saveError!)));
       return;
     }
     if (_profile.currentStep == 0 && _profile.fullName.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(_tr(
-            'Add a preferred name to continue.',
-            'आगे बढ़ने के लिए अपना पसंदीदा नाम लिखें।',
-          )),
+          content: Text(
+            _tr(
+              'Add a preferred name to continue.',
+              'आगे बढ़ने के लिए अपना पसंदीदा नाम लिखें।',
+            ),
+          ),
         ),
       );
       return;
@@ -121,10 +131,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         )) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(_tr(
-            'Add your preferred name and choose a default reading language.',
-            'अपना पसंदीदा नाम और पढ़ने की डिफ़ॉल्ट भाषा चुनें।',
-          )),
+          content: Text(
+            _tr(
+              'Add your preferred name and choose a default reading language.',
+              'अपना पसंदीदा नाम और पढ़ने की डिफ़ॉल्ट भाषा चुनें।',
+            ),
+          ),
         ),
       );
       return;
@@ -132,6 +144,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     setState(() {
       _finishing = true;
       _saveError = null;
+      _saveDiagnostics = null;
     });
     try {
       await _saveQueue;
@@ -144,10 +157,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       await widget.storage.applyReadingPreferences(complete);
       if (!mounted) return;
       Navigator.of(context).pushNamedAndRemoveUntil('/home', (_) => false);
-    } catch (_) {
+    } catch (error, stackTrace) {
+      _logSaveFailure('finish', error, stackTrace);
       if (mounted) {
         setState(() {
           _finishing = false;
+          _saveDiagnostics = kDebugMode ? _saveFailureDetails(error) : null;
           _saveError = _tr(
             'Your profile could not be saved. Please try again.',
             'आपकी प्रोफ़ाइल सहेजी नहीं जा सकी। फिर से कोशिश करें।',
@@ -155,6 +170,24 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         });
       }
     }
+  }
+
+  String _saveFailureDetails(Object error) {
+    if (error is FirebaseException) {
+      final message = error.message;
+      return '${error.plugin}/${error.code}'
+          '${message == null || message.isEmpty ? '' : ': $message'}';
+    }
+    return '${error.runtimeType}: $error';
+  }
+
+  void _logSaveFailure(String operation, Object error, StackTrace stackTrace) {
+    if (!kDebugMode) return;
+    debugPrint(
+      'Onboarding profile $operation failed: '
+      '${_saveFailureDetails(error)}',
+    );
+    if (error is! FirebaseException) debugPrintStack(stackTrace: stackTrace);
   }
 
   String _label(String value) {
@@ -381,9 +414,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           _tr('Age group (optional)', 'आयु वर्ग (वैकल्पिक)'),
           const ['under_13', '13_17', '18_24', '25_44', '45_plus'],
           [_profile.ageGroup],
-          (selected) => _update(
-            _profile.copyWith(ageGroup: selected.first),
-          ),
+          (selected) => _update(_profile.copyWith(ageGroup: selected.first)),
           single: true,
         ),
         _section(
@@ -413,9 +444,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           _tr('Who are you reading for?', 'आप किसके लिए पढ़ रहे हैं?'),
           const ['self', 'child', 'teacher', 'supporting'],
           [_profile.readerRole],
-          (selected) => _update(
-            _profile.copyWith(readerRole: selected.first),
-          ),
+          (selected) => _update(_profile.copyWith(readerRole: selected.first)),
           single: true,
         ),
       ],
@@ -429,13 +458,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           _tr('How comfortable does reading feel?', 'पढ़ना आपको कैसा लगता है?'),
           const ['a_little', 'moderate', 'very', 'depends', 'unsure'],
           [_profile.readingComfort],
-          (selected) => _update(
-            _profile.copyWith(readingComfort: selected.first),
-          ),
+          (selected) =>
+              _update(_profile.copyWith(readingComfort: selected.first)),
           single: true,
         ),
         _chips(
-          _tr('What can make reading harder?', 'पढ़ने में क्या कठिन हो सकता है?'),
+          _tr(
+            'What can make reading harder?',
+            'पढ़ने में क्या कठिन हो सकता है?',
+          ),
           const [
             'long_sentences',
             'crowded_text',
@@ -445,8 +476,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             'long_sessions',
           ],
           _profile.readingChallenges,
-          (selected) =>
-              _update(_profile.copyWith(readingChallenges: selected)),
+          (selected) => _update(_profile.copyWith(readingChallenges: selected)),
         ),
         _chips(
           _tr('Reading support (optional)', 'पढ़ने में सहायता (वैकल्पिक)'),
@@ -468,12 +498,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             final safe = selected.isEmpty ? const ['en'] : selected;
             final defaultLanguage =
                 safe.contains(_profile.defaultReadingLanguage)
-                    ? _profile.defaultReadingLanguage
-                    : safe.first;
-            _update(_profile.copyWith(
-              preferredLanguages: safe,
-              defaultReadingLanguage: defaultLanguage,
-            ));
+                ? _profile.defaultReadingLanguage
+                : safe.first;
+            _update(
+              _profile.copyWith(
+                preferredLanguages: safe,
+                defaultReadingLanguage: defaultLanguage,
+              ),
+            );
           },
         ),
         _chips(
@@ -518,8 +550,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           max: 32,
           divisions: 16,
           valueText: '${_profile.fontSize.round()} px',
-          onChanged: (value) =>
-              _update(_profile.copyWith(fontSize: value)),
+          onChanged: (value) => _update(_profile.copyWith(fontSize: value)),
         ),
         _slider(
           title: _tr('Letter spacing', 'अक्षरों के बीच दूरी'),
@@ -538,8 +569,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           max: 8,
           divisions: 8,
           valueText: _profile.wordSpacing.toStringAsFixed(1),
-          onChanged: (value) =>
-              _update(_profile.copyWith(wordSpacing: value)),
+          onChanged: (value) => _update(_profile.copyWith(wordSpacing: value)),
         ),
         _slider(
           title: _tr('Line spacing', 'पंक्तियों के बीच दूरी'),
@@ -548,8 +578,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           max: 2.5,
           divisions: 13,
           valueText: _profile.lineHeight.toStringAsFixed(1),
-          onChanged: (value) =>
-              _update(_profile.copyWith(lineHeight: value)),
+          onChanged: (value) => _update(_profile.copyWith(lineHeight: value)),
         ),
         _section(
           _tr('Background and text contrast', 'पृष्ठभूमि और पाठ का कंट्रास्ट'),
@@ -619,15 +648,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   'पाठ तैयार करते समय सरलीकरण चुनें।',
                 ),
                 _profile.simplifyText,
-                (value) =>
-                    _update(_profile.copyWith(simplifyText: value)),
+                (value) => _update(_profile.copyWith(simplifyText: value)),
               ),
               _toggle(
-                _tr('Highlight words while reading', 'पढ़ते समय शब्द हाइलाइट करें'),
+                _tr(
+                  'Highlight words while reading',
+                  'पढ़ते समय शब्द हाइलाइट करें',
+                ),
                 '',
                 _profile.wordHighlighting,
-                (value) =>
-                    _update(_profile.copyWith(wordHighlighting: value)),
+                (value) => _update(_profile.copyWith(wordHighlighting: value)),
               ),
               _toggle(
                 _tr('Focus line mode', 'फ़ोकस लाइन मोड'),
@@ -643,10 +673,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               ),
               _toggle(
                 _tr('Syllable breakdown', 'शब्दांशों में बाँटें'),
-                _tr('Available for supported reading content.', 'समर्थित पाठ में उपलब्ध।'),
+                _tr(
+                  'Available for supported reading content.',
+                  'समर्थित पाठ में उपलब्ध।',
+                ),
                 _profile.syllableBreakdown,
-                (value) =>
-                    _update(_profile.copyWith(syllableBreakdown: value)),
+                (value) => _update(_profile.copyWith(syllableBreakdown: value)),
               ),
             ],
           ),
@@ -663,21 +695,22 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           Column(
             children: [
               _toggle(
-                _tr('Voice assistance by default', 'डिफ़ॉल्ट रूप से आवाज़ सहायता'),
+                _tr(
+                  'Voice assistance by default',
+                  'डिफ़ॉल्ट रूप से आवाज़ सहायता',
+                ),
                 _tr(
                   'Start reading aloud automatically when supported.',
                   'समर्थित होने पर पाठ को अपने आप पढ़ना शुरू करें।',
                 ),
                 _profile.voiceAssistance,
-                (value) =>
-                    _update(_profile.copyWith(voiceAssistance: value)),
+                (value) => _update(_profile.copyWith(voiceAssistance: value)),
               ),
               _toggle(
                 _tr('Highlight spoken words', 'बोले गए शब्द हाइलाइट करें'),
                 '',
                 _profile.readingHighlight,
-                (value) =>
-                    _update(_profile.copyWith(readingHighlight: value)),
+                (value) => _update(_profile.copyWith(readingHighlight: value)),
               ),
             ],
           ),
@@ -686,9 +719,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           _tr('Preferred voice language', 'पसंदीदा आवाज़ की भाषा'),
           const ['en', 'hi', 'mr'],
           [_profile.voiceLanguage],
-          (selected) => _update(
-            _profile.copyWith(voiceLanguage: selected.first),
-          ),
+          (selected) =>
+              _update(_profile.copyWith(voiceLanguage: selected.first)),
           single: true,
           helper: _tr(
             'A voice is used only when your device supports that language.',
@@ -702,8 +734,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           max: 1,
           divisions: 9,
           valueText: '${(_profile.speechRate * 100).round()}%',
-          onChanged: (value) =>
-              _update(_profile.copyWith(speechRate: value)),
+          onChanged: (value) => _update(_profile.copyWith(speechRate: value)),
         ),
         _section(
           _tr('Display access', 'दृश्य सुलभता'),
@@ -713,15 +744,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 _tr('Larger controls', 'बड़े नियंत्रण'),
                 '',
                 _profile.largerControls,
-                (value) =>
-                    _update(_profile.copyWith(largerControls: value)),
+                (value) => _update(_profile.copyWith(largerControls: value)),
               ),
               _toggle(
                 _tr('High contrast', 'ज़्यादा कंट्रास्ट'),
                 '',
                 _profile.highContrast,
-                (value) =>
-                    _update(_profile.copyWith(highContrast: value)),
+                (value) => _update(_profile.copyWith(highContrast: value)),
               ),
               _toggle(
                 _tr('Reduce motion', 'गतिशील प्रभाव कम करें'),
@@ -773,7 +802,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           single: true,
         ),
         _slider(
-          title: _tr('Daily reading target (optional)', 'रोज़ पढ़ने का लक्ष्य (वैकल्पिक)'),
+          title: _tr(
+            'Daily reading target (optional)',
+            'रोज़ पढ़ने का लक्ष्य (वैकल्पिक)',
+          ),
           value: _profile.dailyTargetMinutes.toDouble(),
           min: 0,
           max: 60,
@@ -782,9 +814,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               ? _tr('No target', 'कोई लक्ष्य नहीं')
               : '${_profile.dailyTargetMinutes} ${_tr('min', 'मिनट')}',
           onChanged: (value) => _update(
-            _profile.copyWith(
-              dailyTargetMinutes: (value / 5).round() * 5,
-            ),
+            _profile.copyWith(dailyTargetMinutes: (value / 5).round() * 5),
           ),
         ),
         _section(
@@ -810,39 +840,35 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   };
 
   Widget _backButton(int step) => OutlinedButton(
-        onPressed: _finishing ? null : () => _goTo(step - 1),
-        child: Text(_tr('Back', 'पीछे')),
-      );
+    onPressed: _finishing ? null : () => _goTo(step - 1),
+    child: Text(_tr('Back', 'पीछे')),
+  );
 
   Widget _continueButton(int step, {bool expand = false}) => FilledButton.icon(
-        key: ValueKey(step == 4 ? 'onboarding-finish' : 'onboarding-next'),
-        style: FilledButton.styleFrom(
-          minimumSize: Size(expand ? double.infinity : 136, 52),
-        ),
-        onPressed: _finishing
-            ? null
-            : step == 4
-                ? _finish
-                : () => _goTo(step + 1),
-        icon: _finishing
-            ? const SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              )
-            : Icon(
-                step == 4
-                    ? Icons.check_rounded
-                    : Icons.arrow_forward_rounded,
-              ),
-        label: Text(
-          _finishing
-              ? _tr('Saving…', 'सहेज रहे हैं…')
-              : step == 4
-                  ? _tr('Finish', 'पूरा करें')
-                  : _tr('Continue', 'आगे बढ़ें'),
-        ),
-      );
+    key: ValueKey(step == 4 ? 'onboarding-finish' : 'onboarding-next'),
+    style: FilledButton.styleFrom(
+      minimumSize: Size(expand ? double.infinity : 136, 52),
+    ),
+    onPressed: _finishing
+        ? null
+        : step == 4
+        ? _finish
+        : () => _goTo(step + 1),
+    icon: _finishing
+        ? const SizedBox(
+            width: 16,
+            height: 16,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          )
+        : Icon(step == 4 ? Icons.check_rounded : Icons.arrow_forward_rounded),
+    label: Text(
+      _finishing
+          ? _tr('Saving…', 'सहेज रहे हैं…')
+          : step == 4
+          ? _tr('Finish', 'पूरा करें')
+          : _tr('Continue', 'आगे बढ़ें'),
+    ),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -851,7 +877,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       backgroundColor: AppTheme.background,
       resizeToAvoidBottomInset: true,
       appBar: AppBar(
-        title: Text(_tr('Personalise your reading', 'अपना पढ़ने का अनुभव बनाएँ')),
+        title: Text(
+          _tr('Personalise your reading', 'अपना पढ़ने का अनुभव बनाएँ'),
+        ),
         backgroundColor: Colors.white,
         foregroundColor: AppTheme.textDark,
         elevation: 0,
@@ -872,17 +900,17 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            _tr(
-                              'Step ${step + 1} of 5',
-                              'चरण ${step + 1} / 5',
-                            ),
+                            _tr('Step ${step + 1} of 5', 'चरण ${step + 1} / 5'),
                             style: const TextStyle(
                               color: AppTheme.primaryBlue,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
                           Text(
-                            _tr('Your answers save as you go', 'आपके जवाब साथ-साथ सहेजे जाते हैं'),
+                            _tr(
+                              'Your answers save as you go',
+                              'आपके जवाब साथ-साथ सहेजे जाते हैं',
+                            ),
                             style: const TextStyle(
                               color: AppTheme.textMuted,
                               fontSize: 12,
@@ -900,13 +928,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       ),
                       const SizedBox(height: 12),
                       Text(
-                        _tr(_stepTitles[step], const [
-                          'आपके बारे में',
-                          'पढ़ने की ज़रूरतें',
-                          'पढ़ने का रूप',
-                          'आवाज़ और सुलभता',
-                          'पढ़ने के लक्ष्य',
-                        ][step]),
+                        _tr(
+                          _stepTitles[step],
+                          const [
+                            'आपके बारे में',
+                            'पढ़ने की ज़रूरतें',
+                            'पढ़ने का रूप',
+                            'आवाज़ और सुलभता',
+                            'पढ़ने के लक्ष्य',
+                          ][step],
+                        ),
                         style: const TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.w800,
@@ -926,10 +957,25 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         if (_saveError != null)
                           Padding(
                             padding: const EdgeInsets.only(bottom: 12),
-                            child: Text(
-                              _saveError!,
-                              style: const TextStyle(color: AppTheme.error),
-                              textAlign: TextAlign.center,
+                            child: Column(
+                              children: [
+                                Text(
+                                  _saveError!,
+                                  style: const TextStyle(color: AppTheme.error),
+                                  textAlign: TextAlign.center,
+                                ),
+                                if (kDebugMode && _saveDiagnostics != null)
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 6),
+                                    child: SelectableText(
+                                      _saveDiagnostics!,
+                                      textAlign: TextAlign.center,
+                                      style: Theme.of(
+                                        context,
+                                      ).textTheme.bodySmall,
+                                    ),
+                                  ),
+                              ],
                             ),
                           ),
                       ],

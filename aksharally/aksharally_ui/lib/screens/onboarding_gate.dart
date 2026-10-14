@@ -1,5 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_core/firebase_core.dart' show FirebaseException;
+import 'package:flutter/foundation.dart' show debugPrint, kDebugMode;
 import 'package:flutter/material.dart';
 
 import '../services/auth_flow.dart';
@@ -54,7 +54,8 @@ class _OnboardingGateState extends State<OnboardingGate> {
     final uid = widget.uid;
     if (uid == null || uid.isEmpty) return const _GateResult.login();
     final authenticatedUid =
-        widget.authFlow?.currentUserId ?? FirebaseAuth.instance.currentUser?.uid;
+        widget.authFlow?.currentUserId ??
+        FirebaseAuth.instance.currentUser?.uid;
     if (authenticatedUid != uid) return const _GateResult.login();
 
     // The authenticated UID is checked above. Firestore is authoritative when
@@ -63,6 +64,7 @@ class _OnboardingGateState extends State<OnboardingGate> {
     try {
       account = await _accountStore.load(uid);
     } on FirebaseException catch (error, stackTrace) {
+      _logProfileFailure('load', error, stackTrace);
       final cachedProfile = await _loadCachedProfile(uid);
       if (cachedProfile == null) {
         Error.throwWithStackTrace(error, stackTrace);
@@ -81,19 +83,10 @@ class _OnboardingGateState extends State<OnboardingGate> {
     final remoteProfile = _profileFromAccount(account);
 
     if (accountStatus == true) {
-      var profile = remoteProfile;
-      if (profile?.completed != true) {
-        final cachedProfile = await _loadCachedProfile(uid);
-        if (cachedProfile?.completed == true) profile = cachedProfile;
-      }
-      if (profile == null || !profile.completed) {
-        throw const FormatException(
-          'The saved account onboarding profile is incomplete.',
-        );
-      }
-      if (!identical(profile, remoteProfile)) {
-        await _saveRemoteProfileIfAvailable(uid, profile);
-      }
+      // The account-level completion flag is authoritative. Older account
+      // documents may not have every nested onboarding field (including the
+      // nested `completed` flag), so parse known values and default the rest.
+      final profile = _completedProfileFromAccount(account, remoteProfile);
       await _storage.save(uid, profile);
       await _storage.applyReadingPreferences(profile);
       return _GateResult.home(profile);
@@ -146,16 +139,97 @@ class _OnboardingGateState extends State<OnboardingGate> {
   ) async {
     try {
       await _accountStore.saveOnboarding(uid, profile);
-    } on FirebaseException {
+    } on FirebaseException catch (error, stackTrace) {
+      _logProfileFailure('save', error, stackTrace);
       // The authenticated user's local profile remains available. The next
       // successful profile load or onboarding save can sync it to Firestore.
     }
   }
 
+  OnboardingProfile _completedProfileFromAccount(
+    Map<String, dynamic> account,
+    OnboardingProfile? remoteProfile,
+  ) {
+    final data = _profileDataFromAccount(account);
+    final profile = remoteProfile ?? OnboardingProfile.fromJson(data);
+    final accountName = account['fullName'];
+    return profile.copyWith(
+      fullName: profile.fullName.trim().isNotEmpty
+          ? profile.fullName
+          : accountName is String
+          ? accountName
+          : '',
+      currentStep: 4,
+      completed: true,
+    );
+  }
+
   OnboardingProfile? _profileFromAccount(Map<String, dynamic> account) {
     final data = account['onboarding'];
     if (data is! Map) return null;
-    return OnboardingProfile.fromJson(Map<String, dynamic>.from(data));
+    return OnboardingProfile.fromJson(_profileDataFromAccount(account));
+  }
+
+  Map<String, dynamic> _profileDataFromAccount(Map<String, dynamic> account) {
+    final raw = account['onboarding'];
+    final data = raw is Map
+        ? Map<String, dynamic>.from(raw)
+        : <String, dynamic>{};
+    final accountName = account['fullName'];
+    if ((data['fullName'] is! String ||
+            (data['fullName'] as String).trim().isEmpty) &&
+        accountName is String) {
+      data['fullName'] = accountName;
+    }
+
+    const supportedLanguages = {'en', 'hi', 'mr'};
+    final accountLanguage = account['preferredLanguage'];
+    if (accountLanguage is String &&
+        supportedLanguages.contains(accountLanguage)) {
+      final savedLanguages = data['preferredLanguages'];
+      final hasSupportedLanguage =
+          savedLanguages is List &&
+          savedLanguages.any(
+            (language) =>
+                language is String && supportedLanguages.contains(language),
+          );
+      if (!hasSupportedLanguage) {
+        data['preferredLanguages'] = [accountLanguage];
+      }
+      if (!supportedLanguages.contains(data['defaultReadingLanguage'])) {
+        data['defaultReadingLanguage'] = accountLanguage;
+      }
+    }
+
+    final accountAgeGroup = account['ageGroup'];
+    if ((data['ageGroup'] is! String || (data['ageGroup'] as String).isEmpty) &&
+        accountAgeGroup is String) {
+      data['ageGroup'] = accountAgeGroup;
+    }
+    return data;
+  }
+
+  String _profileFailureDetails(Object error) {
+    if (error is FirebaseException) {
+      final message = error.message;
+      return '${error.plugin}/${error.code}'
+          '${message == null || message.isEmpty ? '' : ': $message'}';
+    }
+    return '${error.runtimeType}: $error';
+  }
+
+  void _logProfileFailure(
+    String operation,
+    Object error,
+    StackTrace stackTrace,
+  ) {
+    if (!kDebugMode) return;
+    debugPrint(
+      'Reading profile $operation failed: ${_profileFailureDetails(error)}',
+    );
+    if (error is! FirebaseException) {
+      debugPrintStack(stackTrace: stackTrace);
+    }
   }
 
   @override
@@ -176,11 +250,15 @@ class _OnboardingGateState extends State<OnboardingGate> {
                       'Please try again.',
                       textAlign: TextAlign.center,
                     ),
+                    if (kDebugMode && snapshot.error != null) ...[
+                      const SizedBox(height: 8),
+                      SelectableText(
+                        _profileFailureDetails(snapshot.error!),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
                     const SizedBox(height: 12),
-                    FilledButton(
-                      onPressed: _retry,
-                      child: const Text('Retry'),
-                    ),
+                    FilledButton(onPressed: _retry, child: const Text('Retry')),
                   ],
                 ),
               ),
