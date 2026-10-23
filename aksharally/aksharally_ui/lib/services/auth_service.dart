@@ -40,22 +40,7 @@ class AuthService {
   static const _appleServiceId = String.fromEnvironment('APPLE_SERVICE_ID');
   static const _appleRedirectUri = String.fromEnvironment('APPLE_REDIRECT_URI');
 
-  // REGISTER
-  Future<User?> register(String email, String password) async {
-    late final UserCredential result;
-    try {
-      result = await _auth.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
-      _logAuthSuccess('createUserWithEmailAndPassword', result.user);
-    } catch (error, stackTrace) {
-      _logAuthFailure('createUserWithEmailAndPassword', error, stackTrace);
-      rethrow;
-    }
-    final user = result.user;
-    if (user == null) return null;
-
+  Future<void> _saveInitialOnboardingProfile(User user) async {
     final initialProfile = OnboardingProfile.initial(
       fullName: user.displayName ?? '',
     );
@@ -71,11 +56,28 @@ class AuthService {
       // recover if Firestore is temporarily unavailable and retry its save.
       debugPrint('Could not sync the initial reading profile: $error');
     }
-    return user;
+  }
+
+  // REGISTER
+  Future<UserCredential?> register(String email, String password) async {
+    late final UserCredential result;
+    try {
+      result = await _auth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      _logAuthSuccess('createUserWithEmailAndPassword', result.user);
+    } catch (error, stackTrace) {
+      _logAuthFailure('createUserWithEmailAndPassword', error, stackTrace);
+      rethrow;
+    }
+    final user = result.user;
+    if (user != null) await _saveInitialOnboardingProfile(user);
+    return result;
   }
 
   // GOOGLE SIGN-IN
-  Future<User?> signInWithGoogle() async {
+  Future<UserCredential?> signInWithGoogle() async {
     final googleUser = await GoogleSignIn().signIn();
     if (googleUser == null) return null;
 
@@ -85,11 +87,15 @@ class AuthService {
       idToken: googleAuth.idToken,
     );
     final result = await _auth.signInWithCredential(credential);
-    return result.user;
+    final user = result.user;
+    if (user != null && result.additionalUserInfo?.isNewUser == true) {
+      await _saveInitialOnboardingProfile(user);
+    }
+    return result;
   }
 
   // APPLE SIGN-IN
-  Future<User?> signInWithApple() async {
+  Future<UserCredential?> signInWithApple() async {
     try {
       final needsWebAuthentication =
           kIsWeb ||
@@ -128,7 +134,10 @@ class AuthService {
               result.user!.displayName!.trim().isEmpty)) {
         await result.user!.updateDisplayName(appleName);
       }
-      return result.user;
+      if (result.user != null && result.additionalUserInfo?.isNewUser == true) {
+        await _saveInitialOnboardingProfile(result.user!);
+      }
+      return result;
     } on SignInWithAppleAuthorizationException catch (error) {
       if (error.code == AuthorizationErrorCode.canceled) return null;
       rethrow;
@@ -216,7 +225,7 @@ class AuthService {
   }
 
   // LOGIN
-  Future<User?> login(String email, String password) async {
+  Future<UserCredential?> login(String email, String password) async {
     late final UserCredential result;
     try {
       result = await _auth.signInWithEmailAndPassword(
@@ -228,7 +237,7 @@ class AuthService {
       _logAuthFailure('signInWithEmailAndPassword', error, stackTrace);
       rethrow;
     }
-    return result.user;
+    return result;
   }
 
   // GET TOKEN

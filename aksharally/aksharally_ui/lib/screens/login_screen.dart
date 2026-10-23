@@ -207,18 +207,22 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Future<void> _authenticate(Future<String?> Function() signIn) async {
+  Future<void> _authenticate(
+    Future<AuthFlowResult?> Function() signIn,
+  ) async {
     if (_authenticating) return;
     setState(() {
       _authenticating = true;
       _voiceNotice = null;
     });
     try {
-      final uid = await signIn();
-      if (uid == null) return;
+      final authResult = await signIn();
+      if (authResult == null) return;
       await _stopAndRestoreTts();
       if (!mounted) return;
-      Navigator.of(context).pushReplacementNamed('/home', arguments: uid);
+      Navigator.of(
+        context,
+      ).pushReplacementNamed('/home', arguments: authResult);
     } catch (error, stackTrace) {
       if (kDebugMode) {
         if (error is FirebaseAuthException) {

@@ -15,6 +15,7 @@ class OnboardingGate extends StatefulWidget {
   const OnboardingGate({
     super.key,
     required this.uid,
+    this.isNewUser = false,
     this.storage,
     this.accountStore,
     this.authFlow,
@@ -22,6 +23,7 @@ class OnboardingGate extends StatefulWidget {
   });
 
   final String? uid;
+  final bool isNewUser;
   final OnboardingStorage? storage;
   final OnboardingAccountStore? accountStore;
   final AuthFlow? authFlow;
@@ -53,9 +55,9 @@ class _OnboardingGateState extends State<OnboardingGate> {
   Future<_GateResult> _load() async {
     final uid = widget.uid;
     if (uid == null || uid.isEmpty) return const _GateResult.login();
-    final authenticatedUid =
-        widget.authFlow?.currentUserId ??
-        FirebaseAuth.instance.currentUser?.uid;
+    final authenticatedUid = widget.authFlow == null
+        ? FirebaseAuth.instance.currentUser?.uid
+        : widget.authFlow!.currentUserId;
     if (kDebugMode) {
       debugPrint(
         'PROFILE_GATE requestedUidPresent=${uid.isNotEmpty} '
@@ -74,6 +76,20 @@ class _OnboardingGateState extends State<OnboardingGate> {
       _logProfileFailure('load', error, stackTrace);
       final cachedProfile = await _loadCachedProfile(uid);
       if (cachedProfile == null) {
+        if (widget.isNewUser) {
+          final initial = OnboardingProfile.initial();
+          try {
+            await _storage.save(uid, initial);
+          } catch (storageError, storageStackTrace) {
+            _logProfileFailure(
+              'cache initial profile',
+              storageError,
+              storageStackTrace,
+            );
+          }
+          await _saveRemoteProfileIfAvailable(uid, initial);
+          return _GateResult.onboarding(initial);
+        }
         Error.throwWithStackTrace(error, stackTrace);
       }
       await _storage.applyReadingPreferences(cachedProfile);
@@ -110,6 +126,16 @@ class _OnboardingGateState extends State<OnboardingGate> {
       await _saveRemoteProfileIfAvailable(uid, completed);
       await _storage.applyReadingPreferences(completed);
       return _GateResult.home(completed);
+    }
+
+    // A missing profile on a returning account is not evidence that the user
+    // should repeat registration preferences. Continue saved drafts above, but
+    // send legacy accounts with no onboarding state directly to Home.
+    if (accountStatus == null &&
+        remoteProfile == null &&
+        profile == null &&
+        !widget.isNewUser) {
+      return const _GateResult.home();
     }
 
     final draft =
@@ -301,7 +327,7 @@ class _GateResult {
   const _GateResult._({this.profile, this.showLogin = false});
 
   const _GateResult.login() : this._(showLogin: true);
-  const _GateResult.home(OnboardingProfile profile) : this._(profile: profile);
+  const _GateResult.home([OnboardingProfile? profile]) : this._(profile: profile);
   const _GateResult.onboarding(OnboardingProfile profile)
     : this._(profile: profile);
 

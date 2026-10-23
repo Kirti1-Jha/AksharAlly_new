@@ -30,6 +30,7 @@ void main() {
       MaterialApp(
         home: OnboardingGate(
           uid: 'new-reader',
+          isNewUser: true,
           accountStore: _MemoryAccountStore(),
           authFlow: _FakeAuthFlow(authenticatedUid: 'new-reader'),
         ),
@@ -50,6 +51,7 @@ void main() {
       MaterialApp(
         home: OnboardingGate(
           uid: 'new-reader',
+          isNewUser: true,
           accountStore: store,
           authFlow: _FakeAuthFlow(authenticatedUid: 'new-reader'),
         ),
@@ -96,6 +98,32 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(HomeScreen), findsOneWidget);
+  });
+
+  testWidgets('returning account with no onboarding record goes to home', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1080, 960);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    const uid = 'legacy-reader';
+    final store = _MemoryAccountStore();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: OnboardingGate(
+          uid: uid,
+          accountStore: store,
+          authFlow: _FakeAuthFlow(authenticatedUid: uid),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(HomeScreen), findsOneWidget);
+    expect(find.byType(OnboardingScreen), findsNothing);
+    expect(store.documents, isEmpty);
   });
 
   testWidgets(
@@ -168,6 +196,33 @@ void main() {
     expect(find.byType(HomeScreen), findsOneWidget);
   });
 
+  testWidgets(
+    'new account can begin onboarding when Firestore is temporarily unavailable',
+    (tester) async {
+      const uid = 'offline-new-reader';
+      final store = _FailingAccountStore()
+        ..error = FirebaseException(
+          plugin: 'cloud_firestore',
+          code: 'unavailable',
+        );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: OnboardingGate(
+            uid: uid,
+            isNewUser: true,
+            accountStore: store,
+            authFlow: _FakeAuthFlow(authenticatedUid: uid),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('onboarding-step-0')), findsOneWidget);
+      expect((await OnboardingStorage().load(uid))?.completed, isFalse);
+    },
+  );
+
   testWidgets('Retry reloads the profile without stacking another gate', (
     tester,
   ) async {
@@ -226,6 +281,44 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(auth.registerCalls, 1);
+    expect(find.byKey(const ValueKey('onboarding-step-0')), findsOneWidget);
+    expect(store.documents[uid]?['onboardingCompleted'], isFalse);
+  });
+
+  testWidgets('existing Google account without preferences opens home', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1080, 960);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    const uid = 'google-returning-reader';
+    final store = _MemoryAccountStore();
+    final auth = _FakeAuthFlow(googleUid: uid);
+    await tester.pumpWidget(_loginApp(auth, store));
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.byKey(const ValueKey('sign-in-google')));
+    await tester.tap(find.byKey(const ValueKey('sign-in-google')));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(HomeScreen), findsOneWidget);
+    expect(find.byType(OnboardingScreen), findsNothing);
+    expect(store.documents, isEmpty);
+  });
+
+  testWidgets('first-time Google account enters preferences', (tester) async {
+    const uid = 'google-new-reader';
+    final store = _MemoryAccountStore();
+    final auth = _FakeAuthFlow(googleUid: uid, googleIsNewUser: true);
+    await tester.pumpWidget(_loginApp(auth, store));
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.byKey(const ValueKey('sign-in-google')));
+    await tester.tap(find.byKey(const ValueKey('sign-in-google')));
+    await tester.pumpAndSettle();
+
     expect(find.byKey(const ValueKey('onboarding-step-0')), findsOneWidget);
     expect(store.documents[uid]?['onboardingCompleted'], isFalse);
   });
@@ -384,10 +477,16 @@ Widget _loginApp(_FakeAuthFlow auth, _MemoryAccountStore store) {
     home: LoginScreen(authFlow: auth),
     onGenerateRoute: (settings) {
       if (settings.name != '/home') return null;
-      final uid = settings.arguments as String?;
+      final arguments = settings.arguments;
+      final authResult = arguments is AuthFlowResult ? arguments : null;
+      final uid = authResult?.uid ?? (arguments is String ? arguments : null);
       return MaterialPageRoute<void>(
-        builder: (_) =>
-            OnboardingGate(uid: uid, accountStore: store, authFlow: auth),
+        builder: (_) => OnboardingGate(
+          uid: uid,
+          isNewUser: authResult?.isNewUser ?? false,
+          accountStore: store,
+          authFlow: auth,
+        ),
       );
     },
   );
@@ -435,10 +534,14 @@ class _FakeAuthFlow implements AuthFlow {
     String? authenticatedUid,
     this.registeredUid,
     this.loggedInUid,
+    this.googleUid,
+    this.googleIsNewUser = false,
   }) : _currentUserId = authenticatedUid;
 
   final String? registeredUid;
   final String? loggedInUid;
+  final String? googleUid;
+  final bool googleIsNewUser;
   String? _currentUserId;
   int registerCalls = 0;
   int loginCalls = 0;
@@ -447,22 +550,31 @@ class _FakeAuthFlow implements AuthFlow {
   String? get currentUserId => _currentUserId;
 
   @override
-  Future<String?> register(String email, String password) async {
+  Future<AuthFlowResult?> register(String email, String password) async {
     registerCalls += 1;
     _currentUserId = registeredUid;
-    return registeredUid;
+    return registeredUid == null
+        ? null
+        : AuthFlowResult(uid: registeredUid!, isNewUser: true);
   }
 
   @override
-  Future<String?> login(String email, String password) async {
+  Future<AuthFlowResult?> login(String email, String password) async {
     loginCalls += 1;
     _currentUserId = loggedInUid;
-    return loggedInUid;
+    return loggedInUid == null
+        ? null
+        : AuthFlowResult(uid: loggedInUid!, isNewUser: false);
   }
 
   @override
-  Future<String?> signInWithGoogle() async => null;
+  Future<AuthFlowResult?> signInWithGoogle() async {
+    _currentUserId = googleUid;
+    return googleUid == null
+        ? null
+        : AuthFlowResult(uid: googleUid!, isNewUser: googleIsNewUser);
+  }
 
   @override
-  Future<String?> signInWithApple() async => null;
+  Future<AuthFlowResult?> signInWithApple() async => null;
 }

@@ -8,6 +8,7 @@ import 'firebase_options.dart';
 import 'screens/splash_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/onboarding_gate.dart';
+import 'services/auth_flow.dart';
 import 'theme/accessibility_settings.dart';
 import 'theme/ui_accessibility.dart';
 import 'services/library_storage.dart';
@@ -118,10 +119,15 @@ class AksharAllyApp extends StatelessWidget {
           '/': (context) => const SplashScreen(),
           '/login': (context) => const LoginScreen(),
           '/home': (context) {
-            final requestedUid =
-                ModalRoute.of(context)?.settings.arguments as String?;
+            final arguments = ModalRoute.of(context)?.settings.arguments;
+            final authResult = arguments is AuthFlowResult
+                ? arguments
+                : null;
+            final requestedUid = authResult?.uid ??
+                (arguments is String ? arguments : null);
             return OnboardingGate(
               uid: requestedUid ?? FirebaseAuth.instance.currentUser?.uid,
+              isNewUser: authResult?.isNewUser ?? false,
             );
           },
         },
