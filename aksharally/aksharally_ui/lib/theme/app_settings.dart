@@ -16,6 +16,24 @@ class AppSettings {
   static const _voiceAssistanceKey = 'aksharally.voice-assistance.v1';
   static const _voiceLanguageKey = 'aksharally.voice-language.v1';
   static const _voiceLocaleKey = 'aksharally.voice-locale.v1';
+  static const _interfaceLanguageKey = 'aksharally.interface-language.v1';
+
+  static Future<void> loadInterfaceLanguagePreference() async {
+    final preferences = await SharedPreferences.getInstance();
+    final savedLanguage = preferences.getString(_interfaceLanguageKey);
+    if (savedLanguage == 'en' || savedLanguage == 'hi') {
+      interfaceLanguage = savedLanguage!;
+    }
+  }
+
+  static Future<void> saveInterfaceLanguagePreference(String language) async {
+    if (language != 'en' && language != 'hi') {
+      throw ArgumentError.value(language, 'language', 'Expected en or hi.');
+    }
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setString(_interfaceLanguageKey, language);
+    interfaceLanguage = language;
+  }
 
   static Future<void> loadVoiceAssistancePreference() async {
     final preferences = await SharedPreferences.getInstance();

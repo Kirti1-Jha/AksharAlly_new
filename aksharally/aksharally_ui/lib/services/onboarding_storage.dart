@@ -462,7 +462,6 @@ class OnboardingStorage {
     UIAccessibility.notifier.value++;
     await UIAccessibility.save();
     AppSettings.language = profile.defaultReadingLanguage;
-    AppSettings.interfaceLanguage = profile.interfaceLanguage;
     AppSettings.voiceAssistanceEnabled = profile.voiceAssistance;
     await AppSettings.saveVoiceAssistancePreference(profile.voiceAssistance);
     await AppSettings.saveVoiceLanguagePreference(

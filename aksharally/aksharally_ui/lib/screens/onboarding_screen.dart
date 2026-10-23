@@ -52,7 +52,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   String? _saveDiagnostics;
   bool _finishing = false;
 
-  bool get _hindi => _profile.interfaceLanguage == 'hi';
+  bool get _hindi => AppSettings.interfaceLanguage == 'hi';
   String _tr(String english, String hindi) => _hindi ? hindi : english;
 
   @override
@@ -60,7 +60,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     super.initState();
     _profile = widget.initialProfile;
     _nameController = TextEditingController(text: _profile.fullName);
-    AppSettings.interfaceLanguage = _profile.interfaceLanguage;
   }
 
   @override
@@ -95,6 +94,31 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             });
           }
         });
+  }
+
+  Future<void> _selectInterfaceLanguage(String language) async {
+    try {
+      await AppSettings.saveInterfaceLanguagePreference(language);
+    } catch (error, stackTrace) {
+      _logSaveFailure('interface language save', error, stackTrace);
+      if (mounted) {
+        setState(() {
+          _saveError = _tr(
+            'The interface language could not be saved. Please try again.',
+            'ऐप की भाषा सहेजी नहीं जा सकी। कृपया फिर कोशिश करें।',
+          );
+        });
+      }
+      return;
+    }
+    if (!mounted) return;
+    final updated = _profile.copyWith(interfaceLanguage: language);
+    setState(() {
+      _profile = updated;
+      _saveError = null;
+      _saveDiagnostics = null;
+    });
+    _persist(updated);
   }
 
   Future<void> _goTo(int step) async {
@@ -425,17 +449,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               for (final item in const [('en', 'English'), ('hi', 'हिंदी')])
                 ChoiceChip(
                   label: Text(item.$2),
-                  selected: _profile.interfaceLanguage == item.$1,
-                  onSelected: (_) {
-                    final updated = _profile.copyWith(
-                      interfaceLanguage: item.$1,
-                    );
-                    setState(() {
-                      _profile = updated;
-                      AppSettings.interfaceLanguage = item.$1;
-                    });
-                    _persist(updated);
-                  },
+                  selected: AppSettings.interfaceLanguage == item.$1,
+                  onSelected: (_) =>
+                      _selectInterfaceLanguage(item.$1),
                 ),
             ],
           ),

@@ -22,6 +22,7 @@ void main() async {
   // Hydrate reading history from SharedPreferences before the first frame.
   await LibraryStorage.load();
   await AppSettings.loadVoiceAssistancePreference();
+  await AppSettings.loadInterfaceLanguagePreference();
   runApp(const AppInitializer());
 }
 
