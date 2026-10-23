@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../services/tts_service.dart';
-import '../theme/app_settings.dart';
 import '../theme/app_theme.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -21,25 +20,23 @@ class _SplashScreenState extends State<SplashScreen> {
   late final TTSService _ttsService = widget.ttsService ?? TTSService();
   bool _welcomeStarted = false;
   bool _isDisposed = false;
+  int _playbackRequest = 0;
 
   @override
   void initState() {
     super.initState();
-    if (AppSettings.voiceAssistanceEnabled) {
-      _playWelcome();
-    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _playWelcome();
+    });
   }
 
   Future<void> _playWelcome() async {
     if (_welcomeStarted || _isDisposed) return;
     _welcomeStarted = true;
+    final request = ++_playbackRequest;
 
     try {
-      await _ttsService.init(defaultLocale: TTSService.preferredEnglishLocale);
-
-      if (_isDisposed) return;
-
-      await _ttsService.speak(SplashScreen.welcomeMessage);
+      await _speakWelcome(request);
     } catch (error) {
       debugPrint('Splash welcome speech unavailable: $error');
     }
@@ -47,22 +44,30 @@ class _SplashScreenState extends State<SplashScreen> {
 
   Future<void> _replayWelcome() async {
     if (_isDisposed) return;
+    final request = ++_playbackRequest;
 
     try {
       await _ttsService.stop();
-      if (_isDisposed) return;
-
-      await _ttsService.init(defaultLocale: TTSService.preferredEnglishLocale);
-
-      if (_isDisposed) return;
-
-      await _ttsService.speak(SplashScreen.welcomeMessage);
+      await _speakWelcome(request);
     } catch (error) {
       debugPrint('Could not replay splash welcome: $error');
     }
   }
 
+  Future<void> _speakWelcome(int request) async {
+    await _ttsService.init(defaultLocale: TTSService.preferredEnglishLocale);
+    if (_isDisposed || request != _playbackRequest) return;
+
+    if (_ttsService.currentLocale == null) {
+      await _ttsService.setLanguage(TTSService.preferredEnglishLocale);
+      if (_isDisposed || request != _playbackRequest) return;
+    }
+
+    await _ttsService.speak(SplashScreen.welcomeMessage);
+  }
+
   void _openLogin() {
+    _playbackRequest++;
     _ttsService.stop();
     Navigator.pushNamed(context, '/login');
   }
@@ -70,6 +75,7 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void dispose() {
     _isDisposed = true;
+    _playbackRequest++;
     _ttsService.stop();
     super.dispose();
   }
@@ -154,10 +160,14 @@ class _SplashScreenState extends State<SplashScreen> {
                         ),
                       ),
                       const SizedBox(height: AppTheme.spaceSM),
-                      TextButton.icon(
-                        onPressed: _replayWelcome,
-                        icon: const Icon(Icons.volume_up_rounded),
-                        label: const Text('Hear welcome message again'),
+                      Semantics(
+                        button: true,
+                        label: 'Repeat welcome message',
+                        child: IconButton(
+                          tooltip: 'Repeat welcome message',
+                          onPressed: _replayWelcome,
+                          icon: const Icon(Icons.volume_up_rounded),
+                        ),
                       ),
                     ],
                   ),
