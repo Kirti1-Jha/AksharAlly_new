@@ -31,7 +31,10 @@ class AppSettings {
       throw ArgumentError.value(language, 'language', 'Expected en or hi.');
     }
     final preferences = await SharedPreferences.getInstance();
-    await preferences.setString(_interfaceLanguageKey, language);
+    final saved = await preferences.setString(_interfaceLanguageKey, language);
+    if (!saved) {
+      throw StateError('Could not persist interface language.');
+    }
     interfaceLanguage = language;
   }
 
