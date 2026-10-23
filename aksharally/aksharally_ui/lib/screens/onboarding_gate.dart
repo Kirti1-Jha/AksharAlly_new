@@ -119,10 +119,14 @@ class _OnboardingGateState extends State<OnboardingGate> {
 
     // Migrate older same-device completions to the account record once. All
     // later decisions are made from the remote completion field.
+    final cachedCompletionIsCurrent =
+        profile?.completed == true &&
+        (remoteProfile == null || profile!.updatedAt >= remoteProfile.updatedAt);
     if (accountStatus == null &&
-        (remoteProfile?.completed == true ||
-            (remoteProfile == null && profile?.completed == true))) {
-      final completed = remoteProfile ?? profile!;
+        (remoteProfile?.completed == true || cachedCompletionIsCurrent)) {
+      final completed = remoteProfile?.completed == true
+          ? remoteProfile!
+          : profile!;
       await _saveRemoteProfileIfAvailable(uid, completed);
       await _storage.applyReadingPreferences(completed);
       return _GateResult.home(completed);
@@ -138,20 +142,43 @@ class _OnboardingGateState extends State<OnboardingGate> {
       return const _GateResult.home();
     }
 
-    final draft =
-        remoteProfile?.copyWith(completed: false) ??
-        (accountStatus == false
-            ? profile?.copyWith(completed: false)
-            : profile);
+    final remoteDraft = remoteProfile?.copyWith(completed: false);
+    final cachedDraft = profile?.copyWith(completed: false);
+    final draft = _newerIncompleteDraft(remoteDraft, cachedDraft);
     final savedName = account['fullName'] is String
         ? account['fullName'] as String
         : '';
     final initial = draft ?? OnboardingProfile.initial(fullName: savedName);
-    if (remoteProfile == null) {
+    try {
       await _storage.save(uid, initial);
+    } catch (error, stackTrace) {
+      _logProfileFailure('cache incomplete profile', error, stackTrace);
+    }
+    if (remoteProfile == null || identical(draft, cachedDraft)) {
       await _saveRemoteProfileIfAvailable(uid, initial);
     }
     return _GateResult.onboarding(initial);
+  }
+
+  OnboardingProfile? _newerIncompleteDraft(
+    OnboardingProfile? remoteDraft,
+    OnboardingProfile? cachedDraft,
+  ) {
+    if (remoteDraft == null) return cachedDraft;
+    if (cachedDraft == null) return remoteDraft;
+    if (remoteDraft.updatedAt != cachedDraft.updatedAt) {
+      return remoteDraft.updatedAt > cachedDraft.updatedAt
+          ? remoteDraft
+          : cachedDraft;
+    }
+    if (remoteDraft.currentStep != cachedDraft.currentStep) {
+      return remoteDraft.currentStep > cachedDraft.currentStep
+          ? remoteDraft
+          : cachedDraft;
+    }
+    // For legacy drafts without ordering metadata, keep same-device edits on
+    // an exact tie; new edits receive a strictly increasing updatedAt value.
+    return cachedDraft;
   }
 
   Future<OnboardingProfile?> _loadCachedProfile(String uid) async {

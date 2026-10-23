@@ -69,12 +69,18 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   void _update(OnboardingProfile next) {
+    final updated = next.copyWith(updatedAt: _nextUpdatedAt());
     setState(() {
-      _profile = next;
+      _profile = updated;
       _saveError = null;
       _saveDiagnostics = null;
     });
-    _persist(next);
+    _persist(updated);
+  }
+
+  int _nextUpdatedAt() {
+    final now = DateTime.now().toUtc().microsecondsSinceEpoch;
+    return now > _profile.updatedAt ? now : _profile.updatedAt + 1;
   }
 
   void _persist(OnboardingProfile snapshot) {
@@ -112,7 +118,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       return;
     }
     if (!mounted) return;
-    final updated = _profile.copyWith(interfaceLanguage: language);
+    final updated = _profile.copyWith(
+      interfaceLanguage: language,
+      updatedAt: _nextUpdatedAt(),
+    );
     setState(() {
       _profile = updated;
       _saveError = null;
@@ -175,7 +184,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       if (_saveError != null) {
         throw StateError('The local onboarding draft could not be saved.');
       }
-      final complete = _profile.copyWith(completed: true, currentStep: 4);
+      final complete = _profile.copyWith(
+        completed: true,
+        currentStep: 4,
+        updatedAt: _nextUpdatedAt(),
+      );
       await _accountStore.saveOnboarding(widget.uid, complete);
       await widget.storage.save(widget.uid, complete);
       await widget.storage.applyReadingPreferences(complete);

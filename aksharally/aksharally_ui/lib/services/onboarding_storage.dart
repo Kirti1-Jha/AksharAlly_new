@@ -42,6 +42,7 @@ class OnboardingProfile {
     required this.dailyTargetMinutes,
     required this.currentStep,
     required this.completed,
+    required this.updatedAt,
   });
 
   factory OnboardingProfile.initial({
@@ -82,6 +83,7 @@ class OnboardingProfile {
     dailyTargetMinutes: 0,
     currentStep: currentStep,
     completed: false,
+    updatedAt: DateTime.now().toUtc().microsecondsSinceEpoch,
   );
 
   factory OnboardingProfile.fromJson(Map<String, dynamic> json) {
@@ -233,6 +235,9 @@ class OnboardingProfile {
           : defaults.dailyTargetMinutes,
       currentStep: savedStep is int ? savedStep.clamp(0, 4).toInt() : 0,
       completed: boolValue('completed', false),
+      updatedAt: json['updatedAt'] is int
+          ? json['updatedAt'] as int
+          : 0,
     );
   }
 
@@ -270,6 +275,7 @@ class OnboardingProfile {
   final int dailyTargetMinutes;
   final int currentStep;
   final bool completed;
+  final int updatedAt;
 
   OnboardingProfile copyWith({
     String? fullName,
@@ -306,6 +312,7 @@ class OnboardingProfile {
     int? dailyTargetMinutes,
     int? currentStep,
     bool? completed,
+    int? updatedAt,
   }) => OnboardingProfile(
     fullName: fullName ?? this.fullName,
     ageGroup: ageGroup ?? this.ageGroup,
@@ -342,6 +349,7 @@ class OnboardingProfile {
     dailyTargetMinutes: dailyTargetMinutes ?? this.dailyTargetMinutes,
     currentStep: currentStep ?? this.currentStep,
     completed: completed ?? this.completed,
+    updatedAt: updatedAt ?? this.updatedAt,
   );
 
   Map<String, Object?> toJson() => {
@@ -379,6 +387,7 @@ class OnboardingProfile {
     'dailyTargetMinutes': dailyTargetMinutes,
     'currentStep': currentStep,
     'completed': completed,
+    'updatedAt': updatedAt,
   };
 }
 

@@ -126,6 +126,116 @@ void main() {
     expect(store.documents, isEmpty);
   });
 
+  testWidgets('newer local onboarding draft wins over an older Firestore draft', (
+    tester,
+  ) async {
+    const uid = 'draft-reader';
+    final localDraft = OnboardingProfile.initial(
+      fullName: 'Local draft',
+      currentStep: 3,
+    ).copyWith(updatedAt: 200, preferredLanguages: ['hi']);
+    final remoteDraft = OnboardingProfile.initial(
+      fullName: 'Older remote draft',
+      currentStep: 1,
+    ).copyWith(updatedAt: 100);
+    final storage = OnboardingStorage();
+    await storage.save(uid, localDraft);
+    final store = _MemoryAccountStore()
+      ..documents[uid] = {
+        'onboardingCompleted': false,
+        'onboarding': remoteDraft.toJson(),
+      };
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: OnboardingGate(
+          uid: uid,
+          storage: storage,
+          accountStore: store,
+          authFlow: _FakeAuthFlow(authenticatedUid: uid),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('onboarding-step-3')), findsOneWidget);
+    expect((await storage.load(uid))?.fullName, 'Local draft');
+    expect(
+      (store.documents[uid]!['onboarding'] as Map<String, dynamic>)['fullName'],
+      'Local draft',
+    );
+  });
+
+  testWidgets('newer Firestore onboarding draft wins over an older local draft', (
+    tester,
+  ) async {
+    const uid = 'remote-draft-reader';
+    final localDraft = OnboardingProfile.initial(
+      fullName: 'Older local draft',
+      currentStep: 1,
+    ).copyWith(updatedAt: 100);
+    final remoteDraft = OnboardingProfile.initial(
+      fullName: 'Remote draft',
+      currentStep: 2,
+    ).copyWith(updatedAt: 200, preferredLanguages: ['mr']);
+    final storage = OnboardingStorage();
+    await storage.save(uid, localDraft);
+    final store = _MemoryAccountStore()
+      ..documents[uid] = {
+        'onboardingCompleted': false,
+        'onboarding': remoteDraft.toJson(),
+      };
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: OnboardingGate(
+          uid: uid,
+          storage: storage,
+          accountStore: store,
+          authFlow: _FakeAuthFlow(authenticatedUid: uid),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('onboarding-step-2')), findsOneWidget);
+    expect((await storage.load(uid))?.fullName, 'Remote draft');
+    expect((await storage.load(uid))?.preferredLanguages, ['mr']);
+  });
+
+  testWidgets('a different UID never receives another account local draft', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1080, 960);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final storage = OnboardingStorage();
+    await storage.save(
+      'other-reader',
+      OnboardingProfile.initial(
+        fullName: 'Other user',
+        currentStep: 2,
+      ),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: OnboardingGate(
+          uid: 'current-reader',
+          storage: storage,
+          accountStore: _MemoryAccountStore(),
+          authFlow: _FakeAuthFlow(authenticatedUid: 'current-reader'),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(HomeScreen), findsOneWidget);
+    expect(find.byType(OnboardingScreen), findsNothing);
+  });
+
   testWidgets(
     'completed account with missing optional profile fields opens home',
     (tester) async {
