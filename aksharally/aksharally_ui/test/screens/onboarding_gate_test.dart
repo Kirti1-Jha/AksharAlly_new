@@ -39,7 +39,70 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const ValueKey('onboarding-step-0')), findsOneWidget);
-    expect(find.text('About you'), findsOneWidget);
+    expect(find.text('Your preferences'), findsOneWidget);
+  });
+
+  testWidgets('two-question pages preserve answers and restore progress', (
+    tester,
+  ) async {
+    const uid = 'paired-question-reader';
+    final storage = OnboardingStorage();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: OnboardingScreen(
+          uid: uid,
+          initialProfile: OnboardingProfile.initial(fullName: 'Mira'),
+          storage: storage,
+          accountStore: _MemoryAccountStore(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Step 1 of 12'), findsOneWidget);
+    expect(find.text('What should we call you?'), findsOneWidget);
+    expect(find.text('Age group (optional)'), findsOneWidget);
+    expect(find.text('Interface language'), findsNothing);
+
+    await tester.ensureVisible(find.text('18–24'));
+    await tester.tap(find.text('18–24'));
+    await tester.tap(find.byKey(const ValueKey('onboarding-next')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Step 2 of 12'), findsOneWidget);
+    expect(find.text('Who are you reading for?'), findsOneWidget);
+    expect(find.text('How comfortable does reading feel?'), findsOneWidget);
+    final saved = await storage.load(uid);
+    expect(saved?.currentStep, 1);
+    expect(saved?.ageGroup, '18_24');
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: OnboardingScreen(
+          uid: uid,
+          initialProfile: saved!,
+          storage: storage,
+          accountStore: _MemoryAccountStore(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Step 2 of 12'), findsOneWidget);
+
+    await tester.tap(find.text('Back'));
+    await tester.pumpAndSettle();
+    expect(find.text('Step 1 of 12'), findsOneWidget);
+    expect(
+      tester
+          .widget<FilterChip>(
+            find.ancestor(
+              of: find.text('18–24'),
+              matching: find.byType(FilterChip),
+            ),
+          )
+          .selected,
+      isTrue,
+    );
   });
 
   testWidgets('new account setup saves a default reading profile', (
@@ -444,7 +507,7 @@ void main() {
     const uid = 'finished-reader';
     final store = _MemoryAccountStore();
     final selected = OnboardingProfile.initial(fullName: 'Mira').copyWith(
-      currentStep: 4,
+      currentStep: 11,
       preferredLanguages: ['hi', 'mr'],
       defaultReadingLanguage: 'mr',
       ageGroup: '25_44',
@@ -516,7 +579,7 @@ void main() {
       );
     final profile = OnboardingProfile.initial(
       fullName: 'Mira',
-    ).copyWith(currentStep: 4);
+    ).copyWith(currentStep: 11);
 
     await tester.pumpWidget(
       MaterialApp(

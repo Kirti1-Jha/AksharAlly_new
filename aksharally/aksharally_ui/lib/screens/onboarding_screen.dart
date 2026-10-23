@@ -7,6 +7,7 @@ import '../services/user_profile_service.dart';
 import '../theme/accessibility_settings.dart';
 import '../theme/app_settings.dart';
 import '../theme/app_theme.dart';
+import '../theme/ui_accessibility.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({
@@ -27,13 +28,7 @@ class OnboardingScreen extends StatefulWidget {
 }
 
 class _OnboardingScreenState extends State<OnboardingScreen> {
-  static const _stepTitles = [
-    'About you',
-    'Reading needs',
-    'Reading appearance',
-    'Voice and access',
-    'Reading goals',
-  ];
+  static const _questionsPerPage = 2;
 
   static const _themeChoices = [
     'cream_black',
@@ -45,6 +40,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   late OnboardingProfile _profile;
   late final TextEditingController _nameController;
+  late final ThemeData _accessibilityTheme = UIAccessibility.buildTheme();
   Future<void> _saveQueue = Future<void>.value();
   late final OnboardingAccountStore _accountStore =
       widget.accountStore ?? const FirestoreOnboardingAccountStore();
@@ -59,6 +55,23 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   void initState() {
     super.initState();
     _profile = widget.initialProfile;
+    if (!_profile.completed && _profile.questionnaireVersion == 0) {
+      final legacyStep = _profile.currentStep.clamp(0, 4).toInt();
+      final migratedPage = switch (legacyStep) {
+        0 => 0,
+        1 => 1,
+        2 => 4,
+        3 => 7,
+        _ => 9,
+      };
+      final now = DateTime.now().toUtc().microsecondsSinceEpoch;
+      _profile = _profile.copyWith(
+        currentStep: migratedPage,
+        questionnaireVersion: 1,
+        updatedAt: now > _profile.updatedAt ? now : _profile.updatedAt + 1,
+      );
+      _persist(_profile);
+    }
     _nameController = TextEditingController(text: _profile.fullName);
   }
 
@@ -102,34 +115,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         });
   }
 
-  Future<void> _selectInterfaceLanguage(String language) async {
-    try {
-      await AppSettings.saveInterfaceLanguagePreference(language);
-    } catch (error, stackTrace) {
-      _logSaveFailure('interface language save', error, stackTrace);
-      if (mounted) {
-        setState(() {
-          _saveError = _tr(
-            'The interface language could not be saved. Please try again.',
-            'ऐप की भाषा सहेजी नहीं जा सकी। कृपया फिर कोशिश करें।',
-          );
-        });
-      }
-      return;
-    }
-    if (!mounted) return;
-    final updated = _profile.copyWith(
-      interfaceLanguage: language,
-      updatedAt: _nextUpdatedAt(),
-    );
-    setState(() {
-      _profile = updated;
-      _saveError = null;
-      _saveDiagnostics = null;
-    });
-    _persist(updated);
-  }
-
   Future<void> _goTo(int step) async {
     if (_saveError != null) {
       ScaffoldMessenger.of(
@@ -155,7 +140,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     await _saveQueue;
   }
 
-  Future<void> _finish() async {
+  Future<void> _finish(int pageCount) async {
     if (_finishing) return;
     if (_profile.fullName.trim().isEmpty ||
         _profile.preferredLanguages.isEmpty ||
@@ -186,7 +171,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       }
       final complete = _profile.copyWith(
         completed: true,
-        currentStep: 4,
+        currentStep: pageCount - 1,
+        questionnaireVersion: 1,
         updatedAt: _nextUpdatedAt(),
       );
       await _accountStore.saveOnboarding(widget.uid, complete);
@@ -322,10 +308,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     return Card(
       margin: const EdgeInsets.only(bottom: 14),
       elevation: 0,
-      color: Colors.white,
+      color: UIAccessibility.backgroundColor,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppTheme.radiusMD),
-        side: BorderSide(color: AppTheme.primaryBlue.withOpacity(0.09)),
+        side: BorderSide(color: UIAccessibility.textColor.withOpacity(0.2)),
       ),
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -334,17 +320,17 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           children: [
             Text(
               title,
-              style: const TextStyle(
-                color: AppTheme.textDark,
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-              ),
+              style: _accessibilityTheme.textTheme.titleMedium
+                  ?.copyWith(color: UIAccessibility.textColor),
             ),
             if (helper != null) ...[
               const SizedBox(height: 5),
               Text(
                 helper,
-                style: const TextStyle(color: AppTheme.textMuted, fontSize: 13),
+                style: _accessibilityTheme.textTheme.bodySmall
+                    ?.copyWith(
+                      color: UIAccessibility.textColor.withOpacity(0.75),
+                    ),
               ),
             ],
             const SizedBox(height: 12),
@@ -429,9 +415,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     );
   }
 
-  Widget _aboutYou() {
-    return Column(
-      children: [
+  List<Widget> _aboutYouQuestions() => [
         _section(
           _tr('What should we call you?', 'हम आपको किस नाम से बुलाएँ?'),
           TextField(
@@ -454,21 +438,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           (selected) => _update(_profile.copyWith(ageGroup: selected.first)),
           single: true,
         ),
-        _section(
-          _tr('Interface language', 'ऐप की भाषा'),
-          Wrap(
-            spacing: 8,
-            children: [
-              for (final item in const [('en', 'English'), ('hi', 'हिंदी')])
-                ChoiceChip(
-                  label: Text(item.$2),
-                  selected: AppSettings.interfaceLanguage == item.$1,
-                  onSelected: (_) =>
-                      _selectInterfaceLanguage(item.$1),
-                ),
-            ],
-          ),
-        ),
         _chips(
           _tr('Who are you reading for?', 'आप किसके लिए पढ़ रहे हैं?'),
           const ['self', 'child', 'teacher', 'supporting'],
@@ -476,13 +445,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           (selected) => _update(_profile.copyWith(readerRole: selected.first)),
           single: true,
         ),
-      ],
-    );
-  }
+      ];
 
-  Widget _readingNeeds() {
-    return Column(
-      children: [
+  List<Widget> _readingNeedsQuestions() => [
         _chips(
           _tr('How comfortable does reading feel?', 'पढ़ना आपको कैसा लगता है?'),
           const ['a_little', 'moderate', 'very', 'depends', 'unsure'],
@@ -546,19 +511,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           ),
           single: true,
         ),
-      ],
-    );
-  }
+      ];
 
-  Widget _appearance() {
+  List<Widget> _appearanceQuestions() {
     final background = AccessibilitySettings.previewBg(_profile.colorTheme);
     final foreground = AccessibilitySettings.previewText(_profile.colorTheme);
     final fontExists = AccessibilitySettings.fonts.contains(
       _profile.fontFamily,
     );
     final font = fontExists ? _profile.fontFamily : 'Lexend';
-    return Column(
-      children: [
+    return [
         _section(
           _tr('Reading font', 'पढ़ने का फ़ॉन्ट'),
           DropdownButtonFormField<String>(
@@ -609,49 +571,58 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           valueText: _profile.lineHeight.toStringAsFixed(1),
           onChanged: (value) => _update(_profile.copyWith(lineHeight: value)),
         ),
-        _section(
-          _tr('Background and text contrast', 'पृष्ठभूमि और पाठ का कंट्रास्ट'),
-          DropdownButtonFormField<String>(
-            value: _themeChoices.contains(_profile.colorTheme)
-                ? _profile.colorTheme
-                : 'soft_yellow_black',
-            isExpanded: true,
-            items: _themeChoices.map((key) {
-              return DropdownMenuItem(
-                value: key,
-                child: Text(AccessibilitySettings.themeLabels[key]!),
-              );
-            }).toList(),
-            onChanged: (value) {
-              if (value != null) _update(_profile.copyWith(colorTheme: value));
-            },
-          ),
-        ),
-        _section(
-          _tr('Preview', 'झलक'),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: background,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: foreground.withOpacity(0.25)),
-            ),
-            child: Text(
+        Column(
+          children: [
+            _section(
               _tr(
-                'A calm space to read, one clear line at a time.',
-                'पढ़ने के लिए एक शांत जगह, हर बार एक स्पष्ट पंक्ति।',
+                'Background and text contrast',
+                'पृष्ठभूमि और पाठ का कंट्रास्ट',
               ),
-              style: TextStyle(
-                fontFamily: font,
-                fontSize: _profile.fontSize,
-                height: _profile.lineHeight,
-                letterSpacing: _profile.letterSpacing,
-                wordSpacing: _profile.wordSpacing,
-                color: foreground,
+              DropdownButtonFormField<String>(
+                value: _themeChoices.contains(_profile.colorTheme)
+                    ? _profile.colorTheme
+                    : 'soft_yellow_black',
+                isExpanded: true,
+                items: _themeChoices.map((key) {
+                  return DropdownMenuItem(
+                    value: key,
+                    child: Text(AccessibilitySettings.themeLabels[key]!),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  if (value != null) {
+                    _update(_profile.copyWith(colorTheme: value));
+                  }
+                },
               ),
             ),
-          ),
+            _section(
+              _tr('Preview', 'झलक'),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: background,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: foreground.withOpacity(0.25)),
+                ),
+                child: Text(
+                  _tr(
+                    'A calm space to read, one clear line at a time.',
+                    'पढ़ने के लिए एक शांत जगह, हर बार एक स्पष्ट पंक्ति।',
+                  ),
+                  style: TextStyle(
+                    fontFamily: font,
+                    fontSize: _profile.fontSize,
+                    height: _profile.lineHeight,
+                    letterSpacing: _profile.letterSpacing,
+                    wordSpacing: _profile.wordSpacing,
+                    color: foreground,
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
         _section(
           _tr('Reading support', 'पढ़ने में सहायता'),
@@ -666,7 +637,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       'Long sentences are split into shorter reading units by the formatter.',
                       'फ़ॉर्मैटर लंबे वाक्यों को पढ़ने की छोटी इकाइयों में बाँटता है।',
                     ),
-                    style: const TextStyle(color: AppTheme.textMuted),
+                    style: _accessibilityTheme.textTheme.bodySmall
+                        ?.copyWith(
+                          color: UIAccessibility.textColor.withOpacity(0.75),
+                        ),
                   ),
                 ),
               ),
@@ -712,13 +686,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             ],
           ),
         ),
-      ],
-    );
+      ];
   }
 
-  Widget _voiceAndAccess() {
-    return Column(
-      children: [
+  List<Widget> _voiceAndAccessQuestions() => [
         _section(
           _tr('Voice preferences', 'आवाज़ की प्राथमिकताएँ'),
           Column(
@@ -790,13 +761,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             ],
           ),
         ),
-      ],
-    );
-  }
+      ];
 
-  Widget _readingGoals() {
-    return Column(
-      children: [
+  List<Widget> _readingGoalsQuestions() => [
         _chips(
           _tr('What would you like help with?', 'आप किसमें सहायता चाहते हैं?'),
           const [
@@ -830,58 +797,77 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               _update(_profile.copyWith(explanationStyle: selected.first)),
           single: true,
         ),
-        _slider(
-          title: _tr(
-            'Daily reading target (optional)',
-            'रोज़ पढ़ने का लक्ष्य (वैकल्पिक)',
-          ),
-          value: _profile.dailyTargetMinutes.toDouble(),
-          min: 0,
-          max: 60,
-          divisions: 12,
-          valueText: _profile.dailyTargetMinutes == 0
-              ? _tr('No target', 'कोई लक्ष्य नहीं')
-              : '${_profile.dailyTargetMinutes} ${_tr('min', 'मिनट')}',
-          onChanged: (value) => _update(
-            _profile.copyWith(dailyTargetMinutes: (value / 5).round() * 5),
-          ),
-        ),
-        _section(
-          _tr('Reminders', 'रिमाइंडर'),
-          Text(
-            _tr(
-              'Reading reminders are not scheduled in this version.',
-              'इस संस्करण में पढ़ने के रिमाइंडर निर्धारित नहीं होते।',
+        Column(
+          children: [
+            _slider(
+              title: _tr(
+                'Daily reading target (optional)',
+                'रोज़ पढ़ने का लक्ष्य (वैकल्पिक)',
+              ),
+              value: _profile.dailyTargetMinutes.toDouble(),
+              min: 0,
+              max: 60,
+              divisions: 12,
+              valueText: _profile.dailyTargetMinutes == 0
+                  ? _tr('No target', 'कोई लक्ष्य नहीं')
+                  : '${_profile.dailyTargetMinutes} ${_tr('min', 'मिनट')}',
+              onChanged: (value) => _update(
+                _profile.copyWith(dailyTargetMinutes: (value / 5).round() * 5),
+              ),
             ),
-            style: const TextStyle(color: AppTheme.textMuted),
-          ),
+            _section(
+              _tr('Reminders', 'रिमाइंडर'),
+              Text(
+                _tr(
+                  'Reading reminders are not scheduled in this version.',
+                  'इस संस्करण में पढ़ने के रिमाइंडर निर्धारित नहीं होते।',
+                ),
+                style: _accessibilityTheme.textTheme.bodySmall
+                    ?.copyWith(
+                      color: UIAccessibility.textColor.withOpacity(0.75),
+                    ),
+              ),
+            ),
+          ],
         ),
-      ],
+      ];
+
+  List<Widget> _questionWidgets() => [
+    ..._aboutYouQuestions(),
+    ..._readingNeedsQuestions(),
+    ..._appearanceQuestions(),
+    ..._voiceAndAccessQuestions(),
+    ..._readingGoalsQuestions(),
+  ];
+
+  Widget _currentPageContent(List<Widget> questions, int step) {
+    final start = step * _questionsPerPage;
+    final end = (start + _questionsPerPage).clamp(0, questions.length).toInt();
+    return Column(
+      children: questions.sublist(start, end),
     );
   }
-
-  Widget _currentStepContent() => switch (_profile.currentStep) {
-    0 => _aboutYou(),
-    1 => _readingNeeds(),
-    2 => _appearance(),
-    3 => _voiceAndAccess(),
-    _ => _readingGoals(),
-  };
 
   Widget _backButton(int step) => OutlinedButton(
     onPressed: _finishing ? null : () => _goTo(step - 1),
     child: Text(_tr('Back', 'पीछे')),
   );
 
-  Widget _continueButton(int step, {bool expand = false}) => FilledButton.icon(
-    key: ValueKey(step == 4 ? 'onboarding-finish' : 'onboarding-next'),
+  Widget _continueButton(
+    int step,
+    int pageCount, {
+    bool expand = false,
+  }) => FilledButton.icon(
+    key: ValueKey(
+      step == pageCount - 1 ? 'onboarding-finish' : 'onboarding-next',
+    ),
     style: FilledButton.styleFrom(
       minimumSize: Size(expand ? double.infinity : 136, 52),
     ),
     onPressed: _finishing
         ? null
-        : step == 4
-        ? _finish
+        : step == pageCount - 1
+        ? () => _finish(pageCount)
         : () => _goTo(step + 1),
     icon: _finishing
         ? const SizedBox(
@@ -889,11 +875,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             height: 16,
             child: CircularProgressIndicator(strokeWidth: 2),
           )
-        : Icon(step == 4 ? Icons.check_rounded : Icons.arrow_forward_rounded),
+        : Icon(
+            step == pageCount - 1
+                ? Icons.check_rounded
+                : Icons.arrow_forward_rounded,
+          ),
     label: Text(
       _finishing
           ? _tr('Saving…', 'सहेज रहे हैं…')
-          : step == 4
+          : step == pageCount - 1
           ? _tr('Finish', 'पूरा करें')
           : _tr('Continue', 'आगे बढ़ें'),
     ),
@@ -901,16 +891,30 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final step = _profile.currentStep.clamp(0, 4).toInt();
-    return Scaffold(
-      backgroundColor: AppTheme.background,
+    final questions = _questionWidgets();
+    final pageCount =
+        (questions.length + _questionsPerPage - 1) ~/ _questionsPerPage;
+    final step = _profile.currentStep.clamp(0, pageCount - 1).toInt();
+    final screenTheme = _accessibilityTheme.copyWith(
+      appBarTheme: _accessibilityTheme.appBarTheme.copyWith(
+        titleTextStyle: _accessibilityTheme.appBarTheme.titleTextStyle
+            ?.copyWith(color: UIAccessibility.textColor),
+      ),
+      inputDecorationTheme: _accessibilityTheme.inputDecorationTheme.copyWith(
+        fillColor: UIAccessibility.backgroundColor,
+      ),
+    );
+    return Theme(
+      data: screenTheme,
+      child: Scaffold(
+      backgroundColor: UIAccessibility.backgroundColor,
       resizeToAvoidBottomInset: true,
       appBar: AppBar(
         title: Text(
           _tr('Personalise your reading', 'अपना पढ़ने का अनुभव बनाएँ'),
         ),
-        backgroundColor: Colors.white,
-        foregroundColor: AppTheme.textDark,
+        backgroundColor: UIAccessibility.backgroundColor,
+        foregroundColor: UIAccessibility.textColor,
         elevation: 0,
         automaticallyImplyLeading: false,
       ),
@@ -929,49 +933,54 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            _tr('Step ${step + 1} of 5', 'चरण ${step + 1} / 5'),
-                            style: const TextStyle(
-                              color: AppTheme.primaryBlue,
-                              fontWeight: FontWeight.w700,
+                            _tr(
+                              'Step ${step + 1} of $pageCount',
+                              'चरण ${step + 1} / $pageCount',
                             ),
+                            style: _accessibilityTheme
+                                .textTheme
+                                .bodyMedium
+                                ?.copyWith(
+                                  color: UIAccessibility.textColor,
+                                  fontWeight: FontWeight.w700,
+                                ),
                           ),
                           Text(
                             _tr(
                               'Your answers save as you go',
                               'आपके जवाब साथ-साथ सहेजे जाते हैं',
                             ),
-                            style: const TextStyle(
-                              color: AppTheme.textMuted,
-                              fontSize: 12,
-                            ),
+                            style: _accessibilityTheme
+                                .textTheme
+                                .bodySmall
+                                ?.copyWith(
+                                  color: UIAccessibility.textColor.withOpacity(
+                                    0.75,
+                                  ),
+                                ),
                           ),
                         ],
                       ),
                       const SizedBox(height: 8),
                       LinearProgressIndicator(
-                        value: (step + 1) / 5,
+                        value: (step + 1) / pageCount,
                         minHeight: 6,
                         borderRadius: BorderRadius.circular(10),
-                        backgroundColor: AppTheme.lightGrey,
+                        backgroundColor: UIAccessibility.textColor.withOpacity(
+                          0.12,
+                        ),
                         color: AppTheme.primaryBlue,
                       ),
                       const SizedBox(height: 12),
                       Text(
-                        _tr(
-                          _stepTitles[step],
-                          const [
-                            'आपके बारे में',
-                            'पढ़ने की ज़रूरतें',
-                            'पढ़ने का रूप',
-                            'आवाज़ और सुलभता',
-                            'पढ़ने के लक्ष्य',
-                          ][step],
-                        ),
-                        style: const TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.w800,
-                          color: AppTheme.textDark,
-                        ),
+                        _tr('Your preferences', 'आपकी प्राथमिकताएँ'),
+                        style: _accessibilityTheme
+                            .textTheme
+                            .headlineMedium
+                            ?.copyWith(
+                              color: UIAccessibility.textColor,
+                              fontWeight: FontWeight.w800,
+                            ),
                       ),
                     ],
                   ),
@@ -982,7 +991,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
                     child: Column(
                       children: [
-                        _currentStepContent(),
+                        _currentPageContent(questions, step),
                         if (_saveError != null)
                           Padding(
                             padding: const EdgeInsets.only(bottom: 12),
@@ -990,7 +999,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                               children: [
                                 Text(
                                   _saveError!,
-                                  style: const TextStyle(color: AppTheme.error),
+                                  style: _accessibilityTheme
+                                      .textTheme
+                                      .bodyMedium
+                                      ?.copyWith(color: AppTheme.error),
                                   textAlign: TextAlign.center,
                                 ),
                                 if (kDebugMode && _saveDiagnostics != null)
@@ -999,9 +1011,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                                     child: SelectableText(
                                       _saveDiagnostics!,
                                       textAlign: TextAlign.center,
-                                      style: Theme.of(
-                                        context,
-                                      ).textTheme.bodySmall,
+                                      style: _accessibilityTheme
+                                          .textTheme
+                                          .bodySmall,
                                     ),
                                   ),
                               ],
@@ -1012,11 +1024,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   ),
                 ),
                 Container(
-                  color: Colors.white,
+                  color: UIAccessibility.backgroundColor,
                   padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
                   child: LayoutBuilder(
                     builder: (context, constraints) {
-                      final compact = constraints.maxWidth < 400 || step == 4;
+                      final compact =
+                          constraints.maxWidth < 400 || step == pageCount - 1;
                       if (compact) {
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1028,7 +1041,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                               ),
                               const SizedBox(height: 8),
                             ],
-                            _continueButton(step, expand: true),
+                            _continueButton(step, pageCount, expand: true),
                           ],
                         );
                       }
@@ -1036,17 +1049,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         children: [
                           if (step > 0) _backButton(step),
                           if (step > 0) const SizedBox(width: 10),
-                          if (step > 0 && step < 4)
-                            TextButton(
-                              onPressed: _finishing
-                                  ? null
-                                  : () => _goTo(step + 1),
-                              child: Text(
-                                _tr('Skip optional', 'वैकल्पिक छोड़ें'),
-                              ),
-                            ),
                           const Spacer(),
-                          _continueButton(step),
+                          _continueButton(step, pageCount),
                         ],
                       );
                     },
@@ -1056,6 +1060,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             ),
           ),
         ),
+      ),
       ),
     );
   }

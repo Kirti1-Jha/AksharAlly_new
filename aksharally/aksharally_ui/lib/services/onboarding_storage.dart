@@ -41,6 +41,7 @@ class OnboardingProfile {
     required this.explanationStyle,
     required this.dailyTargetMinutes,
     required this.currentStep,
+    required this.questionnaireVersion,
     required this.completed,
     required this.updatedAt,
   });
@@ -82,6 +83,7 @@ class OnboardingProfile {
     explanationStyle: 'shorter_sentences',
     dailyTargetMinutes: 0,
     currentStep: currentStep,
+    questionnaireVersion: 1,
     completed: false,
     updatedAt: DateTime.now().toUtc().microsecondsSinceEpoch,
   );
@@ -121,6 +123,7 @@ class OnboardingProfile {
     final requestedFont = stringValue('fontFamily', defaults.fontFamily);
     final requestedTheme = stringValue('colorTheme', defaults.colorTheme);
     final savedStep = json['currentStep'];
+    final savedQuestionnaireVersion = json['questionnaireVersion'];
     return OnboardingProfile(
       fullName: stringValue('fullName', defaults.fullName),
       ageGroup:
@@ -233,7 +236,12 @@ class OnboardingProfile {
       dailyTargetMinutes: json['dailyTargetMinutes'] is int
           ? (json['dailyTargetMinutes'] as int).clamp(0, 180).toInt()
           : defaults.dailyTargetMinutes,
-      currentStep: savedStep is int ? savedStep.clamp(0, 4).toInt() : 0,
+      currentStep: savedStep is int
+          ? savedStep.clamp(0, 0x7fffffff).toInt()
+          : 0,
+      questionnaireVersion: savedQuestionnaireVersion is int
+          ? savedQuestionnaireVersion.clamp(0, 1).toInt()
+          : 0,
       completed: boolValue('completed', false),
       updatedAt: json['updatedAt'] is int
           ? json['updatedAt'] as int
@@ -274,6 +282,7 @@ class OnboardingProfile {
   final String explanationStyle;
   final int dailyTargetMinutes;
   final int currentStep;
+  final int questionnaireVersion;
   final bool completed;
   final int updatedAt;
 
@@ -311,6 +320,7 @@ class OnboardingProfile {
     String? explanationStyle,
     int? dailyTargetMinutes,
     int? currentStep,
+    int? questionnaireVersion,
     bool? completed,
     int? updatedAt,
   }) => OnboardingProfile(
@@ -348,6 +358,7 @@ class OnboardingProfile {
     explanationStyle: explanationStyle ?? this.explanationStyle,
     dailyTargetMinutes: dailyTargetMinutes ?? this.dailyTargetMinutes,
     currentStep: currentStep ?? this.currentStep,
+    questionnaireVersion: questionnaireVersion ?? this.questionnaireVersion,
     completed: completed ?? this.completed,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -386,6 +397,7 @@ class OnboardingProfile {
     'explanationStyle': explanationStyle,
     'dailyTargetMinutes': dailyTargetMinutes,
     'currentStep': currentStep,
+    'questionnaireVersion': questionnaireVersion,
     'completed': completed,
     'updatedAt': updatedAt,
   };
@@ -413,7 +425,7 @@ class OnboardingStorage {
   }
 
   Future<void> save(String uid, OnboardingProfile profile) async {
-    if (profile.currentStep < 0 || profile.currentStep > 4) {
+    if (profile.currentStep < 0) {
       throw ArgumentError.value(profile.currentStep, 'currentStep');
     }
     if (profile.completed &&
