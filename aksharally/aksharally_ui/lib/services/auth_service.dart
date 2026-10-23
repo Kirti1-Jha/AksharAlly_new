@@ -10,17 +10,49 @@ import 'user_profile_service.dart';
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   User? get currentUser => _auth.currentUser;
-  static const _appleServiceId =
-      String.fromEnvironment('APPLE_SERVICE_ID');
-  static const _appleRedirectUri =
-      String.fromEnvironment('APPLE_REDIRECT_URI');
+
+  void _logAuthSuccess(String operation, User? resultUser) {
+    if (!kDebugMode) return;
+    final authenticatedUid = _auth.currentUser?.uid;
+    debugPrint(
+      'FIREBASE_AUTH operation=$operation result=success '
+      'userReturned=${resultUser != null} authenticated=${authenticatedUid != null} '
+      'uidMatches=${resultUser != null && authenticatedUid == resultUser.uid}',
+    );
+  }
+
+  void _logAuthFailure(String operation, Object error, StackTrace stackTrace) {
+    if (!kDebugMode) return;
+    if (error is FirebaseAuthException) {
+      debugPrint(
+        'FIREBASE_AUTH operation=$operation result=error '
+        'code=${error.code} message=${error.message}',
+      );
+    } else {
+      debugPrint(
+        'FIREBASE_AUTH operation=$operation result=error '
+        'type=${error.runtimeType}',
+      );
+      debugPrintStack(stackTrace: stackTrace);
+    }
+  }
+
+  static const _appleServiceId = String.fromEnvironment('APPLE_SERVICE_ID');
+  static const _appleRedirectUri = String.fromEnvironment('APPLE_REDIRECT_URI');
 
   // REGISTER
   Future<User?> register(String email, String password) async {
-    final result = await _auth.createUserWithEmailAndPassword(
-      email: email,
-      password: password,
-    );
+    late final UserCredential result;
+    try {
+      result = await _auth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      _logAuthSuccess('createUserWithEmailAndPassword', result.user);
+    } catch (error, stackTrace) {
+      _logAuthFailure('createUserWithEmailAndPassword', error, stackTrace);
+      rethrow;
+    }
     final user = result.user;
     if (user == null) return null;
 
@@ -64,8 +96,10 @@ class AuthService {
           (!kIsWeb && defaultTargetPlatform == TargetPlatform.android);
       if (needsWebAuthentication &&
           (_appleServiceId.isEmpty || _appleRedirectUri.isEmpty)) {
-        throw StateError('Apple web authentication needs APPLE_SERVICE_ID '
-            'and APPLE_REDIRECT_URI build settings.');
+        throw StateError(
+          'Apple web authentication needs APPLE_SERVICE_ID '
+          'and APPLE_REDIRECT_URI build settings.',
+        );
       }
       final appleCredential = await SignInWithApple.getAppleIDCredential(
         scopes: [
@@ -116,10 +150,10 @@ class AuthService {
     final existingLanguage = existing['preferredLanguage'] is String
         ? existing['preferredLanguage'] as String
         : 'en';
-    final existingAgeGroup =
-        existing['ageGroup'] is String ? existing['ageGroup'] as String : null;
-    final name =
-        (fullName ?? user.displayName ?? existingName).trim();
+    final existingAgeGroup = existing['ageGroup'] is String
+        ? existing['ageGroup'] as String
+        : null;
+    final name = (fullName ?? user.displayName ?? existingName).trim();
     final language = preferredLanguage == 'en' && existingLanguage != 'en'
         ? existingLanguage
         : preferredLanguage;
@@ -183,10 +217,17 @@ class AuthService {
 
   // LOGIN
   Future<User?> login(String email, String password) async {
-    final result = await _auth.signInWithEmailAndPassword(
-      email: email,
-      password: password,
-    );
+    late final UserCredential result;
+    try {
+      result = await _auth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      _logAuthSuccess('signInWithEmailAndPassword', result.user);
+    } catch (error, stackTrace) {
+      _logAuthFailure('signInWithEmailAndPassword', error, stackTrace);
+      rethrow;
+    }
     return result.user;
   }
 

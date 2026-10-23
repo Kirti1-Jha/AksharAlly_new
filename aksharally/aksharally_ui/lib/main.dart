@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart'
+    show debugPrint, debugPrintStack, kDebugMode;
 import 'firebase_options.dart';
 
 import 'screens/splash_screen.dart';
@@ -36,9 +38,40 @@ class _AppInitializerState extends State<AppInitializer> {
   @override
   void initState() {
     super.initState();
-    _firebaseInit = Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
+    _firebaseInit = _initializeFirebase();
+  }
+
+  Future<FirebaseApp> _initializeFirebase() async {
+    try {
+      final options = DefaultFirebaseOptions.currentPlatform;
+      if (kDebugMode) {
+        debugPrint(
+          'FIREBASE_INIT start projectId=${options.projectId} '
+          'appId=${options.appId}',
+        );
+      }
+      final app = await Firebase.initializeApp(options: options);
+      if (kDebugMode) {
+        debugPrint(
+          'FIREBASE_INIT result=success projectId=${app.options.projectId} '
+          'appId=${app.options.appId}',
+        );
+      }
+      return app;
+    } catch (error, stackTrace) {
+      if (kDebugMode) {
+        if (error is FirebaseException) {
+          debugPrint(
+            'FIREBASE_INIT result=error plugin=${error.plugin} '
+            'code=${error.code} message=${error.message}',
+          );
+        } else {
+          debugPrint('FIREBASE_INIT result=error type=${error.runtimeType}');
+        }
+        debugPrintStack(stackTrace: stackTrace);
+      }
+      rethrow;
+    }
   }
 
   @override

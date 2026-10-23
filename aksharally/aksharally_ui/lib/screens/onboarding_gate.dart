@@ -56,6 +56,13 @@ class _OnboardingGateState extends State<OnboardingGate> {
     final authenticatedUid =
         widget.authFlow?.currentUserId ??
         FirebaseAuth.instance.currentUser?.uid;
+    if (kDebugMode) {
+      debugPrint(
+        'PROFILE_GATE requestedUidPresent=${uid.isNotEmpty} '
+        'authenticatedUidPresent=${authenticatedUid != null} '
+        'uidMatches=${authenticatedUid != null && authenticatedUid == uid}',
+      );
+    }
     if (authenticatedUid != uid) return const _GateResult.login();
 
     // The authenticated UID is checked above. Firestore is authoritative when
