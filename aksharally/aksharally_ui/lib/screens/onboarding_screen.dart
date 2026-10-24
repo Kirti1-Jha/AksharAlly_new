@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart' show debugPrint, kDebugMode;
 import 'package:firebase_core/firebase_core.dart' show FirebaseException;
 
 import '../services/onboarding_storage.dart';
+import '../services/tts_service.dart';
 import '../services/user_profile_service.dart';
 import '../theme/accessibility_settings.dart';
 import '../theme/app_settings.dart';
@@ -39,7 +40,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   late OnboardingProfile _profile;
   late final TextEditingController _nameController;
   late final ThemeData _accessibilityTheme = UIAccessibility.buildTheme();
+  late final TTSService _ttsService = TTSService();
   Future<void> _saveQueue = Future<void>.value();
+  Future<void> _speechSetupQueue = Future<void>.value();
+  int _speechRequest = 0;
   late final OnboardingAccountStore _accountStore =
       widget.accountStore ?? const FirestoreOnboardingAccountStore();
   String? _saveError;
@@ -82,13 +86,95 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     }
     _customizeReading = const [4, 5, 8, 9].contains(_profile.currentStep);
     _nameController = TextEditingController(text: _profile.fullName);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _speakOnboarding(
+          _tr(
+            'We’d like to get to know you a little before we begin. Please answer these questions so we can personalize your reading experience.',
+            'शुरू करने से पहले हम आपके बारे में थोड़ा जानना चाहते हैं। आपके पढ़ने के अनुभव को आपके अनुसार बनाने के लिए कृपया इन सवालों के जवाब दें।',
+          ),
+        );
+      }
+    });
   }
 
   @override
   void dispose() {
+    _cancelOnboardingSpeech();
     _nameController.dispose();
     super.dispose();
   }
+
+  Future<void> _speakOnboarding(String text) async {
+    if (text.trim().isEmpty || !mounted) return;
+    final request = ++_speechRequest;
+    try {
+      // Stop immediately, before language setup or any queued narration.
+      await _ttsService.stop();
+    } catch (error) {
+      debugPrint('Could not stop onboarding speech: $error');
+      return;
+    }
+    if (!mounted || request != _speechRequest) return;
+
+    final playback = _speechSetupQueue.then((_) async {
+      if (!mounted || request != _speechRequest) return;
+      final language = AppSettings.interfaceLanguage;
+      final locale = TTSService.localeForLanguage(language);
+      await _ttsService.init(defaultLocale: null);
+      if (!mounted || request != _speechRequest) return;
+
+      final activeLanguage = _ttsService.currentLocale
+          ?.replaceAll('_', '-')
+          .split('-')
+          .first
+          .toLowerCase();
+      if (locale != null && activeLanguage != language.toLowerCase()) {
+        final selected = await _ttsService.setLanguage(locale);
+        if (!selected && mounted && request == _speechRequest) {
+          // If a requested locale is unavailable, avoid inheriting a voice
+          // selected by an earlier onboarding narration.
+          await _ttsService.resetVoiceToDefault();
+        }
+      }
+      if (!mounted || request != _speechRequest) return;
+      await _ttsService.speak(text);
+    });
+    _speechSetupQueue = playback.catchError((
+      Object error,
+      StackTrace stackTrace,
+    ) {
+      debugPrint('Onboarding speech unavailable: $error');
+    });
+    await _speechSetupQueue;
+  }
+
+  void _cancelOnboardingSpeech() {
+    ++_speechRequest;
+    _ttsService.stop().catchError((Object error) {
+      debugPrint('Could not stop onboarding speech: $error');
+    });
+  }
+
+  Future<void> _stopOnboardingSpeech() async {
+    ++_speechRequest;
+    try {
+      await _ttsService.stop();
+    } catch (error) {
+      debugPrint('Could not stop onboarding speech: $error');
+    }
+  }
+
+  Widget _speakerButton(String label, String text) => Semantics(
+    button: true,
+    label: label,
+    child: IconButton(
+      tooltip: label,
+      onPressed: () => _speakOnboarding(text),
+      icon: const Icon(Icons.volume_up_rounded),
+      constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+    ),
+  );
 
   void _update(OnboardingProfile next) {
     final updated = next.copyWith(updatedAt: _nextUpdatedAt());
@@ -145,6 +231,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       return;
     }
     if (step < 0 || step >= pages.length) return;
+    await _stopOnboardingSpeech();
+    if (!mounted) return;
     final next = _profile.copyWith(currentStep: pages[step].id);
     _update(next);
     await _saveQueue;
@@ -169,6 +257,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       );
       return;
     }
+    await _stopOnboardingSpeech();
+    if (!mounted) return;
     setState(() {
       _finishing = true;
       _saveError = null;
@@ -317,7 +407,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     };
   }
 
-  Widget _section(String title, Widget child, {String? helper}) {
+  Widget _section(
+    String title,
+    Widget child, {
+    String? helper,
+    List<String> answerOptions = const [],
+  }) {
+    final narration = [title, ...answerOptions].join('. ');
+    final speakerLabel = _tr('Read this question aloud', 'सवाल सुनें');
     return Card(
       margin: const EdgeInsets.only(bottom: 14),
       elevation: 0,
@@ -331,10 +428,21 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              title,
-              style: _accessibilityTheme.textTheme.titleMedium
-                  ?.copyWith(color: UIAccessibility.textColor),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 10),
+                    child: Text(
+                      title,
+                      style: _accessibilityTheme.textTheme.titleMedium
+                          ?.copyWith(color: UIAccessibility.textColor),
+                    ),
+                  ),
+                ),
+                _speakerButton(speakerLabel, narration),
+              ],
             ),
             if (helper != null) ...[
               const SizedBox(height: 5),
@@ -373,6 +481,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             label: Text(_label(value)),
             selected: isSelected,
             onSelected: (_) {
+              _speakOnboarding(_label(value));
               if (single) {
                 onChanged([value]);
               } else {
@@ -387,6 +496,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         }).toList(),
       ),
       helper: helper,
+      answerOptions: values.map(_label).toList(),
     );
   }
 
@@ -408,6 +518,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         divisions: divisions,
         activeColor: AppTheme.primaryBlue,
         onChanged: onChanged,
+      ),
+      answerOptions: List.generate(
+        divisions + 1,
+        (index) =>
+            (min + (max - min) * index / divisions).toStringAsFixed(1),
       ),
     );
   }
@@ -553,6 +668,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   Future<void> _selectSuggestedProfile(String key) async {
+    _speakOnboarding(
+      '${_suggestedProfileTitle(key)}. ${_suggestedProfileDescription(key)}',
+    );
     _update(_profileForSuggestion(key));
     await _saveQueue;
     if (!mounted || _saveError != null) return;
@@ -563,6 +681,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   Future<void> _openManualPreferences() async {
+    await _stopOnboardingSpeech();
+    if (!mounted) return;
     setState(() => _customizeReading = true);
     _update(_profile.copyWith(currentStep: 4));
     await _saveQueue;
@@ -716,6 +836,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 .toList(),
           ),
         ),
+        answerOptions: UIAccessibility.profileLabels.keys
+            .map(
+              (key) =>
+                  '${_suggestedProfileTitle(key)}. ${_suggestedProfileDescription(key)}',
+            )
+            .toList(),
       ),
       _section(
         _tr('Live preview', 'लाइव झलक'),
@@ -812,9 +938,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             .map((name) => DropdownMenuItem(value: name, child: Text(name)))
             .toList(),
         onChanged: (value) {
-          if (value != null) _update(_profile.copyWith(fontFamily: value));
+          if (value != null) {
+            _speakOnboarding(value);
+            _update(_profile.copyWith(fontFamily: value));
+          }
         },
       ),
+      answerOptions: AccessibilitySettings.fonts,
     ),
     _slider(
       title: _tr('Font size', 'फ़ॉन्ट का आकार'),
@@ -870,9 +1000,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           );
         }).toList(),
         onChanged: (value) {
-          if (value != null) _update(_profile.copyWith(colorTheme: value));
+          if (value != null) {
+            _speakOnboarding(AccessibilitySettings.themeLabels[value]!);
+            _update(_profile.copyWith(colorTheme: value));
+          }
         },
       ),
+      answerOptions: _themeChoices
+          .map((key) => AccessibilitySettings.themeLabels[key]!)
+          .toList(),
     ),
     _previewButton(),
   ];
