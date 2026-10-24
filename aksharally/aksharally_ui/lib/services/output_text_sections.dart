@@ -46,23 +46,50 @@ class OutputTextSections {
       var tokenEnd = hardEnd;
 
       if (hardEnd < tokens.length) {
-        // Prefer a paragraph boundary near the word limit, but never make a
-        // section smaller than half the configured limit just to find one.
-        final earliestPreferredBreak =
-            tokenStart + (wordLimit ~/ 2);
+        // Prefer paragraph breaks close to the limit before considering
+        // sentence boundaries.
+        var foundParagraphBoundary = false;
+        final earliestPreferredBreak = tokenStart + (wordLimit ~/ 2);
         for (
           var candidate = hardEnd;
-          candidate > earliestPreferredBreak;
+          candidate >= earliestPreferredBreak && candidate > tokenStart;
           candidate--
         ) {
-          final gap = text.substring(
-            tokens[candidate - 1].end,
-            tokens[candidate].start,
-          );
-          if (RegExp(r'(?:\r?\n)[ \t]*(?:\r?\n)').hasMatch(gap)) {
+          if (_isParagraphBoundary(text, tokens, candidate)) {
             tokenEnd = candidate;
+            foundParagraphBoundary = true;
             break;
           }
+        }
+
+        var foundSentenceBoundary = false;
+        if (!foundParagraphBoundary) {
+          // Otherwise, end at the nearest complete sentence before the limit.
+          for (var candidate = hardEnd; candidate > tokenStart; candidate--) {
+            if (_isSentenceBoundary(tokens, candidate)) {
+              tokenEnd = candidate;
+              foundSentenceBoundary = true;
+              break;
+            }
+          }
+        }
+
+        if (!foundParagraphBoundary && !foundSentenceBoundary) {
+          // No complete sentence fits. Keep the sentence crossing the limit
+          // intact by extending through its first sentence or paragraph end.
+          for (
+            var candidate = hardEnd + 1;
+            candidate <= tokens.length;
+            candidate++
+          ) {
+            if (_isSentenceBoundary(tokens, candidate) ||
+                _isParagraphBoundary(text, tokens, candidate)) {
+              tokenEnd = candidate;
+              foundSentenceBoundary = true;
+              break;
+            }
+          }
+          if (!foundSentenceBoundary) tokenEnd = tokens.length;
         }
       }
 
@@ -86,6 +113,35 @@ class OutputTextSections {
     }
 
     return sections;
+  }
+
+  static bool _isSentenceBoundary(List<RegExpMatch> tokens, int boundary) =>
+      boundary > 0 &&
+      _isSentenceEnding(tokens[boundary - 1].group(0)!);
+
+  static bool _isSentenceEnding(String token) {
+    var end = token.length;
+    const closingPunctuation = {'"', "'", '”', '’', ')', ']', '}', '»'};
+    while (end > 0 &&
+        closingPunctuation.contains(token.substring(end - 1, end))) {
+      end--;
+    }
+    if (end == 0) return false;
+    const sentencePunctuation = '.!?。！？।॥…';
+    return sentencePunctuation.contains(token.substring(end - 1, end));
+  }
+
+  static bool _isParagraphBoundary(
+    String text,
+    List<RegExpMatch> tokens,
+    int boundary,
+  ) {
+    if (boundary <= 0 || boundary >= tokens.length) return false;
+    final gap = text.substring(
+      tokens[boundary - 1].end,
+      tokens[boundary].start,
+    );
+    return RegExp(r'(?:\r?\n)[ \t]*(?:\r?\n)').hasMatch(gap);
   }
 }
 
