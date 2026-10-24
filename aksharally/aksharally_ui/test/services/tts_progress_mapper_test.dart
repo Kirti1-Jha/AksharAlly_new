@@ -65,5 +65,18 @@ void main() {
       expect(mapper.isCoarseProgressRange('one two', 0, 7), isTrue);
       expect(mapper.isCoarseProgressRange('one', 0, 3), isFalse);
     });
+
+    test(
+      'trusts a single-word range when callback text contains a phrase',
+      () {
+        final mapper = TtsProgressMapper(
+          text: 'one two three',
+          displayWordIndices: const [0, 1, 2],
+        );
+
+        expect(mapper.isCoarseProgressRange('one two', 0, 3), isFalse);
+        expect(mapper.displayIndexForRange(0, 3), 0);
+      },
+    );
   });
 }

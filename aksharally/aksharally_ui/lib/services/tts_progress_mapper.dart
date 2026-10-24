@@ -122,21 +122,18 @@ class TtsProgressMapper {
   /// Some engines provide a useful range but put only one word in [word], so
   /// inspect the offsets as well as the callback text before trusting it.
   bool isCoarseProgressRange(String word, int start, int end) {
-    if (isCoarseProgressWord(word) || _spans.length < 2 || end <= start) {
-      return isCoarseProgressWord(word);
-    }
-
-    final safeStart = start.clamp(0, text.length).toInt();
-    final safeEnd = end.clamp(safeStart, text.length).toInt();
-    var overlappingWords = 0;
-    for (final span in _spans) {
-      if (span.start < safeEnd &&
-          span.end > safeStart &&
-          ++overlappingWords > 1) {
-        return true;
+    if (end > start) {
+      final safeStart = start.clamp(0, text.length).toInt();
+      final safeEnd = end.clamp(safeStart, text.length).toInt();
+      var overlappingWords = 0;
+      for (final span in _spans) {
+        if (span.start < safeEnd && span.end > safeStart) {
+          overlappingWords++;
+        }
       }
+      if (overlappingWords > 0) return overlappingWords > 1;
     }
-    return false;
+    return isCoarseProgressWord(word);
   }
 
   /// Approximate fallback timing for platforms without word-range events.
