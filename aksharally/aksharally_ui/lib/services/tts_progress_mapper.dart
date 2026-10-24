@@ -4,17 +4,50 @@
 /// supported native platforms. Matching by ranges, rather than matching the
 /// callback's word text, keeps repeated words and punctuation unambiguous.
 class TtsProgressMapper {
-  TtsProgressMapper({required this.text, required List<int> displayWordIndices})
-    : _spans = [] {
+  TtsProgressMapper({
+    required this.text,
+    required List<int> displayWordIndices,
+    List<String>? displayWords,
+  }) : _spans = [] {
     final matches = RegExp(r'\S+').allMatches(text);
+    final visibleSpans = <_VisibleWordSpan>[];
+    if (displayWords != null) {
+      var searchFrom = 0;
+      final count = displayWords.length < displayWordIndices.length
+          ? displayWords.length
+          : displayWordIndices.length;
+      for (var index = 0; index < count; index++) {
+        final visibleWord = displayWords[index];
+        final start = text.indexOf(visibleWord, searchFrom);
+        if (visibleWord.isEmpty || start < 0) continue;
+        final end = start + visibleWord.length;
+        visibleSpans.add(
+          _VisibleWordSpan(
+            start: start,
+            end: end,
+            displayIndex: displayWordIndices[index],
+          ),
+        );
+        searchFrom = end;
+      }
+    }
+
     var position = 0;
     for (final match in matches) {
       if (position >= displayWordIndices.length) break;
+      _VisibleWordSpan? displaySpan;
+      for (final visibleSpan in visibleSpans) {
+        if (visibleSpan.start < match.end && visibleSpan.end > match.start) {
+          displaySpan = visibleSpan;
+          break;
+        }
+      }
       _spans.add(
         _TtsWordSpan(
           start: match.start,
           end: match.end,
-          displayIndex: displayWordIndices[position],
+          displayIndex:
+              displaySpan?.displayIndex ?? displayWordIndices[position],
           text: match.group(0)!,
         ),
       );
@@ -48,6 +81,11 @@ class TtsProgressMapper {
     );
     return position < 0 ? null : position;
   }
+
+  List<String> wordsForDisplayIndex(int displayIndex) => [
+    for (final span in _spans)
+      if (span.displayIndex == displayIndex) span.text,
+  ];
 
   /// Returns the displayed word touched by a progress range.
   ///
@@ -136,4 +174,16 @@ class _TtsWordSpan {
   final int end;
   final int displayIndex;
   final String text;
+}
+
+class _VisibleWordSpan {
+  const _VisibleWordSpan({
+    required this.start,
+    required this.end,
+    required this.displayIndex,
+  });
+
+  final int start;
+  final int end;
+  final int displayIndex;
 }

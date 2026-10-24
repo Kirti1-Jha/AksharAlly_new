@@ -29,7 +29,8 @@ abstract interface class TtsEngine {
 }
 
 class FlutterTtsEngine implements TtsEngine {
-  FlutterTtsEngine([FlutterTts? flutterTts]) : _tts = flutterTts ?? FlutterTts();
+  FlutterTtsEngine([FlutterTts? flutterTts])
+    : _tts = flutterTts ?? FlutterTts();
 
   final FlutterTts _tts;
 
@@ -127,6 +128,32 @@ class TTSService {
 
   static const preferredEnglishLocale = 'en-IN';
   static const fallbackEnglishLocale = 'en-US';
+  static const double _engineRateAtOneX = 0.4;
+  static const List<double> playbackSpeeds = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
+
+  /// Maps a user-facing speed multiplier onto FlutterTts's normalized rate.
+  ///
+  /// The app's existing 0.4 rate is treated as 1x to preserve its default
+  /// speaking pace while exposing a meaningful relative speed selector.
+  static double engineRateForPlaybackSpeed(double speed) =>
+      (speed * _engineRateAtOneX).clamp(0.1, 1.0).toDouble();
+
+  /// Converts previously stored normalized rates to the closest supported
+  /// playback speed so the selector always reflects the active engine rate.
+  static double playbackSpeedForEngineRate(double rate) {
+    final targetRate = rate.clamp(0.1, 1.0).toDouble();
+    var closest = playbackSpeeds.first;
+    var closestDistance = (engineRateForPlaybackSpeed(closest) - targetRate)
+        .abs();
+    for (final speed in playbackSpeeds.skip(1)) {
+      final distance = (engineRateForPlaybackSpeed(speed) - targetRate).abs();
+      if (distance < closestDistance) {
+        closest = speed;
+        closestDistance = distance;
+      }
+    }
+    return closest;
+  }
 
   /// Returns a content locale only for a language the app explicitly knows.
   /// A null result means callers should keep the device's system voice.
@@ -144,7 +171,7 @@ class TTSService {
 
   bool isSpeaking = false;
   bool isPaused = false;
-  double _speechRate = 0.4;
+  double _speechRate = _engineRateAtOneX;
   String? _lastSpokenText;
   int _resumeOffset = 0;
   int _segmentStartOffset = 0;
@@ -154,6 +181,7 @@ class TTSService {
   bool _hasStarted = false;
   bool _rateChangedWhilePaused = false;
   bool _fallbackResumeOffsetPending = false;
+  void Function()? _startCallback;
   TTSProgressCallback? _progressCallback;
   void Function()? _completionCallback;
   TTSErrorCallback? _utteranceErrorCallback;
@@ -170,9 +198,7 @@ class TTSService {
   /// If [defaultLocale] is null, leave locale selection to the device. This is
   /// used for saved content without language metadata rather than guessing it
   /// is English.
-  Future<void> init({
-    String? defaultLocale = preferredEnglishLocale,
-  }) async {
+  Future<void> init({String? defaultLocale = preferredEnglishLocale}) async {
     final pendingInitialization = _initFuture;
     if (pendingInitialization != null) {
       await pendingInitialization;
@@ -200,6 +226,7 @@ class TTSService {
       _hasStarted = true;
       isSpeaking = true;
       isPaused = false;
+      _startCallback?.call();
     });
 
     _engine.setCompletionHandler(() {
@@ -210,6 +237,7 @@ class TTSService {
       final callback = _completionCallback;
       _progressCallback = null;
       _completionCallback = null;
+      _startCallback = null;
       _utteranceErrorCallback = null;
       callback?.call();
     });
@@ -221,6 +249,7 @@ class TTSService {
       isPaused = false;
       _progressCallback = null;
       _completionCallback = null;
+      _startCallback = null;
       _utteranceErrorCallback = null;
     });
 
@@ -245,6 +274,7 @@ class TTSService {
       isPaused = false;
       _progressCallback = null;
       _completionCallback = null;
+      _startCallback = null;
       final callback = _utteranceErrorCallback;
       _utteranceErrorCallback = null;
       lastError = error.toString();
@@ -275,12 +305,14 @@ class TTSService {
 
   int? _baseOffsetFor(String reportedText, String originalText) {
     if (reportedText == originalText) return 0;
-    final resumeSearchFrom =
-        _resumeOffset.clamp(0, originalText.length).toInt();
+    final resumeSearchFrom = _resumeOffset
+        .clamp(0, originalText.length)
+        .toInt();
     final resumedMatch = originalText.indexOf(reportedText, resumeSearchFrom);
     if (resumedMatch >= 0) return resumedMatch;
-    final segmentSearchFrom =
-        _segmentStartOffset.clamp(0, originalText.length).toInt();
+    final segmentSearchFrom = _segmentStartOffset
+        .clamp(0, originalText.length)
+        .toInt();
     final segmentMatch = originalText.indexOf(reportedText, segmentSearchFrom);
     return segmentMatch >= 0 ? segmentMatch : null;
   }
@@ -403,8 +435,7 @@ class TTSService {
         await _engine.setLanguage(fallbackEnglishLocale);
         _currentLocale = fallbackEnglishLocale;
         if (fallbackVoice != null) await _applyVoice(fallbackVoice);
-        _localeNotice =
-            'Preferred locale en-IN is unavailable; using en-US.';
+        _localeNotice = 'Preferred locale en-IN is unavailable; using en-US.';
         return true;
       }
     } catch (error) {
@@ -421,8 +452,7 @@ class TTSService {
     Map<String, dynamic>? matchingVoice,
   ) async {
     try {
-      return await _engine.isLanguageAvailable(locale) ||
-          matchingVoice != null;
+      return await _engine.isLanguageAvailable(locale) || matchingVoice != null;
     } catch (error) {
       lastError = error.toString();
       return matchingVoice == null ? null : true;
@@ -468,6 +498,7 @@ class TTSService {
 
   Future<void> speak(
     String text, {
+    void Function()? onStart,
     TTSProgressCallback? onProgress,
     void Function()? onComplete,
     TTSErrorCallback? onError,
@@ -478,8 +509,10 @@ class TTSService {
     _hasActiveUtterance = false;
     isSpeaking = false;
     isPaused = false;
+    _startCallback = null;
     _progressCallback = null;
     _completionCallback = null;
+    _utteranceErrorCallback = null;
     await _engine.stop();
     if (generation != _generation) return;
 
@@ -489,6 +522,7 @@ class TTSService {
     _lastProgressStart = 0;
     _rateChangedWhilePaused = false;
     _fallbackResumeOffsetPending = false;
+    _startCallback = onStart;
     _progressCallback = onProgress;
     _completionCallback = onComplete;
     _utteranceErrorCallback = onError;
@@ -579,10 +613,13 @@ class TTSService {
         _hasActiveUtterance = false;
         isSpeaking = false;
         isPaused = false;
+        _startCallback = null;
         _progressCallback = null;
         _completionCallback = null;
+        final callback = _utteranceErrorCallback;
         _utteranceErrorCallback = null;
         lastError = error.toString();
+        callback?.call(error);
       }
       return false;
     }
@@ -600,6 +637,7 @@ class TTSService {
     _lastProgressStart = 0;
     _rateChangedWhilePaused = false;
     _fallbackResumeOffsetPending = false;
+    _startCallback = null;
     _progressCallback = null;
     _completionCallback = null;
     _utteranceErrorCallback = null;

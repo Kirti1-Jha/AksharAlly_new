@@ -79,7 +79,16 @@ class _OutputScreenState extends State<OutputScreen> {
   // ── TTS ───────────────────────────────────────────────────────────────────
   final TTSService _tts = TTSService();
   double speechRate = AppSettings.speechRate;
+  double _playbackSpeed = TTSService.playbackSpeedForEngineRate(
+    AppSettings.speechRate,
+  );
   bool autoRead = true;
+  bool _isPlaybackStarting = false;
+  bool _isPlaybackActive = false;
+  bool _isPlaybackPaused = false;
+  bool _hasPreciseProgress = false;
+  bool _fallbackMode = false;
+  int _playbackSession = 0;
   String? _voiceCommandFeedback;
   bool _resumeReadingAfterVoiceInput = false;
   List<int> _activeSpeechWordIndices = const [];
@@ -88,6 +97,7 @@ class _OutputScreenState extends State<OutputScreen> {
   List<String> words = [];
   int currentIndex = -1;
   Timer? _timer;
+  Timer? _progressWatchdog;
 
   // ── accessibility overlays ────────────────────────────────────────────────
   // Initialised lazily in build() once LayoutBuilder provides a real height.
@@ -98,6 +108,9 @@ class _OutputScreenState extends State<OutputScreen> {
   @override
   void initState() {
     super.initState();
+    _playbackSpeed = TTSService.playbackSpeedForEngineRate(speechRate);
+    speechRate = TTSService.engineRateForPlaybackSpeed(_playbackSpeed);
+    AppSettings.speechRate = speechRate;
     _tts.init(
       defaultLocale: TTSService.localeForLanguage(AppSettings.language),
     );
@@ -140,7 +153,7 @@ class _OutputScreenState extends State<OutputScreen> {
       words = _splitToWords(r.processedText);
     });
     _saveToLibrary(r.processedText, r.sourceType);
-    if (autoRead) _tts.setRate(speechRate).then((_) => startReading());
+    if (autoRead) startReading();
   }
 
   // ── load already-processed / already-saved text — no API call ────────────
@@ -153,7 +166,7 @@ class _OutputScreenState extends State<OutputScreen> {
     // saveOnLoad: true. LibraryScreen and HomeScreen leave saveOnLoad at its
     // default (false), so reopening existing items never creates duplicates.
     if (widget.saveOnLoad) _saveToLibrary(text, 'text');
-    if (autoRead) _tts.setRate(speechRate).then((_) => startReading());
+    if (autoRead) startReading();
   }
 
   // ── library save ──────────────────────────────────────────────────────────
@@ -200,47 +213,129 @@ class _OutputScreenState extends State<OutputScreen> {
     List<int> displayWordIndices,
   ) async {
     if (text.trim().isEmpty || displayWordIndices.isEmpty) return;
+    final session = ++_playbackSession;
     _timer?.cancel();
-    _activeSpeechWordIndices = displayWordIndices;
-    _progressMapper = TtsProgressMapper(
+    _progressWatchdog?.cancel();
+    final mapper = TtsProgressMapper(
       text: text,
       displayWordIndices: displayWordIndices,
+      displayWords: [for (final index in displayWordIndices) words[index]],
     );
+    _activeSpeechWordIndices = List<int>.from(displayWordIndices);
+    _progressMapper = mapper;
+    _hasPreciseProgress = false;
+    _fallbackMode = false;
     if (mounted) {
-      setState(() => currentIndex = displayWordIndices.first);
+      setState(() {
+        currentIndex = displayWordIndices.first;
+        _isPlaybackStarting = true;
+        _isPlaybackActive = false;
+        _isPlaybackPaused = false;
+      });
     }
+
+    await _tts.init(
+      defaultLocale: TTSService.localeForLanguage(AppSettings.language),
+    );
+    if (!_isCurrentPlaybackSession(session)) return;
+
+    // Invalidate any previous utterance before setting its rate. This keeps a
+    // rapid Start/Resume sequence from restarting old speech or overlapping it.
+    await _tts.stop();
+    if (!_isCurrentPlaybackSession(session)) return;
     await _tts.setRate(speechRate);
-    if (!mounted) return;
-    _startFallbackHighlightTimer();
+    if (!_isCurrentPlaybackSession(session)) return;
     await _tts.speak(
       text,
+      onStart: () {
+        if (!_isCurrentPlaybackSession(session)) return;
+        setState(() {
+          _isPlaybackStarting = false;
+          _isPlaybackActive = true;
+          _isPlaybackPaused = false;
+        });
+        _scheduleProgressWatchdog(session);
+      },
       onProgress: (_, start, end, word) {
-        final mapper = _progressMapper;
-        if (!mounted ||
-            mapper == null ||
-            mapper.isCoarseProgressRange(word, start, end)) {
+        if (!_isCurrentPlaybackSession(session) ||
+            !identical(_progressMapper, mapper) ||
+            _tts.isPaused) {
           return;
         }
-        final displayIndex = mapper.displayIndexForRange(start, end);
-        if (displayIndex == null || displayIndex < currentIndex) return;
+        if (mapper.isCoarseProgressRange(word, start, end)) {
+          _fallbackMode = true;
+          _progressWatchdog?.cancel();
+          _startFallbackHighlightTimer(session);
+          return;
+        }
+        final wasUsingFallback = _fallbackMode;
+        _hasPreciseProgress = true;
+        _fallbackMode = false;
+        _progressWatchdog?.cancel();
         _timer?.cancel();
-        setState(() => currentIndex = displayIndex);
-        _startFallbackHighlightTimer();
+        final displayIndex = mapper.displayIndexForRange(start, end);
+        if (displayIndex == null ||
+            (displayIndex < currentIndex && !wasUsingFallback)) {
+          return;
+        }
+        if (displayIndex != currentIndex) {
+          setState(() => currentIndex = displayIndex);
+        }
       },
-      onComplete: () => _timer?.cancel(),
-      onError: (_) => _timer?.cancel(),
+      onComplete: () {
+        if (!_isCurrentPlaybackSession(session)) return;
+        _finishPlaybackSession();
+      },
+      onError: (_) {
+        if (!_isCurrentPlaybackSession(session)) return;
+        _finishPlaybackSession();
+      },
     );
+    // Some platform engines return from speak() before dispatching their
+    // start event. Keep controls responsive and retain the no-progress
+    // fallback for engines that do not provide word-boundary callbacks.
+    if (_isCurrentPlaybackSession(session) &&
+        _tts.isSpeaking &&
+        _isPlaybackStarting) {
+      setState(() {
+        _isPlaybackStarting = false;
+        _isPlaybackActive = true;
+      });
+      _scheduleProgressWatchdog(session);
+    }
   }
 
-  void _startFallbackHighlightTimer() {
+  bool _isCurrentPlaybackSession(int session) =>
+      mounted && session == _playbackSession;
+
+  void _finishPlaybackSession() {
     _timer?.cancel();
+    setState(() {
+      currentIndex = -1;
+      _isPlaybackStarting = false;
+      _isPlaybackActive = false;
+      _isPlaybackPaused = false;
+    });
+    _activeSpeechWordIndices = const [];
+    _progressMapper = null;
+    _hasPreciseProgress = false;
+  }
+
+  void _startFallbackHighlightTimer(int session) {
+    _timer?.cancel();
+    if (!_isCurrentPlaybackSession(session) ||
+        !_isPlaybackActive ||
+        _isPlaybackPaused ||
+        _hasPreciseProgress) {
+      return;
+    }
     final mapper = _progressMapper;
     if (!mounted || currentIndex < 0 || mapper == null) return;
 
     final currentPosition = mapper.positionForDisplayIndex(currentIndex);
     if (currentPosition == null) return;
-    final currentWord = mapper.wordAtPosition(currentPosition);
-    if (currentWord == null) return;
+    final currentWords = mapper.wordsForDisplayIndex(currentIndex);
+    if (currentWords.isEmpty) return;
 
     final nextIndex = _activeSpeechWordIndices.indexWhere(
       (index) => index > currentIndex,
@@ -248,9 +343,19 @@ class _OutputScreenState extends State<OutputScreen> {
     if (nextIndex < 0) return;
 
     _timer = Timer(
-      TtsProgressMapper.estimateWordDuration(currentWord, speechRate),
+      currentWords.fold<Duration>(
+        Duration.zero,
+        (total, word) =>
+            total + TtsProgressMapper.estimateWordDuration(word, speechRate),
+      ),
       () {
-        if (!mounted || _tts.isPaused) return;
+        if (!_isCurrentPlaybackSession(session) ||
+            !_isPlaybackActive ||
+            _isPlaybackPaused ||
+            _tts.isPaused ||
+            _hasPreciseProgress) {
+          return;
+        }
         final nextDisplayIndex = _activeSpeechWordIndices[nextIndex];
         setState(() => currentIndex = nextDisplayIndex);
 
@@ -259,44 +364,90 @@ class _OutputScreenState extends State<OutputScreen> {
             ? null
             : mapper.sourceOffsetAtPosition(nextPosition);
         if (sourceOffset != null) _tts.setFallbackResumeOffset(sourceOffset);
-        _startFallbackHighlightTimer();
+        _startFallbackHighlightTimer(session);
       },
     );
   }
 
   Future<void> stopReading() async {
+    final session = ++_playbackSession;
     _timer?.cancel();
+    if (mounted) {
+      setState(() {
+        currentIndex = -1;
+        _isPlaybackStarting = false;
+        _isPlaybackActive = false;
+        _isPlaybackPaused = false;
+      });
+    }
+    _activeSpeechWordIndices = const [];
+    _progressMapper = null;
+    _hasPreciseProgress = false;
     await _tts.stop();
-    if (mounted) setState(() => currentIndex = -1);
+    if (!_isCurrentPlaybackSession(session)) return;
   }
 
   Future<void> _pauseReading() async {
+    final session = _playbackSession;
     final paused = await _tts.pause();
+    if (!_isCurrentPlaybackSession(session)) return;
     if (paused) {
       _timer?.cancel();
-    } else {
-      _startFallbackHighlightTimer();
+      setState(() {
+        _isPlaybackPaused = true;
+        _isPlaybackActive = true;
+      });
+    } else if (!_hasPreciseProgress) {
+      _startFallbackHighlightTimer(session);
     }
   }
 
   Future<void> _resumeReading() async {
+    final session = _playbackSession;
     if (!_tts.isPaused) {
-      await startReading();
+      if (!_tts.isSpeaking && !_isPlaybackStarting) {
+        await startReading();
+      }
       return;
     }
-    if (await _tts.resume()) _startFallbackHighlightTimer();
+    if (await _tts.resume() && _isCurrentPlaybackSession(session)) {
+      setState(() {
+        _isPlaybackStarting = false;
+        _isPlaybackActive = true;
+        _isPlaybackPaused = false;
+      });
+      _startFallbackHighlightTimer(session);
+    }
+  }
+
+  Future<void> _setPlaybackSpeed(double speed) async {
+    if (!TTSService.playbackSpeeds.contains(speed)) return;
+    final session = _playbackSession;
+    final newRate = TTSService.engineRateForPlaybackSpeed(speed);
+    setState(() {
+      _playbackSpeed = speed;
+      speechRate = newRate;
+      AppSettings.speechRate = newRate;
+    });
+    await _tts.setRate(newRate);
+    if (!_isCurrentPlaybackSession(session)) return;
+    if (_tts.isPaused || _isPlaybackPaused) {
+      _timer?.cancel();
+    } else {
+      _startFallbackHighlightTimer(session);
+    }
   }
 
   Future<void> _prepareForVoiceInput() async {
     _resumeReadingAfterVoiceInput = _tts.isSpeaking || _tts.isPaused;
-    if (_tts.isSpeaking) await _tts.pause();
+    if (_tts.isSpeaking) await _pauseReading();
     _timer?.cancel();
   }
 
   Future<void> _restoreReadingAfterVoiceInput() async {
     if (!_resumeReadingAfterVoiceInput) return;
     _resumeReadingAfterVoiceInput = false;
-    if (await _tts.resume()) _startFallbackHighlightTimer();
+    await _resumeReading();
   }
 
   Future<void> _handleVoiceCommand(
@@ -355,10 +506,15 @@ class _OutputScreenState extends State<OutputScreen> {
         feedback = 'Repeating the passage.';
       case VoiceCommandIntent.increaseSpeechRate:
       case VoiceCommandIntent.decreaseSpeechRate:
-        final adjustment = intent == VoiceCommandIntent.increaseSpeechRate
-            ? 0.1
-            : -0.1;
-        speechRate = (speechRate + adjustment).clamp(0.1, 1.0).toDouble();
+        final speedIndex = TTSService.playbackSpeeds.indexOf(_playbackSpeed);
+        final direction = intent == VoiceCommandIntent.increaseSpeechRate
+            ? 1
+            : -1;
+        final nextIndex = (speedIndex + direction)
+            .clamp(0, TTSService.playbackSpeeds.length - 1)
+            .toInt();
+        _playbackSpeed = TTSService.playbackSpeeds[nextIndex];
+        speechRate = TTSService.engineRateForPlaybackSpeed(_playbackSpeed);
         AppSettings.speechRate = speechRate;
         await _tts.setRate(speechRate);
         await _restoreReadingAfterVoiceInput();
@@ -404,6 +560,7 @@ class _OutputScreenState extends State<OutputScreen> {
 
   @override
   void dispose() {
+    ++_playbackSession;
     _timer?.cancel();
     _tts.stop();
     super.dispose();
@@ -611,6 +768,51 @@ class _OutputScreenState extends State<OutputScreen> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _playbackToggleButton() {
+    final isPaused = _isPlaybackPaused;
+    final canToggle = _isPlaybackActive || isPaused;
+    return OutlinedButton.icon(
+      onPressed: canToggle
+          ? () => isPaused ? _resumeReading() : _pauseReading()
+          : null,
+      icon: Icon(isPaused ? Icons.play_arrow : Icons.pause),
+      label: Text(isPaused ? 'Resume' : 'Pause'),
+      style: OutlinedButton.styleFrom(
+        foregroundColor: AppTheme.primaryBlue,
+        minimumSize: const Size.fromHeight(52),
+        side: BorderSide(color: AppTheme.primaryBlue.withOpacity(0.55)),
+      ),
+    );
+  }
+
+  Widget _playbackSpeedSelector() {
+    String labelFor(double speed) =>
+        '${speed.toStringAsFixed(speed == speed.roundToDouble() ? 1 : 2)}x';
+
+    return InputDecorator(
+      decoration: InputDecoration(
+        labelText: 'Playback speed',
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppTheme.radiusMD),
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<double>(
+          value: _playbackSpeed,
+          isExpanded: true,
+          onChanged: (speed) {
+            if (speed != null) _setPlaybackSpeed(speed);
+          },
+          items: [
+            for (final speed in TTSService.playbackSpeeds)
+              DropdownMenuItem(value: speed, child: Text(labelFor(speed))),
+          ],
         ),
       ),
     );
@@ -985,6 +1187,16 @@ class _OutputScreenState extends State<OutputScreen> {
                               icon: Icons.stop,
                             ),
                           ),
+                        ],
+                      ),
+
+                      const SizedBox(height: AppTheme.spaceSM),
+
+                      Row(
+                        children: [
+                          Expanded(child: _playbackToggleButton()),
+                          const SizedBox(width: AppTheme.spaceSM),
+                          Expanded(child: _playbackSpeedSelector()),
                         ],
                       ),
 
