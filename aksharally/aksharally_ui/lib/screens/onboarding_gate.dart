@@ -75,22 +75,28 @@ class _OnboardingGateState extends State<OnboardingGate> {
     } on FirebaseException catch (error, stackTrace) {
       _logProfileFailure('load', error, stackTrace);
       final cachedProfile = await _loadCachedProfile(uid);
-      if (cachedProfile == null) {
-        if (widget.isNewUser) {
-          final initial = OnboardingProfile.initial();
-          try {
-            await _storage.save(uid, initial);
-          } catch (storageError, storageStackTrace) {
-            _logProfileFailure(
-              'cache initial profile',
-              storageError,
-              storageStackTrace,
-            );
-          }
-          await _saveRemoteProfileIfAvailable(uid, initial);
-          return _GateResult.onboarding(initial);
+      if (!widget.isNewUser) {
+        if (cachedProfile != null) {
+          await _storage.applyReadingPreferences(
+            cachedProfile,
+            applyGlobalSettings: false,
+          );
         }
-        Error.throwWithStackTrace(error, stackTrace);
+        return const _GateResult.home();
+      }
+      if (cachedProfile == null) {
+        final initial = OnboardingProfile.initial();
+        try {
+          await _storage.save(uid, initial);
+        } catch (storageError, storageStackTrace) {
+          _logProfileFailure(
+            'cache initial profile',
+            storageError,
+            storageStackTrace,
+          );
+        }
+        await _saveRemoteProfileIfAvailable(uid, initial);
+        return _GateResult.onboarding(initial);
       }
       await _storage.applyReadingPreferences(cachedProfile);
       return cachedProfile.completed
@@ -104,6 +110,30 @@ class _OnboardingGateState extends State<OnboardingGate> {
       );
     }
     final remoteProfile = _profileFromAccount(account);
+
+    if (!widget.isNewUser) {
+      if (accountStatus == true) {
+        final profile = _completedProfileFromAccount(account, remoteProfile);
+        await _storage.save(uid, profile);
+        await _storage.applyReadingPreferences(
+          profile,
+          applyGlobalSettings: false,
+        );
+      } else {
+        final cachedProfile = await _loadCachedProfile(uid);
+        final savedProfile = _newerIncompleteDraft(
+          remoteProfile,
+          cachedProfile,
+        );
+        if (savedProfile != null) {
+          await _storage.applyReadingPreferences(
+            savedProfile,
+            applyGlobalSettings: false,
+          );
+        }
+      }
+      return const _GateResult.home();
+    }
 
     if (accountStatus == true) {
       // The account-level completion flag is authoritative. Older account

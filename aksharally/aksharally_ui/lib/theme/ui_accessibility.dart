@@ -39,14 +39,47 @@ class UIAccessibility {
   static double letterSpacing   = 0.3;
   static double wordSpacing     = 2.0;
   static double lineHeight      = 1.6;
-  static String activeColorTheme = 'cream';
-  static Color  textColor       = const Color(0xFF333333);
-  static Color  backgroundColor = const Color(0xFFFDF6E3);
+  static String activeColorTheme = 'cream_black';
+  static Color  textColor       = const Color(0xFF111111);
+  static Color  backgroundColor = const Color(0xFFF5F1E6);
 
   static bool boldTextEnabled           = false;
   static bool highContrastEnabled       = false;
   static bool reducedAnimationsEnabled  = false;
   static bool largeTouchTargetsEnabled  = false;
+
+  /// A contrasting surface for cards, fields, and other app chrome.
+  static Color get surfaceColor =>
+      backgroundColor.computeLuminance() < 0.3
+          ? const Color(0xFF2E2E2E)
+          : Colors.white;
+
+  /// The selected foreground works as the global accent; the page background
+  /// remains readable when used as text or an icon on that accent.
+  static Color get accentColor => textColor;
+  static Color get onAccentColor => backgroundColor;
+  static Color get mutedTextColor => textColor.withOpacity(0.68);
+
+  /// Applies the global UI font and spacing while preserving a widget's
+  /// semantic size and weight.
+  static TextStyle applyGlobalTextStyle(TextStyle style) {
+    final size = style.fontSize == null
+        ? fontSize
+        : style.fontSize! * (fontSize / 15.0);
+    final color = style.color ?? textColor;
+    return previewStyleFor(fontFamily).merge(style).copyWith(
+      fontSize: size,
+      letterSpacing: letterSpacing,
+      wordSpacing: wordSpacing,
+      height: lineHeight,
+      fontWeight: boldTextEnabled ? FontWeight.bold : style.fontWeight,
+      color: highContrastEnabled ? _highContrastColor(color) : color,
+    );
+  }
+
+  static TextStyle get globalTextStyle => applyGlobalTextStyle(
+    TextStyle(fontSize: 15.0, color: textColor),
+  );
 
   // ── Global rebuild notifier ────────────────────────────────────────────────
   /// Increment this to force AksharAllyApp to rebuild MaterialApp with the
@@ -238,11 +271,11 @@ class UIAccessibility {
   /// Builds a complete ThemeData from the current settings.
   /// Pass this to MaterialApp(theme: ...) inside a ValueListenableBuilder.
   static ThemeData buildTheme() {
-    const primary       = Color(0xFF1565C0);
-    const primaryLight  = Color(0xFF42A5F5);
-    const primaryGreen  = Color(0xFF4CAF93);
+    final primary       = accentColor;
+    final onPrimary      = onAccentColor;
+    final primaryGreen  = accentColor;
     const errorColor    = Color(0xFFD32F2F);
-    const muted         = Color(0xFF757575);
+    final muted         = mutedTextColor;
 
     final double btnHeight = largeTouchTargetsEnabled ? 60.0 : 52.0;
 
@@ -252,8 +285,11 @@ class UIAccessibility {
 
       colorScheme: ColorScheme.light(
         primary:   primary,
+        onPrimary: onPrimary,
         secondary: primaryGreen,
-        surface:   backgroundColor,
+        onSecondary: onPrimary,
+        surface:   surfaceColor,
+        onSurface: textColor,
         error:     errorColor,
       ),
 
@@ -268,13 +304,14 @@ class UIAccessibility {
 
       appBarTheme: AppBarTheme(
         elevation:        0,
-        backgroundColor:  Colors.transparent,
-        foregroundColor:  primary,
+        backgroundColor:  backgroundColor,
+        foregroundColor:  textColor,
         centerTitle:      true,
-        titleTextStyle:   _ts(fontSize + 4, FontWeight.w800, primary),
+        titleTextStyle:   _ts(fontSize + 4, FontWeight.w800, textColor),
       ),
 
       cardTheme: CardThemeData(
+        color: surfaceColor,
         elevation: 2,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
@@ -285,28 +322,30 @@ class UIAccessibility {
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: primaryGreen,
-          foregroundColor: Colors.white,
+          foregroundColor: onPrimary,
           minimumSize:     Size(double.infinity, btnHeight),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(30),
           ),
-          textStyle: _ts(fontSize, FontWeight.w600, Colors.white),
+          textStyle: _ts(fontSize, FontWeight.w600, onPrimary),
         ),
       ),
 
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
+          foregroundColor: textColor,
+          side: BorderSide(color: textColor.withOpacity(0.45)),
           minimumSize: Size(double.infinity, btnHeight),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(30),
           ),
-          textStyle: _ts(fontSize, FontWeight.w600, primary),
+          textStyle: _ts(fontSize, FontWeight.w600, textColor),
         ),
       ),
 
       inputDecorationTheme: InputDecorationTheme(
         filled:    true,
-        fillColor: Colors.white,
+        fillColor: surfaceColor,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(20),
           borderSide:   BorderSide.none,
@@ -317,9 +356,10 @@ class UIAccessibility {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(20),
-          borderSide:   const BorderSide(color: primary, width: 2),
+          borderSide:   BorderSide(color: primary, width: 2),
         ),
-        hintStyle: const TextStyle(color: muted),
+        hintStyle: TextStyle(color: muted),
+        labelStyle: TextStyle(color: textColor),
       ),
 
       sliderTheme: SliderThemeData(
@@ -342,6 +382,8 @@ class UIAccessibility {
               : const Color(0xFFE0E0E0),
         ),
       ),
+
+      iconTheme: IconThemeData(color: textColor),
 
       snackBarTheme: const SnackBarThemeData(
         behavior:         SnackBarBehavior.floating,
@@ -450,7 +492,23 @@ class UIAccessibility {
   static Future<void> load() async {
     final prefs = await SharedPreferences.getInstance();
 
-    if (!prefs.containsKey(_kInit)) {
+    final hasSavedGlobalValues = [
+      _kProfile,
+      _kFont,
+      _kFontSize,
+      _kLetterSp,
+      _kWordSp,
+      _kLineH,
+      _kColorTheme,
+      _kTextColor,
+      _kBgColor,
+      _kBoldText,
+      _kHighContrast,
+      _kReduceAnim,
+      _kLargeTargets,
+    ].any(prefs.containsKey);
+
+    if (!prefs.containsKey(_kInit) && !hasSavedGlobalValues) {
       // First launch — apply dyslexia defaults and persist so next launch
       // restores exactly these values (existing users keep their saved font).
       applyProfile('dyslexia');
@@ -464,13 +522,18 @@ class UIAccessibility {
     letterSpacing          = prefs.getDouble(_kLetterSp)   ?? 0.3;
     wordSpacing            = prefs.getDouble(_kWordSp)     ?? 2.0;
     lineHeight             = prefs.getDouble(_kLineH)      ?? 1.6;
-    activeColorTheme       = prefs.getString(_kColorTheme) ?? 'cream';
-    textColor              = Color(prefs.getInt(_kTextColor)  ?? 0xFF333333);
-    backgroundColor        = Color(prefs.getInt(_kBgColor)   ?? 0xFFFDF6E3);
+    activeColorTheme       = prefs.getString(_kColorTheme) ?? 'cream_black';
+    textColor              = Color(prefs.getInt(_kTextColor)  ?? 0xFF111111);
+    backgroundColor        = Color(prefs.getInt(_kBgColor)   ?? 0xFFF5F1E6);
     boldTextEnabled         = prefs.getBool(_kBoldText)     ?? false;
     highContrastEnabled     = prefs.getBool(_kHighContrast) ?? false;
     reducedAnimationsEnabled = prefs.getBool(_kReduceAnim)  ?? false;
     largeTouchTargetsEnabled = prefs.getBool(_kLargeTargets) ?? false;
+    if (!prefs.containsKey(_kInit)) {
+      // Older installations may have saved values without the initialization
+      // marker; persist the restored values instead of replacing them.
+      await save();
+    }
   }
 
   static Future<void> save() async {

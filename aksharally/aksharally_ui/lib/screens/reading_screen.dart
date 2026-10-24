@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 
 import '../theme/app_theme.dart';
+import '../theme/ui_accessibility.dart';
 import '../services/api_service.dart';
 import '../models/format_result.dart';
 import 'output_screen.dart';
@@ -274,7 +275,7 @@ class _ReadingScreenState extends State<ReadingScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: UIAccessibility.backgroundColor,
       appBar:          _buildAppBar(),
       body: Column(
         children: [
@@ -309,29 +310,14 @@ class _ReadingScreenState extends State<ReadingScreen> {
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
       elevation:       0,
-      backgroundColor: Colors.transparent,
-      flexibleSpace: Container(
-        decoration: const BoxDecoration(
-          gradient: AppTheme.creamGradient,
-        ),
-      ),
+      backgroundColor: UIAccessibility.backgroundColor,
+      foregroundColor: UIAccessibility.textColor,
       leading: IconButton(
-        icon:      const Icon(Icons.arrow_back, color: AppTheme.primaryBlue),
+        icon:      const Icon(Icons.arrow_back),
         onPressed: () => Navigator.pop(context),
       ),
       centerTitle: true,
-      title: ShaderMask(
-        shaderCallback: (bounds) =>
-            AppTheme.brandGradient.createShader(bounds),
-        child: const Text(
-          'AksharAlly',
-          style: TextStyle(
-            fontWeight: FontWeight.w900,
-            fontSize:   22,
-            color:      Colors.white,
-          ),
-        ),
-      ),
+      title: const Text('AksharAlly'),
     );
   }
 
@@ -339,7 +325,7 @@ class _ReadingScreenState extends State<ReadingScreen> {
 
   Widget _buildTabStrip() {
     return Container(
-      color: AppTheme.accentCream,
+      color: UIAccessibility.backgroundColor,
       padding: const EdgeInsets.symmetric(
         horizontal: AppTheme.spaceMD,
         vertical:   AppTheme.spaceSM,
@@ -370,21 +356,27 @@ class _ReadingScreenState extends State<ReadingScreen> {
           duration: const Duration(milliseconds: 180),
           padding: const EdgeInsets.symmetric(vertical: 10),
           decoration: BoxDecoration(
-            color:        selected ? AppTheme.primaryBlue : Colors.transparent,
+              color:        selected
+                  ? Theme.of(context).colorScheme.primary
+                  : Colors.transparent,
             borderRadius: BorderRadius.circular(AppTheme.radiusMD),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(icon, size: 17,
-                  color: selected ? Colors.white : AppTheme.primaryBlue),
+                  color: selected
+                      ? Theme.of(context).colorScheme.onPrimary
+                      : UIAccessibility.textColor),
               const SizedBox(width: 5),
               Text(
                 label,
                 style: TextStyle(
                   fontSize:   13,
                   fontWeight: FontWeight.w600,
-                  color:      selected ? Colors.white : AppTheme.primaryBlue,
+                  color: selected
+                      ? Theme.of(context).colorScheme.onPrimary
+                      : UIAccessibility.textColor,
                 ),
               ),
             ],
@@ -452,14 +444,16 @@ class _ReadingScreenState extends State<ReadingScreen> {
       decoration: InputDecoration(
         hintText:    'Type or paste your text here…',
         filled:      true,
-        fillColor:   AppTheme.lightGrey,
+        fillColor:   UIAccessibility.surfaceColor,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppTheme.radiusMD),
           borderSide:   BorderSide.none,
         ),
         contentPadding: const EdgeInsets.all(AppTheme.spaceMD),
       ),
-      style: AppTheme.bodyStyle,
+      style: UIAccessibility.applyGlobalTextStyle(
+        AppTheme.bodyStyle,
+      ).copyWith(color: UIAccessibility.textColor),
     );
   }
 
@@ -490,7 +484,7 @@ class _ReadingScreenState extends State<ReadingScreen> {
     return Container(
       padding: const EdgeInsets.all(AppTheme.spaceMD),
       decoration: BoxDecoration(
-        color:        AppTheme.lightGrey,
+        color:        UIAccessibility.surfaceColor,
         borderRadius: BorderRadius.circular(AppTheme.radiusMD),
       ),
       child: Column(
@@ -498,7 +492,12 @@ class _ReadingScreenState extends State<ReadingScreen> {
         children: [
 
           // Language
-          Text('Language', style: AppTheme.labelStyle),
+          Text(
+            'Language',
+            style: UIAccessibility.applyGlobalTextStyle(
+              AppTheme.labelStyle,
+            ).copyWith(color: UIAccessibility.textColor),
+          ),
           const SizedBox(height: AppTheme.spaceSM),
           _segmentRow(
             options:  const [
@@ -515,7 +514,12 @@ class _ReadingScreenState extends State<ReadingScreen> {
           const SizedBox(height: AppTheme.spaceMD),
 
           // Processing mode
-          Text('Processing Mode', style: AppTheme.labelStyle),
+          Text(
+            'Processing Mode',
+            style: UIAccessibility.applyGlobalTextStyle(
+              AppTheme.labelStyle,
+            ).copyWith(color: UIAccessibility.textColor),
+          ),
           const SizedBox(height: AppTheme.spaceXS),
           _modeRadio(
             value:    _ProcessMode.formatOnly,
@@ -549,7 +553,9 @@ class _ReadingScreenState extends State<ReadingScreen> {
           Expanded(
             child: Text(
               _error!,
-              style: AppTheme.captionStyle.copyWith(color: AppTheme.error),
+              style: UIAccessibility.applyGlobalTextStyle(
+                AppTheme.captionStyle,
+              ).copyWith(color: AppTheme.error),
             ),
           ),
         ],
@@ -565,19 +571,20 @@ class _ReadingScreenState extends State<ReadingScreen> {
       child: ElevatedButton(
         onPressed: _isLoading ? null : _onContinue,
         style: ElevatedButton.styleFrom(
-          backgroundColor:         AppTheme.primaryBlue,
-          foregroundColor:         Colors.white,
-          disabledBackgroundColor: AppTheme.primaryBlue.withOpacity(0.45),
+          backgroundColor:         UIAccessibility.accentColor,
+          foregroundColor:         UIAccessibility.onAccentColor,
+          disabledBackgroundColor:
+              UIAccessibility.accentColor.withOpacity(0.45),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppTheme.radiusXL),
           ),
         ),
         child: _isLoading
-            ? const SizedBox(
+            ? SizedBox(
                 width:  22,
                 height: 22,
                 child: CircularProgressIndicator(
-                  color:       Colors.white,
+                  color:       UIAccessibility.onAccentColor,
                   strokeWidth: 2.5,
                 ),
               )
@@ -597,11 +604,11 @@ class _ReadingScreenState extends State<ReadingScreen> {
     required VoidCallback onTap,
   }) {
     return OutlinedButton.icon(
-      icon: Icon(icon, color: AppTheme.primaryBlue, size: 20),
+      icon: Icon(icon, color: UIAccessibility.textColor, size: 20),
       label: Text(
         label,
-        style: const TextStyle(
-          color:      AppTheme.primaryBlue,
+        style: TextStyle(
+          color:      UIAccessibility.textColor,
           fontWeight: FontWeight.w600,
           fontSize:   13,
         ),
@@ -612,7 +619,7 @@ class _ReadingScreenState extends State<ReadingScreen> {
           vertical:   AppTheme.spaceMD,
           horizontal: AppTheme.spaceSM,
         ),
-        side:  const BorderSide(color: AppTheme.primaryBlue, width: 1.5),
+        side: BorderSide(color: UIAccessibility.textColor, width: 1.5),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppTheme.radiusMD),
         ),
@@ -627,20 +634,24 @@ class _ReadingScreenState extends State<ReadingScreen> {
     return Container(
       height: 110,
       decoration: BoxDecoration(
-        border:       Border.all(color: AppTheme.primaryBlue.withOpacity(0.18)),
+        border: Border.all(
+          color: UIAccessibility.textColor.withOpacity(0.18),
+        ),
         borderRadius: BorderRadius.circular(AppTheme.radiusMD),
-        color:        AppTheme.accentCream.withOpacity(0.35),
+        color:        UIAccessibility.surfaceColor,
       ),
       child: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(icon, size: 30,
-                color: AppTheme.primaryBlue.withOpacity(0.35)),
+                color: UIAccessibility.textColor.withOpacity(0.35)),
             const SizedBox(height: AppTheme.spaceSM),
             Text(message,
                 textAlign: TextAlign.center,
-                style: AppTheme.captionStyle),
+                style: UIAccessibility.applyGlobalTextStyle(
+                  AppTheme.captionStyle,
+                ).copyWith(color: UIAccessibility.textColor)),
           ],
         ),
       ),
@@ -655,14 +666,16 @@ class _ReadingScreenState extends State<ReadingScreen> {
         Expanded(
           child: Text(
             _pickedFileName ?? 'Image selected',
-            style:    AppTheme.captionStyle,
+            style: UIAccessibility.applyGlobalTextStyle(
+              AppTheme.captionStyle,
+            ).copyWith(color: UIAccessibility.textColor),
             overflow: TextOverflow.ellipsis,
           ),
         ),
         TextButton(
           onPressed: _clearPick,
-          child: const Text('Clear',
-              style: TextStyle(color: AppTheme.primaryBlue)),
+          child: Text('Clear',
+              style: TextStyle(color: UIAccessibility.textColor)),
         ),
       ],
     );
@@ -672,14 +685,16 @@ class _ReadingScreenState extends State<ReadingScreen> {
     return Container(
       padding: const EdgeInsets.all(AppTheme.spaceMD),
       decoration: BoxDecoration(
-        color:        Colors.white,
+        color:        UIAccessibility.surfaceColor,
         borderRadius: BorderRadius.circular(AppTheme.radiusMD),
-        border:       Border.all(color: AppTheme.primaryBlue.withOpacity(0.2)),
+        border: Border.all(
+          color: UIAccessibility.textColor.withOpacity(0.2),
+        ),
       ),
       child: Row(
         children: [
-          const Icon(Icons.insert_drive_file_outlined,
-              color: AppTheme.primaryBlue, size: 28),
+          Icon(Icons.insert_drive_file_outlined,
+              color: UIAccessibility.textColor, size: 28),
           const SizedBox(width: AppTheme.spaceSM),
           Expanded(
             child: Column(
@@ -687,10 +702,17 @@ class _ReadingScreenState extends State<ReadingScreen> {
               children: [
                 Text(
                   _pickedFileName ?? 'File selected',
-                  style:    AppTheme.bodyStrongStyle,
+                  style: UIAccessibility.applyGlobalTextStyle(
+                    AppTheme.bodyStrongStyle,
+                  ).copyWith(color: UIAccessibility.textColor),
                   overflow: TextOverflow.ellipsis,
                 ),
-                Text('Ready to process', style: AppTheme.captionStyle),
+                Text(
+                  'Ready to process',
+                  style: UIAccessibility.applyGlobalTextStyle(
+                    AppTheme.captionStyle,
+                  ).copyWith(color: UIAccessibility.mutedTextColor),
+                ),
               ],
             ),
           ),
@@ -720,12 +742,14 @@ class _ReadingScreenState extends State<ReadingScreen> {
               margin:   const EdgeInsets.symmetric(horizontal: 2),
               padding:  const EdgeInsets.symmetric(vertical: AppTheme.spaceSM),
               decoration: BoxDecoration(
-                color: isSelected ? AppTheme.primaryBlue : Colors.white,
+                color: isSelected
+                    ? UIAccessibility.accentColor
+                    : UIAccessibility.surfaceColor,
                 borderRadius: BorderRadius.circular(AppTheme.radiusSM),
                 border: Border.all(
                   color: isSelected
-                      ? AppTheme.primaryBlue
-                      : AppTheme.primaryBlue.withOpacity(0.3),
+                      ? UIAccessibility.textColor
+                      : UIAccessibility.textColor.withOpacity(0.3),
                 ),
               ),
               child: Text(
@@ -734,7 +758,9 @@ class _ReadingScreenState extends State<ReadingScreen> {
                 style: TextStyle(
                   fontSize:   13,
                   fontWeight: FontWeight.w600,
-                  color: isSelected ? Colors.white : AppTheme.primaryBlue,
+                  color: isSelected
+                      ? UIAccessibility.onAccentColor
+                      : UIAccessibility.textColor,
                 ),
               ),
             ),
@@ -761,7 +787,7 @@ class _ReadingScreenState extends State<ReadingScreen> {
               value:                value,
               groupValue:           _mode,
               onChanged:            (v) => setState(() => _mode = v!),
-              activeColor:          AppTheme.primaryBlue,
+              activeColor:          UIAccessibility.textColor,
               materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
               visualDensity:        VisualDensity.compact,
             ),
@@ -774,13 +800,20 @@ class _ReadingScreenState extends State<ReadingScreen> {
                   children: [
                     Text(
                       title,
-                      style: AppTheme.bodyStrongStyle.copyWith(
+                      style: UIAccessibility.applyGlobalTextStyle(
+                        AppTheme.bodyStrongStyle,
+                      ).copyWith(
                         color: isSelected
-                            ? AppTheme.primaryBlue
-                            : AppTheme.textDark,
+                            ? UIAccessibility.textColor
+                            : UIAccessibility.textColor,
                       ),
                     ),
-                    Text(subtitle, style: AppTheme.captionStyle),
+                    Text(
+                      subtitle,
+                      style: UIAccessibility.applyGlobalTextStyle(
+                        AppTheme.captionStyle,
+                      ).copyWith(color: UIAccessibility.mutedTextColor),
+                    ),
                   ],
                 ),
               ),

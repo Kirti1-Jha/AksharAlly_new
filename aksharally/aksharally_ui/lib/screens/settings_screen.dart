@@ -149,14 +149,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         : UIAccessibility.textColor;
   }
 
-  // ── Screen header colour — contrast against the BACKGROUND ───────────────
-  // Uses backgroundColor luminance (not textColor luminance) so the title
-  // is always readable regardless of which theme is applied.
-  Color get _headerColor {
-    return UIAccessibility.backgroundColor.computeLuminance() > 0.3
-        ? UIAccessibility.textColor
-        : Colors.white;
-  }
+  // Use the foreground from the selected global palette for page headings.
+  Color get _headerColor => UIAccessibility.textColor;
 
   // ── WCAG contrast ratio between foreground and background ─────────────────
   double _contrastRatio(Color fg, Color bg) {
@@ -318,8 +312,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 child: ElevatedButton(
                   onPressed: _applyChanges,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: const Color(0xFF1565C0),
+                    backgroundColor: UIAccessibility.accentColor,
+                    foregroundColor: UIAccessibility.onAccentColor,
                     padding: const EdgeInsets.symmetric(vertical: 10),
                     shape: RoundedRectangleBorder(
                       borderRadius:
@@ -353,8 +347,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           icon: const Icon(Icons.check_circle_outline),
           label: const Text('Apply Now'),
           style: ElevatedButton.styleFrom(
-            backgroundColor: AppTheme.primaryBlue,
-            foregroundColor: Colors.white,
+            backgroundColor: UIAccessibility.accentColor,
+            foregroundColor: UIAccessibility.onAccentColor,
             padding: const EdgeInsets.symmetric(vertical: 14),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(AppTheme.radiusMD),
@@ -801,7 +795,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     Text(
                       'AksharAlly',
                       style: TextStyle(
-                        fontFamily: 'OpenDyslexic',
+                        fontFamily: _pendingFont,
                         fontSize:   8.5,
                         fontWeight: FontWeight.bold,
                         color:      tc,

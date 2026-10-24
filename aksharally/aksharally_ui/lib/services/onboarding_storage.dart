@@ -447,7 +447,10 @@ class OnboardingStorage {
     await prefs.remove(_keyFor(uid));
   }
 
-  Future<void> applyReadingPreferences(OnboardingProfile profile) async {
+  Future<void> applyReadingPreferences(
+    OnboardingProfile profile, {
+    bool applyGlobalSettings = true,
+  }) async {
     if (!AccessibilitySettings.fonts.contains(profile.fontFamily) ||
         !AccessibilitySettings.themeLabels.containsKey(profile.colorTheme)) {
       throw const FormatException('Saved reading preferences are invalid.');
@@ -467,21 +470,23 @@ class OnboardingStorage {
     AccessibilitySettings.syllableBreakdown = profile.syllableBreakdown;
     await AccessibilitySettings.save();
 
-    UIAccessibility.fontFamily = profile.fontFamily;
-    UIAccessibility.fontSize = profile.fontSize;
-    UIAccessibility.letterSpacing = profile.letterSpacing;
-    UIAccessibility.wordSpacing = profile.wordSpacing;
-    UIAccessibility.lineHeight = profile.lineHeight;
-    UIAccessibility.activeColorTheme = profile.colorTheme;
-    UIAccessibility.backgroundColor = UIAccessibility.themeBg(
-      profile.colorTheme,
-    );
-    UIAccessibility.textColor = UIAccessibility.themeText(profile.colorTheme);
-    UIAccessibility.highContrastEnabled = profile.highContrast;
-    UIAccessibility.reducedAnimationsEnabled = profile.reduceMotion;
-    UIAccessibility.largeTouchTargetsEnabled = profile.largerControls;
-    UIAccessibility.notifier.value++;
-    await UIAccessibility.save();
+    if (applyGlobalSettings) {
+      UIAccessibility.fontFamily = profile.fontFamily;
+      UIAccessibility.fontSize = profile.fontSize;
+      UIAccessibility.letterSpacing = profile.letterSpacing;
+      UIAccessibility.wordSpacing = profile.wordSpacing;
+      UIAccessibility.lineHeight = profile.lineHeight;
+      UIAccessibility.activeColorTheme = profile.colorTheme;
+      UIAccessibility.backgroundColor = UIAccessibility.themeBg(
+        profile.colorTheme,
+      );
+      UIAccessibility.textColor = UIAccessibility.themeText(profile.colorTheme);
+      UIAccessibility.highContrastEnabled = profile.highContrast;
+      UIAccessibility.reducedAnimationsEnabled = profile.reduceMotion;
+      UIAccessibility.largeTouchTargetsEnabled = profile.largerControls;
+      UIAccessibility.notifier.value++;
+      await UIAccessibility.save();
+    }
     AppSettings.language = profile.defaultReadingLanguage;
     AppSettings.voiceAssistanceEnabled = profile.voiceAssistance;
     await AppSettings.saveVoiceAssistancePreference(profile.voiceAssistance);

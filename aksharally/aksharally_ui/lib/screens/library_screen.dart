@@ -206,7 +206,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
         color:        _iconChipBg,
         borderRadius: BorderRadius.circular(AppTheme.radiusSM),
       ),
-      child: Icon(icon, color: AppTheme.primaryBlue, size: 18),
+      child: Icon(icon, color: _txt, size: 18),
     );
   }
 }

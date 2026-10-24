@@ -10,6 +10,7 @@ import '../services/auth_service.dart';
 import '../services/tts_service.dart';
 import '../theme/app_settings.dart';
 import '../theme/app_theme.dart';
+import '../theme/ui_accessibility.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key, this.authFlow, this.ttsService});
@@ -261,13 +262,17 @@ class _LoginScreenState extends State<LoginScreen> {
             constraints: const BoxConstraints(minHeight: 48),
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: selected ? AppTheme.primaryBlue : Colors.transparent,
+              color: selected
+                  ? UIAccessibility.accentColor
+                  : Colors.transparent,
               borderRadius: BorderRadius.circular(AppTheme.radiusLG),
             ),
             child: Text(
               label,
               style: TextStyle(
-                color: selected ? Colors.white : AppTheme.textDark,
+                color: selected
+                    ? UIAccessibility.onAccentColor
+                    : UIAccessibility.textColor,
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -289,24 +294,28 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
       icon: apple
           ? const Icon(Icons.phone_iphone_outlined)
-          : const Text(
+          : Text(
               'G',
               style: TextStyle(
-                color: AppTheme.primaryBlue,
+                color: UIAccessibility.textColor,
                 fontWeight: FontWeight.w800,
                 fontSize: 18,
               ),
             ),
       label: Text(label),
       style: OutlinedButton.styleFrom(
-        foregroundColor: AppTheme.textDark,
-        backgroundColor: Colors.white,
+        foregroundColor: UIAccessibility.textColor,
+        backgroundColor: UIAccessibility.surfaceColor,
         minimumSize: const Size(double.infinity, 52),
-        side: BorderSide(color: AppTheme.primaryBlue.withOpacity(0.18)),
+        side: BorderSide(
+          color: UIAccessibility.textColor.withOpacity(0.18),
+        ),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppTheme.radiusLG),
         ),
-        textStyle: AppTheme.bodyStrongStyle,
+        textStyle: UIAccessibility.applyGlobalTextStyle(
+          AppTheme.bodyStrongStyle,
+        ).copyWith(color: UIAccessibility.textColor),
       ),
     );
   }
@@ -314,7 +323,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.background,
+      backgroundColor: UIAccessibility.backgroundColor,
       resizeToAvoidBottomInset: true,
       body: SafeArea(
         child: LayoutBuilder(
@@ -353,8 +362,8 @@ class _LoginScreenState extends State<LoginScreen> {
                             _voiceAssistantEnabled ? 'Voice on' : 'Voice off',
                           ),
                           style: TextButton.styleFrom(
-                            foregroundColor: AppTheme.primaryBlue,
-                            backgroundColor: AppTheme.lightGrey,
+                            foregroundColor: UIAccessibility.textColor,
+                            backgroundColor: UIAccessibility.surfaceColor,
                             minimumSize: const Size(44, 40),
                             padding: const EdgeInsets.symmetric(horizontal: 12),
                             shape: RoundedRectangleBorder(
@@ -362,7 +371,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                 AppTheme.radiusFull,
                               ),
                             ),
-                            textStyle: AppTheme.labelStyle,
+                            textStyle: UIAccessibility.applyGlobalTextStyle(
+                              AppTheme.labelStyle,
+                            ).copyWith(color: UIAccessibility.textColor),
                           ),
                         ),
                       ),
@@ -393,7 +404,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       'AksharAlly',
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: AppTheme.primaryBlue,
+                        color: UIAccessibility.textColor,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
@@ -401,19 +412,21 @@ class _LoginScreenState extends State<LoginScreen> {
                     Text(
                       'Read with confidence.',
                       textAlign: TextAlign.center,
-                      style: AppTheme.bodyStyle.copyWith(
-                        color: AppTheme.textMuted,
+                      style: UIAccessibility.applyGlobalTextStyle(
+                        AppTheme.bodyStyle,
+                      ).copyWith(
+                        color: UIAccessibility.mutedTextColor,
                       ),
                     ),
                     const SizedBox(height: 18),
                     Card(
-                      color: Colors.white,
+                      color: UIAccessibility.surfaceColor,
                       elevation: 1,
                       margin: EdgeInsets.zero,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(AppTheme.radiusLG),
                         side: BorderSide(
-                          color: AppTheme.primaryBlue.withOpacity(0.08),
+                          color: UIAccessibility.textColor.withOpacity(0.08),
                         ),
                       ),
                       child: Padding(
@@ -424,7 +437,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             Container(
                               padding: const EdgeInsets.all(4),
                               decoration: BoxDecoration(
-                                color: AppTheme.lightGrey,
+                                color: UIAccessibility.backgroundColor,
                                 borderRadius: BorderRadius.circular(
                                   AppTheme.radiusLG,
                                 ),
@@ -448,8 +461,10 @@ class _LoginScreenState extends State<LoginScreen> {
                             Text(
                               isLogin ? 'Welcome Back!' : 'Create Account',
                               textAlign: TextAlign.center,
-                              style: AppTheme.headingStyle.copyWith(
-                                color: AppTheme.textDark,
+                              style: UIAccessibility.applyGlobalTextStyle(
+                                AppTheme.headingStyle,
+                              ).copyWith(
+                                color: UIAccessibility.textColor,
                               ),
                             ),
                             const SizedBox(height: 6),
@@ -458,8 +473,10 @@ class _LoginScreenState extends State<LoginScreen> {
                                   ? 'Sign in to continue reading.'
                                   : 'Create your account to personalise your reading.',
                               textAlign: TextAlign.center,
-                              style: AppTheme.bodyStyle.copyWith(
-                                color: AppTheme.textMuted,
+                              style: UIAccessibility.applyGlobalTextStyle(
+                                AppTheme.bodyStyle,
+                              ).copyWith(
+                                color: UIAccessibility.mutedTextColor,
                               ),
                             ),
                             if (_voiceNotice != null) ...[
@@ -521,8 +538,8 @@ class _LoginScreenState extends State<LoginScreen> {
                                   ? null
                                   : () => handleAuth(),
                               style: FilledButton.styleFrom(
-                                backgroundColor: AppTheme.primaryGreen,
-                                foregroundColor: Colors.white,
+                                backgroundColor: UIAccessibility.accentColor,
+                                foregroundColor: UIAccessibility.onAccentColor,
                                 minimumSize: const Size(
                                   double.infinity,
                                   AppTheme.buttonHeight,
@@ -532,15 +549,20 @@ class _LoginScreenState extends State<LoginScreen> {
                                     AppTheme.radiusXL,
                                   ),
                                 ),
-                                textStyle: AppTheme.buttonTextStyle,
+                                textStyle:
+                                    UIAccessibility.applyGlobalTextStyle(
+                                      AppTheme.buttonTextStyle,
+                                    ).copyWith(
+                                      color: UIAccessibility.onAccentColor,
+                                    ),
                               ),
                               child: _authenticating
-                                  ? const SizedBox(
+                                  ? SizedBox(
                                       width: 20,
                                       height: 20,
                                       child: CircularProgressIndicator(
                                         strokeWidth: 2,
-                                        color: Colors.white,
+                                        color: UIAccessibility.onAccentColor,
                                       ),
                                     )
                                   : Text(isLogin ? 'Login' : 'Register'),
@@ -550,7 +572,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               children: [
                                 Expanded(
                                   child: Divider(
-                                    color: AppTheme.primaryBlue.withOpacity(
+                                    color: UIAccessibility.textColor.withOpacity(
                                       0.15,
                                     ),
                                   ),
@@ -561,12 +583,16 @@ class _LoginScreenState extends State<LoginScreen> {
                                   ),
                                   child: Text(
                                     'Or continue with',
-                                    style: AppTheme.captionStyle,
+                                    style: UIAccessibility.applyGlobalTextStyle(
+                                      AppTheme.captionStyle,
+                                    ).copyWith(
+                                      color: UIAccessibility.mutedTextColor,
+                                    ),
                                   ),
                                 ),
                                 Expanded(
                                   child: Divider(
-                                    color: AppTheme.primaryBlue.withOpacity(
+                                    color: UIAccessibility.textColor.withOpacity(
                                       0.15,
                                     ),
                                   ),

@@ -114,6 +114,10 @@ class AksharAllyApp extends StatelessWidget {
       builder: (_, __, ___) => MaterialApp(
         debugShowCheckedModeBanner: false,
         theme: UIAccessibility.buildTheme(),
+        builder: (_, child) => DefaultTextStyle.merge(
+          style: UIAccessibility.globalTextStyle,
+          child: child ?? const SizedBox.shrink(),
+        ),
         initialRoute: '/',
         routes: {
           '/': (context) => const SplashScreen(),

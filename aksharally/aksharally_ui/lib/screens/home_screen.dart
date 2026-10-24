@@ -80,26 +80,13 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       backgroundColor: Colors.transparent,
 
-      // ── APP BAR — keep brand cream gradient as fixed identity ──────────────
+      // ── APP BAR — use the selected global accessibility palette ───────────
       appBar: AppBar(
         elevation: 0,
         centerTitle: true,
-        backgroundColor: Colors.transparent,
-        flexibleSpace: Container(
-          decoration: const BoxDecoration(gradient: AppTheme.creamGradient),
-        ),
-        title: ShaderMask(
-          shaderCallback: (bounds) =>
-              AppTheme.brandGradient.createShader(bounds),
-          child: const Text(
-            'AksharAlly',
-            style: TextStyle(
-              fontWeight: FontWeight.w900,
-              fontSize:   22,
-              color:      Colors.white,
-            ),
-          ),
-        ),
+        backgroundColor: _bg,
+        foregroundColor: _txt,
+        title: const Text('AksharAlly'),
       ),
 
       // ── BODY — solid colour from UIAccessibility (responds to Apply) ───────
@@ -141,7 +128,7 @@ class _HomeScreenState extends State<HomeScreen> {
           backgroundColor:      Colors.transparent,
           elevation:            0,
           currentIndex:         currentIndex,
-          selectedItemColor:    AppTheme.primaryBlue,
+      selectedItemColor:    _txt,
           unselectedItemColor:  _txt.withOpacity(0.45),
           selectedLabelStyle:   const TextStyle(fontWeight: FontWeight.w700),
           onTap: (index) => setState(() => currentIndex = index),
@@ -312,7 +299,7 @@ class _HomeScreenState extends State<HomeScreen> {
               borderRadius: BorderRadius.circular(AppTheme.radiusSM),
             ),
             child: Icon(Icons.auto_stories_outlined,
-                color: AppTheme.primaryBlue, size: 22),
+                color: _txt, size: 22),
           ),
           const SizedBox(width: AppTheme.spaceMD),
           Text(
@@ -434,7 +421,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 color:        _iconChipBg,
                 borderRadius: BorderRadius.circular(AppTheme.radiusSM),
               ),
-              child: Icon(icon, color: AppTheme.primaryBlue, size: 20),
+              child: Icon(icon, color: _txt, size: 20),
             ),
             const SizedBox(width: AppTheme.spaceMD),
             Expanded(
@@ -455,7 +442,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   const SizedBox(height: 2),
                   Text(
                     _relativeTime(item.date),
-                    style:    _ts(12, FontWeight.w600, AppTheme.primaryBlue),
+                    style:    _ts(12, FontWeight.w600, _txt),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],

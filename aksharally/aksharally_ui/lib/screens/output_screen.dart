@@ -12,6 +12,7 @@ import '../services/tts_service.dart';
 import '../services/voice_command_handler.dart';
 import '../theme/app_settings.dart';
 import '../theme/accessibility_settings.dart';
+import '../theme/ui_accessibility.dart';
 import '../widgets/highlighted_text_view.dart';
 import '../widgets/structured_content_view.dart';
 import '../widgets/reading_customize_sheet.dart';
@@ -803,8 +804,9 @@ class _OutputScreenState extends State<OutputScreen> {
                 vertical: chipPadV,
               ),
               decoration: BoxDecoration(
-                gradient: isSelected ? AppTheme.brandGradient : null,
-                color: isSelected ? null : Colors.grey.shade200,
+                color: isSelected
+                    ? UIAccessibility.accentColor
+                    : UIAccessibility.surfaceColor,
                 borderRadius: BorderRadius.circular(AppTheme.radiusLG),
               ),
               child: Row(
@@ -814,14 +816,18 @@ class _OutputScreenState extends State<OutputScreen> {
                     Icon(
                       icon,
                       size: 14,
-                      color: isSelected ? Colors.white : Colors.black87,
+                      color: isSelected
+                          ? UIAccessibility.onAccentColor
+                          : UIAccessibility.textColor,
                     ),
                     const SizedBox(width: 4),
                   ],
                   Text(
                     label,
                     style: TextStyle(
-                      color: isSelected ? Colors.white : Colors.black87,
+                      color: isSelected
+                          ? UIAccessibility.onAccentColor
+                          : UIAccessibility.textColor,
                       fontWeight: FontWeight.w600,
                       fontSize: 13,
                     ),
@@ -886,9 +892,11 @@ class _OutputScreenState extends State<OutputScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: AppTheme.accentCream.withOpacity(0.5),
+        color: UIAccessibility.surfaceColor,
         borderRadius: BorderRadius.circular(AppTheme.radiusMD),
-        border: Border.all(color: AppTheme.primaryBlue.withOpacity(0.15)),
+        border: Border.all(
+          color: UIAccessibility.textColor.withOpacity(0.15),
+        ),
       ),
       child: Wrap(
         spacing: 8,
@@ -926,22 +934,27 @@ class _OutputScreenState extends State<OutputScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: UIAccessibility.surfaceColor,
         borderRadius: BorderRadius.circular(AppTheme.radiusSM),
-        border: Border.all(color: AppTheme.primaryBlue.withOpacity(0.2)),
+        border: Border.all(
+          color: UIAccessibility.textColor.withOpacity(0.2),
+        ),
       ),
       child: RichText(
         text: TextSpan(
           children: [
             TextSpan(
               text: '$label: ',
-              style: const TextStyle(fontSize: 11, color: Colors.black54),
+              style: TextStyle(
+                fontSize: 11,
+                color: UIAccessibility.mutedTextColor,
+              ),
             ),
             TextSpan(
               text: value,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 11,
-                color: Colors.black87,
+                color: UIAccessibility.textColor,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -959,7 +972,7 @@ class _OutputScreenState extends State<OutputScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 14),
         decoration: BoxDecoration(
-          gradient: AppTheme.brandGradient,
+          color: UIAccessibility.accentColor,
           borderRadius: BorderRadius.circular(AppTheme.radiusXL),
         ),
         child: Center(
@@ -967,13 +980,13 @@ class _OutputScreenState extends State<OutputScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               if (icon != null) ...[
-                Icon(icon, color: Colors.white),
+                Icon(icon, color: UIAccessibility.onAccentColor),
                 const SizedBox(width: 6),
               ],
               Text(
                 text,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: UIAccessibility.onAccentColor,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -994,9 +1007,11 @@ class _OutputScreenState extends State<OutputScreen> {
       icon: Icon(isPaused ? Icons.play_arrow : Icons.pause),
       label: Text(isPaused ? 'Resume' : 'Pause'),
       style: OutlinedButton.styleFrom(
-        foregroundColor: AppTheme.primaryBlue,
+        foregroundColor: UIAccessibility.textColor,
         minimumSize: const Size.fromHeight(52),
-        side: BorderSide(color: AppTheme.primaryBlue.withOpacity(0.55)),
+        side: BorderSide(
+          color: UIAccessibility.textColor.withOpacity(0.55),
+        ),
       ),
     );
   }
@@ -1034,7 +1049,7 @@ class _OutputScreenState extends State<OutputScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 48, horizontal: 20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: UIAccessibility.surfaceColor,
         borderRadius: BorderRadius.circular(AppTheme.radiusMD),
         boxShadow: [
           BoxShadow(
@@ -1050,18 +1065,22 @@ class _OutputScreenState extends State<OutputScreen> {
           Icon(
             Icons.menu_book_outlined,
             size: 44,
-            color: AppTheme.primaryBlue.withOpacity(0.35),
+            color: UIAccessibility.textColor.withOpacity(0.35),
           ),
           const SizedBox(height: AppTheme.spaceMD),
           Text(
             'Nothing to read yet',
-            style: AppTheme.titleStyle,
+            style: UIAccessibility.applyGlobalTextStyle(
+              AppTheme.titleStyle,
+            ).copyWith(color: UIAccessibility.textColor),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: AppTheme.spaceXS),
           Text(
             'Go back and scan, type, or upload some content first.',
-            style: AppTheme.captionStyle,
+            style: UIAccessibility.applyGlobalTextStyle(
+              AppTheme.captionStyle,
+            ).copyWith(color: UIAccessibility.mutedTextColor),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: AppTheme.spaceLG),
@@ -1069,14 +1088,17 @@ class _OutputScreenState extends State<OutputScreen> {
             width: double.infinity,
             child: OutlinedButton.icon(
               onPressed: () => Navigator.of(context).maybePop(),
-              icon: const Icon(Icons.arrow_back, color: AppTheme.primaryBlue),
-              label: const Text(
+              icon: const Icon(Icons.arrow_back),
+              label: Text(
                 'Go Back',
-                style: TextStyle(color: AppTheme.primaryBlue),
+                style: TextStyle(color: UIAccessibility.textColor),
               ),
               style: OutlinedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 12),
-                side: const BorderSide(color: AppTheme.primaryBlue, width: 1.5),
+                side: BorderSide(
+                  color: UIAccessibility.textColor,
+                  width: 1.5,
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(AppTheme.radiusMD),
                 ),
@@ -1102,7 +1124,7 @@ class _OutputScreenState extends State<OutputScreen> {
     return Container(
       padding: const EdgeInsets.all(AppTheme.spaceMD),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: UIAccessibility.surfaceColor,
         borderRadius: BorderRadius.circular(AppTheme.radiusMD),
         boxShadow: [
           BoxShadow(
@@ -1147,7 +1169,7 @@ class _OutputScreenState extends State<OutputScreen> {
                 title: Text(
                   'View original OCR',
                   style: TextStyle(
-                    color: AppTheme.primaryBlue,
+                    color: UIAccessibility.textColor,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
@@ -1257,7 +1279,9 @@ class _OutputScreenState extends State<OutputScreen> {
           right: 0,
           height: 2,
           child: IgnorePointer(
-            child: Container(color: AppTheme.primaryBlue.withOpacity(0.75)),
+            child: Container(
+              color: UIAccessibility.textColor.withOpacity(0.75),
+            ),
           ),
         ),
         // ── Bottom border of focus band ────────────────────────────────────
@@ -1267,7 +1291,9 @@ class _OutputScreenState extends State<OutputScreen> {
           right: 0,
           height: 2,
           child: IgnorePointer(
-            child: Container(color: AppTheme.primaryBlue.withOpacity(0.75)),
+            child: Container(
+              color: UIAccessibility.textColor.withOpacity(0.75),
+            ),
           ),
         ),
         // ── Drag handle — only interactive element ─────────────────────────
@@ -1289,7 +1315,7 @@ class _OutputScreenState extends State<OutputScreen> {
               width: handleSize,
               height: handleSize,
               decoration: BoxDecoration(
-                color: AppTheme.primaryBlue,
+                color: UIAccessibility.textColor,
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
@@ -1313,26 +1339,13 @@ class _OutputScreenState extends State<OutputScreen> {
     final mediaQuery = MediaQuery.of(context);
 
     return Scaffold(
-      backgroundColor: AppTheme.background,
+      backgroundColor: UIAccessibility.backgroundColor,
 
       appBar: AppBar(
         elevation: 0,
-        backgroundColor: Colors.transparent,
-        flexibleSpace: Container(
-          decoration: const BoxDecoration(gradient: AppTheme.creamGradient),
-        ),
-        title: ShaderMask(
-          shaderCallback: (bounds) =>
-              AppTheme.brandGradient.createShader(bounds),
-          child: const Text(
-            'AksharAlly',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.w900,
-              color: Colors.white,
-            ),
-          ),
-        ),
+        backgroundColor: UIAccessibility.backgroundColor,
+        foregroundColor: UIAccessibility.textColor,
+        title: const Text('AksharAlly'),
         centerTitle: true,
       ),
 
