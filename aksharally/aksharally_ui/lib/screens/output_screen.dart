@@ -1017,11 +1017,18 @@ class _OutputScreenState extends State<OutputScreen> {
       onPressed: canToggle
           ? () => isPaused ? _resumeReading() : _pauseReading()
           : null,
-      icon: Icon(isPaused ? Icons.play_arrow : Icons.pause),
-      label: Text(isPaused ? 'Resume' : 'Pause'),
+      icon: Icon(isPaused ? Icons.play_arrow : Icons.pause, size: 20),
+      label: Text(
+        isPaused ? 'Resume' : 'Pause',
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        softWrap: false,
+      ),
       style: OutlinedButton.styleFrom(
         foregroundColor: UIAccessibility.textColor,
         minimumSize: const Size.fromHeight(52),
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 14),
+        textStyle: const TextStyle(fontSize: 12),
         side: BorderSide(
           color: UIAccessibility.textColor.withOpacity(0.55),
         ),
@@ -1398,7 +1405,7 @@ class _OutputScreenState extends State<OutputScreen> {
                       if (!hasContent) ...[
                         _emptyState(),
                       ] else ...[
-                        // ── START / STOP ─────────────────────────────────────
+                        // ── PLAYBACK ACTIONS ─────────────────────────────────
                         Row(
                           children: [
                             Expanded(
@@ -1408,6 +1415,8 @@ class _OutputScreenState extends State<OutputScreen> {
                                 icon: Icons.play_arrow,
                               ),
                             ),
+                            const SizedBox(width: AppTheme.spaceSM),
+                            Expanded(child: _playbackToggleButton()),
                             const SizedBox(width: AppTheme.spaceSM),
                             Expanded(
                               child: _primaryButton(
@@ -1421,13 +1430,7 @@ class _OutputScreenState extends State<OutputScreen> {
 
                         const SizedBox(height: AppTheme.spaceSM),
 
-                        Row(
-                          children: [
-                            Expanded(child: _playbackToggleButton()),
-                            const SizedBox(width: AppTheme.spaceSM),
-                            Expanded(child: _playbackSpeedSelector()),
-                          ],
-                        ),
+                        _playbackSpeedSelector(),
 
                         const SizedBox(height: AppTheme.spaceMD),
 
