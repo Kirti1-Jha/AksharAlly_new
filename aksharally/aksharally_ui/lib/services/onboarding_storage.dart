@@ -83,7 +83,7 @@ class OnboardingProfile {
     explanationStyle: 'shorter_sentences',
     dailyTargetMinutes: 0,
     currentStep: currentStep,
-    questionnaireVersion: 1,
+    questionnaireVersion: 2,
     completed: false,
     updatedAt: DateTime.now().toUtc().microsecondsSinceEpoch,
   );
@@ -240,7 +240,7 @@ class OnboardingProfile {
           ? savedStep.clamp(0, 0x7fffffff).toInt()
           : 0,
       questionnaireVersion: savedQuestionnaireVersion is int
-          ? savedQuestionnaireVersion.clamp(0, 1).toInt()
+          ? savedQuestionnaireVersion.clamp(0, 2).toInt()
           : 0,
       completed: boolValue('completed', false),
       updatedAt: json['updatedAt'] is int

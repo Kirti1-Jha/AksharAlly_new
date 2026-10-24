@@ -28,8 +28,6 @@ class OnboardingScreen extends StatefulWidget {
 }
 
 class _OnboardingScreenState extends State<OnboardingScreen> {
-  static const _questionsPerPage = 2;
-
   static const _themeChoices = [
     'cream_black',
     'soft_yellow_black',
@@ -47,6 +45,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   String? _saveError;
   String? _saveDiagnostics;
   bool _finishing = false;
+  bool _customizeReading = false;
 
   bool get _hindi => AppSettings.interfaceLanguage == 'hi';
   String _tr(String english, String hindi) => _hindi ? hindi : english;
@@ -55,23 +54,33 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   void initState() {
     super.initState();
     _profile = widget.initialProfile;
-    if (!_profile.completed && _profile.questionnaireVersion == 0) {
-      final legacyStep = _profile.currentStep.clamp(0, 4).toInt();
-      final migratedPage = switch (legacyStep) {
+    if (!_profile.completed && _profile.questionnaireVersion < 2) {
+      final oldStep = _profile.questionnaireVersion == 0
+          ? switch (_profile.currentStep.clamp(0, 4).toInt()) {
+              0 => 0,
+              1 => 1,
+              2 => 4,
+              3 => 7,
+              _ => 9,
+            }
+          : _profile.currentStep.clamp(0, 11).toInt();
+      final migratedPage = switch (oldStep) {
         0 => 0,
         1 => 1,
-        2 => 4,
-        3 => 7,
-        _ => 9,
+        2 || 3 => 2,
+        >= 4 && <= 8 => 3,
+        9 || 10 => 6,
+        _ => 7,
       };
       final now = DateTime.now().toUtc().microsecondsSinceEpoch;
       _profile = _profile.copyWith(
         currentStep: migratedPage,
-        questionnaireVersion: 1,
+        questionnaireVersion: 2,
         updatedAt: now > _profile.updatedAt ? now : _profile.updatedAt + 1,
       );
       _persist(_profile);
     }
+    _customizeReading = const [4, 5, 8, 9].contains(_profile.currentStep);
     _nameController = TextEditingController(text: _profile.fullName);
   }
 
@@ -115,7 +124,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         });
   }
 
-  Future<void> _goTo(int step) async {
+  Future<void> _goToPage(int step, List<_QuestionnairePage> pages) async {
     if (_saveError != null) {
       ScaffoldMessenger.of(
         context,
@@ -135,12 +144,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       );
       return;
     }
-    final next = _profile.copyWith(currentStep: step);
+    if (step < 0 || step >= pages.length) return;
+    final next = _profile.copyWith(currentStep: pages[step].id);
     _update(next);
     await _saveQueue;
   }
 
-  Future<void> _finish(int pageCount) async {
+  Future<void> _finish(int finalPageId) async {
     if (_finishing) return;
     if (_profile.fullName.trim().isEmpty ||
         _profile.preferredLanguages.isEmpty ||
@@ -151,8 +161,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         SnackBar(
           content: Text(
             _tr(
-              'Add your preferred name and choose a default reading language.',
-              'अपना पसंदीदा नाम और पढ़ने की डिफ़ॉल्ट भाषा चुनें।',
+              'Add your preferred name and choose at least one reading language.',
+              'अपना पसंदीदा नाम और पढ़ने की कम-से-कम एक भाषा चुनें।',
             ),
           ),
         ),
@@ -171,13 +181,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       }
       final complete = _profile.copyWith(
         completed: true,
-        currentStep: pageCount - 1,
-        questionnaireVersion: 1,
+        currentStep: finalPageId,
+        questionnaireVersion: 2,
         updatedAt: _nextUpdatedAt(),
       );
       await _accountStore.saveOnboarding(widget.uid, complete);
       await widget.storage.save(widget.uid, complete);
-      await widget.storage.applyReadingPreferences(complete);
+      await widget.storage.applyReadingPreferences(
+        complete,
+        applyGlobalSettings: false,
+      );
       if (!mounted) return;
       Navigator.of(context).pushNamedAndRemoveUntil('/home', (_) => false);
     } catch (error, stackTrace) {
@@ -377,22 +390,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     );
   }
 
-  Widget _toggle(
-    String title,
-    String subtitle,
-    bool value,
-    ValueChanged<bool> onChanged,
-  ) {
-    return SwitchListTile.adaptive(
-      contentPadding: EdgeInsets.zero,
-      title: Text(title),
-      subtitle: Text(subtitle),
-      value: value,
-      onChanged: onChanged,
-      activeColor: AppTheme.primaryBlue,
-    );
-  }
-
   Widget _slider({
     required String title,
     required double value,
@@ -448,427 +445,518 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       ];
 
   List<Widget> _readingNeedsQuestions() => [
-        _chips(
-          _tr('How comfortable does reading feel?', 'पढ़ना आपको कैसा लगता है?'),
-          const ['a_little', 'moderate', 'very', 'depends', 'unsure'],
-          [_profile.readingComfort],
-          (selected) =>
-              _update(_profile.copyWith(readingComfort: selected.first)),
-          single: true,
-        ),
-        _chips(
-          _tr(
-            'What can make reading harder?',
-            'पढ़ने में क्या कठिन हो सकता है?',
+    _chips(
+      _tr('How comfortable does reading feel?', 'पढ़ना आपको कैसा लगता है?'),
+      const ['a_little', 'moderate', 'very', 'depends', 'unsure'],
+      [_profile.readingComfort],
+      (selected) => _update(_profile.copyWith(readingComfort: selected.first)),
+      single: true,
+    ),
+    _chips(
+      _tr('What can make reading harder?', 'पढ़ने में क्या कठिन हो सकता है?'),
+      const [
+        'long_sentences',
+        'crowded_text',
+        'similar_letters',
+        'losing_place',
+        'unfamiliar_words',
+        'long_sessions',
+      ],
+      _profile.readingChallenges,
+      (selected) => _update(_profile.copyWith(readingChallenges: selected)),
+    ),
+    _chips(
+      _tr('Which languages do you read?', 'आप किन भाषाओं में पढ़ते हैं?'),
+      const ['en', 'hi', 'mr'],
+      _profile.preferredLanguages,
+      (selected) {
+        final safe = selected.isEmpty ? const ['en'] : selected;
+        final defaultLanguage = safe.contains(_profile.defaultReadingLanguage)
+            ? _profile.defaultReadingLanguage
+            : safe.first;
+        _update(
+          _profile.copyWith(
+            preferredLanguages: safe,
+            defaultReadingLanguage: defaultLanguage,
           ),
-          const [
-            'long_sentences',
-            'crowded_text',
-            'similar_letters',
-            'losing_place',
-            'unfamiliar_words',
-            'long_sessions',
-          ],
-          _profile.readingChallenges,
-          (selected) => _update(_profile.copyWith(readingChallenges: selected)),
-        ),
-        _chips(
-          _tr('Reading support (optional)', 'पढ़ने में सहायता (वैकल्पिक)'),
-          const ['diagnosed', 'seeking_support', 'prefer_not_to_say'],
-          [_profile.supportStatus],
-          (selected) =>
-              _update(_profile.copyWith(supportStatus: selected.first)),
-          single: true,
-          helper: _tr(
-            'This is optional and does not diagnose you.',
-            'यह वैकल्पिक है और इससे कोई निदान नहीं किया जाता।',
-          ),
-        ),
-        _chips(
-          _tr('Which languages do you read?', 'आप किन भाषाओं में पढ़ते हैं?'),
-          const ['en', 'hi', 'mr'],
-          _profile.preferredLanguages,
-          (selected) {
-            final safe = selected.isEmpty ? const ['en'] : selected;
-            final defaultLanguage =
-                safe.contains(_profile.defaultReadingLanguage)
-                ? _profile.defaultReadingLanguage
-                : safe.first;
-            _update(
-              _profile.copyWith(
-                preferredLanguages: safe,
-                defaultReadingLanguage: defaultLanguage,
-              ),
-            );
-          },
-        ),
-        _chips(
-          _tr('Default reading language', 'पढ़ने की डिफ़ॉल्ट भाषा'),
-          _profile.preferredLanguages,
-          [_profile.defaultReadingLanguage],
-          (selected) => _update(
-            _profile.copyWith(defaultReadingLanguage: selected.first),
-          ),
-          single: true,
-        ),
-      ];
-
-  List<Widget> _appearanceQuestions() {
-    final background = AccessibilitySettings.previewBg(_profile.colorTheme);
-    final foreground = AccessibilitySettings.previewText(_profile.colorTheme);
-    final fontExists = AccessibilitySettings.fonts.contains(
-      _profile.fontFamily,
-    );
-    final font = fontExists ? _profile.fontFamily : 'Lexend';
-    return [
-        _section(
-          _tr('Reading font', 'पढ़ने का फ़ॉन्ट'),
-          DropdownButtonFormField<String>(
-            value: font,
-            isExpanded: true,
-            items: AccessibilitySettings.fonts
-                .map((name) => DropdownMenuItem(value: name, child: Text(name)))
-                .toList(),
-            onChanged: (value) {
-              if (value != null) _update(_profile.copyWith(fontFamily: value));
-            },
-          ),
-        ),
-        _slider(
-          title: _tr('Text size', 'पाठ का आकार'),
-          value: _profile.fontSize,
-          min: 16,
-          max: 32,
-          divisions: 16,
-          valueText: '${_profile.fontSize.round()} px',
-          onChanged: (value) => _update(_profile.copyWith(fontSize: value)),
-        ),
-        _slider(
-          title: _tr('Letter spacing', 'अक्षरों के बीच दूरी'),
-          value: _profile.letterSpacing,
-          min: 0,
-          max: 2,
-          divisions: 8,
-          valueText: _profile.letterSpacing.toStringAsFixed(1),
-          onChanged: (value) =>
-              _update(_profile.copyWith(letterSpacing: value)),
-        ),
-        _slider(
-          title: _tr('Word spacing', 'शब्दों के बीच दूरी'),
-          value: _profile.wordSpacing,
-          min: 0,
-          max: 8,
-          divisions: 8,
-          valueText: _profile.wordSpacing.toStringAsFixed(1),
-          onChanged: (value) => _update(_profile.copyWith(wordSpacing: value)),
-        ),
-        _slider(
-          title: _tr('Line spacing', 'पंक्तियों के बीच दूरी'),
-          value: _profile.lineHeight,
-          min: 1.2,
-          max: 2.5,
-          divisions: 13,
-          valueText: _profile.lineHeight.toStringAsFixed(1),
-          onChanged: (value) => _update(_profile.copyWith(lineHeight: value)),
-        ),
-        Column(
-          children: [
-            _section(
-              _tr(
-                'Background and text contrast',
-                'पृष्ठभूमि और पाठ का कंट्रास्ट',
-              ),
-              DropdownButtonFormField<String>(
-                value: _themeChoices.contains(_profile.colorTheme)
-                    ? _profile.colorTheme
-                    : 'soft_yellow_black',
-                isExpanded: true,
-                items: _themeChoices.map((key) {
-                  return DropdownMenuItem(
-                    value: key,
-                    child: Text(AccessibilitySettings.themeLabels[key]!),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  if (value != null) {
-                    _update(_profile.copyWith(colorTheme: value));
-                  }
-                },
-              ),
-            ),
-            _section(
-              _tr('Preview', 'झलक'),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: background,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: foreground.withOpacity(0.25)),
-                ),
-                child: Text(
-                  _tr(
-                    'A calm space to read, one clear line at a time.',
-                    'पढ़ने के लिए एक शांत जगह, हर बार एक स्पष्ट पंक्ति।',
-                  ),
-                  style: TextStyle(
-                    fontFamily: font,
-                    fontSize: _profile.fontSize,
-                    height: _profile.lineHeight,
-                    letterSpacing: _profile.letterSpacing,
-                    wordSpacing: _profile.wordSpacing,
-                    color: foreground,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-        _section(
-          _tr('Reading support', 'पढ़ने में सहायता'),
-          Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    _tr(
-                      'Long sentences are split into shorter reading units by the formatter.',
-                      'फ़ॉर्मैटर लंबे वाक्यों को पढ़ने की छोटी इकाइयों में बाँटता है।',
-                    ),
-                    style: _accessibilityTheme.textTheme.bodySmall
-                        ?.copyWith(
-                          color: UIAccessibility.textColor.withOpacity(0.75),
-                        ),
-                  ),
-                ),
-              ),
-              _toggle(
-                _tr('Simplify difficult words', 'कठिन शब्द सरल करें'),
-                _tr(
-                  'Choose simplification when preparing a reading.',
-                  'पाठ तैयार करते समय सरलीकरण चुनें।',
-                ),
-                _profile.simplifyText,
-                (value) => _update(_profile.copyWith(simplifyText: value)),
-              ),
-              _toggle(
-                _tr(
-                  'Highlight words while reading',
-                  'पढ़ते समय शब्द हाइलाइट करें',
-                ),
-                '',
-                _profile.wordHighlighting,
-                (value) => _update(_profile.copyWith(wordHighlighting: value)),
-              ),
-              _toggle(
-                _tr('Focus line mode', 'फ़ोकस लाइन मोड'),
-                '',
-                _profile.focusLineMode,
-                (value) => _update(_profile.copyWith(focusLineMode: value)),
-              ),
-              _toggle(
-                _tr('Reading ruler', 'रीडिंग रूलर'),
-                '',
-                _profile.readingRuler,
-                (value) => _update(_profile.copyWith(readingRuler: value)),
-              ),
-              _toggle(
-                _tr('Syllable breakdown', 'शब्दांशों में बाँटें'),
-                _tr(
-                  'Available for supported reading content.',
-                  'समर्थित पाठ में उपलब्ध।',
-                ),
-                _profile.syllableBreakdown,
-                (value) => _update(_profile.copyWith(syllableBreakdown: value)),
-              ),
-            ],
-          ),
-        ),
-      ];
-  }
-
-  List<Widget> _voiceAndAccessQuestions() => [
-        _section(
-          _tr('Voice preferences', 'आवाज़ की प्राथमिकताएँ'),
-          Column(
-            children: [
-              _toggle(
-                _tr(
-                  'Voice assistance by default',
-                  'डिफ़ॉल्ट रूप से आवाज़ सहायता',
-                ),
-                _tr(
-                  'Start reading aloud automatically when supported.',
-                  'समर्थित होने पर पाठ को अपने आप पढ़ना शुरू करें।',
-                ),
-                _profile.voiceAssistance,
-                (value) => _update(_profile.copyWith(voiceAssistance: value)),
-              ),
-              _toggle(
-                _tr('Highlight spoken words', 'बोले गए शब्द हाइलाइट करें'),
-                '',
-                _profile.readingHighlight,
-                (value) => _update(_profile.copyWith(readingHighlight: value)),
-              ),
-            ],
-          ),
-        ),
-        _chips(
-          _tr('Preferred voice language', 'पसंदीदा आवाज़ की भाषा'),
-          const ['en', 'hi', 'mr'],
-          [_profile.voiceLanguage],
-          (selected) =>
-              _update(_profile.copyWith(voiceLanguage: selected.first)),
-          single: true,
-          helper: _tr(
-            'A voice is used only when your device supports that language.',
-            'आवाज़ तभी उपयोग होगी जब आपका डिवाइस उस भाषा का समर्थन करे।',
-          ),
-        ),
-        _slider(
-          title: _tr('Speech speed', 'बोलने की गति'),
-          value: _profile.speechRate,
-          min: 0.1,
-          max: 1,
-          divisions: 9,
-          valueText: '${(_profile.speechRate * 100).round()}%',
-          onChanged: (value) => _update(_profile.copyWith(speechRate: value)),
-        ),
-        _section(
-          _tr('Display access', 'दृश्य सुलभता'),
-          Column(
-            children: [
-              _toggle(
-                _tr('Larger controls', 'बड़े नियंत्रण'),
-                '',
-                _profile.largerControls,
-                (value) => _update(_profile.copyWith(largerControls: value)),
-              ),
-              _toggle(
-                _tr('High contrast', 'ज़्यादा कंट्रास्ट'),
-                '',
-                _profile.highContrast,
-                (value) => _update(_profile.copyWith(highContrast: value)),
-              ),
-              _toggle(
-                _tr('Reduce motion', 'गतिशील प्रभाव कम करें'),
-                '',
-                _profile.reduceMotion,
-                (value) => _update(_profile.copyWith(reduceMotion: value)),
-              ),
-            ],
-          ),
-        ),
-      ];
-
-  List<Widget> _readingGoalsQuestions() => [
-        _chips(
-          _tr('What would you like help with?', 'आप किसमें सहायता चाहते हैं?'),
-          const [
-            'independent',
-            'understanding',
-            'study',
-            'confidence',
-            'multilingual',
-          ],
-          _profile.readingGoals,
-          (selected) => _update(_profile.copyWith(readingGoals: selected)),
-        ),
-        _chips(
-          _tr('What do you usually read?', 'आप आमतौर पर क्या पढ़ते हैं?'),
-          const [
-            'textbooks',
-            'stories',
-            'articles',
-            'notes',
-            'scanned_pages',
-            'documents',
-          ],
-          _profile.materialTypes,
-          (selected) => _update(_profile.copyWith(materialTypes: selected)),
-        ),
-        _chips(
-          _tr('Explanation style', 'समझाने का तरीका'),
-          const ['shorter_sentences', 'simpler_text', 'word_explanations'],
-          [_profile.explanationStyle],
-          (selected) =>
-              _update(_profile.copyWith(explanationStyle: selected.first)),
-          single: true,
-        ),
-        Column(
-          children: [
-            _slider(
-              title: _tr(
-                'Daily reading target (optional)',
-                'रोज़ पढ़ने का लक्ष्य (वैकल्पिक)',
-              ),
-              value: _profile.dailyTargetMinutes.toDouble(),
-              min: 0,
-              max: 60,
-              divisions: 12,
-              valueText: _profile.dailyTargetMinutes == 0
-                  ? _tr('No target', 'कोई लक्ष्य नहीं')
-                  : '${_profile.dailyTargetMinutes} ${_tr('min', 'मिनट')}',
-              onChanged: (value) => _update(
-                _profile.copyWith(dailyTargetMinutes: (value / 5).round() * 5),
-              ),
-            ),
-            _section(
-              _tr('Reminders', 'रिमाइंडर'),
-              Text(
-                _tr(
-                  'Reading reminders are not scheduled in this version.',
-                  'इस संस्करण में पढ़ने के रिमाइंडर निर्धारित नहीं होते।',
-                ),
-                style: _accessibilityTheme.textTheme.bodySmall
-                    ?.copyWith(
-                      color: UIAccessibility.textColor.withOpacity(0.75),
-                    ),
-              ),
-            ),
-          ],
-        ),
-      ];
-
-  List<Widget> _questionWidgets() => [
-    ..._aboutYouQuestions(),
-    ..._readingNeedsQuestions(),
-    ..._appearanceQuestions(),
-    ..._voiceAndAccessQuestions(),
-    ..._readingGoalsQuestions(),
+        );
+      },
+    ),
   ];
 
-  Widget _currentPageContent(List<Widget> questions, int step) {
-    final start = step * _questionsPerPage;
-    final end = (start + _questionsPerPage).clamp(0, questions.length).toInt();
-    return Column(
-      children: questions.sublist(start, end),
+  List<Widget> _readingGoalsQuestions() => [
+    _chips(
+      _tr('What would you like help with?', 'आप किसमें सहायता चाहते हैं?'),
+      const ['independent', 'understanding', 'study', 'confidence', 'multilingual'],
+      _profile.readingGoals,
+      (selected) => _update(_profile.copyWith(readingGoals: selected)),
+    ),
+    _chips(
+      _tr('What do you usually read?', 'आप आमतौर पर क्या पढ़ते हैं?'),
+      const ['textbooks', 'stories', 'articles', 'notes', 'scanned_pages', 'documents'],
+      _profile.materialTypes,
+      (selected) => _update(_profile.copyWith(materialTypes: selected)),
+    ),
+    _slider(
+      title: _tr(
+        'Daily reading target (optional)',
+        'रोज़ पढ़ने का लक्ष्य (वैकल्पिक)',
+      ),
+      value: _profile.dailyTargetMinutes.toDouble(),
+      min: 0,
+      max: 60,
+      divisions: 12,
+      valueText: _profile.dailyTargetMinutes == 0
+          ? _tr('No target', 'कोई लक्ष्य नहीं')
+          : '${_profile.dailyTargetMinutes} ${_tr('min', 'मिनट')}',
+      onChanged: (value) => _update(
+        _profile.copyWith(dailyTargetMinutes: (value / 5).round() * 5),
+      ),
+    ),
+  ];
+
+  OnboardingProfile _profileForSuggestion(String key) {
+    return switch (key) {
+      'dyslexia' => _profile.copyWith(
+        fontFamily: 'OpenDyslexic',
+        fontSize: 16,
+        letterSpacing: 0.3,
+        wordSpacing: 2,
+        lineHeight: 1.6,
+        colorTheme: 'cream_black',
+      ),
+      'eye_strain' => _profile.copyWith(
+        fontFamily: 'Inter',
+        fontSize: 16,
+        letterSpacing: 0.2,
+        wordSpacing: 1.5,
+        lineHeight: 1.5,
+        colorTheme: 'soft_yellow_black',
+      ),
+      'clarity' => _profile.copyWith(
+        fontFamily: 'Roboto',
+        fontSize: 20,
+        letterSpacing: 0.5,
+        wordSpacing: 3,
+        lineHeight: 1.8,
+        colorTheme: 'white_black',
+      ),
+      _ => _profile.copyWith(
+        fontFamily: 'OpenDyslexic',
+        fontSize: 24,
+        letterSpacing: 0.5,
+        wordSpacing: 4,
+        lineHeight: 2,
+        colorTheme: 'pale_blue_navy',
+      ),
+    };
+  }
+
+  Future<void> _selectSuggestedProfile(String key) async {
+    _update(_profileForSuggestion(key));
+    await _saveQueue;
+    if (!mounted || _saveError != null) return;
+    setState(() => _customizeReading = false);
+    final pages = _questionPages();
+    final profilePage = pages.indexWhere((page) => page.id == 3);
+    if (profilePage >= 0) await _goToPage(profilePage + 1, pages);
+  }
+
+  Future<void> _openManualPreferences() async {
+    setState(() => _customizeReading = true);
+    _update(_profile.copyWith(currentStep: 4));
+    await _saveQueue;
+  }
+
+  String _suggestedProfileTitle(String key) => switch (key) {
+    'dyslexia' => _tr('Dyslexia Recommended', 'डिस्लेक्सिया के लिए सुझाया गया'),
+    'eye_strain' => _tr('Low Eye Strain', 'आँखों पर कम दबाव'),
+    'clarity' => _tr('Maximum Clarity', 'अधिकतम स्पष्टता'),
+    _ => _tr('Beginner Reader', 'नए पाठक'),
+  };
+
+  String _suggestedProfileDescription(String key) => switch (key) {
+    'dyslexia' => _tr(
+      'OpenDyslexic · Cream · Generous spacing',
+      'OpenDyslexic · क्रीम · अधिक अक्षर दूरी',
+    ),
+    'eye_strain' => _tr(
+      'Inter · Soft Yellow · Reduced glare',
+      'Inter · हल्का पीला · कम चमक',
+    ),
+    'clarity' => _tr(
+      'Roboto · White · Large, spaced text',
+      'Roboto · सफ़ेद · बड़ा और खुला पाठ',
+    ),
+    _ => _tr(
+      'OpenDyslexic · Light Blue · Very large text',
+      'OpenDyslexic · हल्का नीला · बहुत बड़ा पाठ',
+    ),
+  };
+
+  Widget _suggestedProfileCard(String key) {
+    final suggestion = _profileForSuggestion(key);
+    final background = AccessibilitySettings.previewBg(suggestion.colorTheme);
+    final foreground = AccessibilitySettings.previewText(suggestion.colorTheme);
+    final label = _suggestedProfileTitle(key);
+    return Semantics(
+      button: true,
+      label: '$label. ${_suggestedProfileDescription(key)}',
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppTheme.radiusMD),
+        onTap: () => _selectSuggestedProfile(key),
+        child: Container(
+          width: 164,
+          margin: const EdgeInsets.only(right: AppTheme.spaceSM),
+          padding: const EdgeInsets.all(AppTheme.spaceSM),
+          decoration: BoxDecoration(
+            color: UIAccessibility.backgroundColor,
+            borderRadius: BorderRadius.circular(AppTheme.radiusMD),
+            border: Border.all(
+              color: UIAccessibility.textColor.withOpacity(0.2),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: double.infinity,
+                height: 42,
+                alignment: Alignment.centerLeft,
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                decoration: BoxDecoration(
+                  color: background,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  'Aa',
+                  style: UIAccessibility.previewStyleFor(
+                    suggestion.fontFamily,
+                  ).copyWith(
+                    color: foreground,
+                    fontSize: 23,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                label,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: _accessibilityTheme.textTheme.titleSmall?.copyWith(
+                  color: UIAccessibility.textColor,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Expanded(
+                child: Text(
+                  _suggestedProfileDescription(key),
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  style: _accessibilityTheme.textTheme.bodySmall?.copyWith(
+                    color: UIAccessibility.textColor.withOpacity(0.75),
+                  ),
+                ),
+              ),
+              Text(
+                _tr('Select', 'चुनें'),
+                style: const TextStyle(
+                  color: AppTheme.primaryBlue,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
-  Widget _backButton(int step) => OutlinedButton(
-    onPressed: _finishing ? null : () => _goTo(step - 1),
+  Widget _readingPreviewCard() {
+    final background = AccessibilitySettings.previewBg(_profile.colorTheme);
+    final foreground = AccessibilitySettings.previewText(_profile.colorTheme);
+    final textStyle = UIAccessibility.previewStyleFor(_profile.fontFamily)
+        .copyWith(
+          color: foreground,
+          fontSize: _profile.fontSize,
+          height: _profile.lineHeight,
+          letterSpacing: _profile.letterSpacing,
+          wordSpacing: _profile.wordSpacing,
+        );
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(AppTheme.radiusMD),
+        border: Border.all(color: foreground.withOpacity(0.25)),
+      ),
+      child: Text(
+        _tr(
+          'A calm space to read, one clear line at a time.',
+          'पढ़ने के लिए एक शांत जगह, हर बार एक स्पष्ट पंक्ति।',
+        ),
+        style: textStyle,
+      ),
+    );
+  }
+
+  Widget _suggestedProfilesPage() => Column(
+    children: [
+      _section(
+        _tr('Choose a reading profile', 'पढ़ने की शैली चुनें'),
+        SizedBox(
+          height: 194,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            children: UIAccessibility.profileLabels.keys
+                .map(_suggestedProfileCard)
+                .toList(),
+          ),
+        ),
+      ),
+      _section(
+        _tr('Live preview', 'लाइव झलक'),
+        _readingPreviewCard(),
+      ),
+      SizedBox(
+        width: double.infinity,
+        child: OutlinedButton.icon(
+          onPressed: _openManualPreferences,
+          icon: const Icon(Icons.tune_rounded),
+          label: Text(_tr('Customize', 'अपने अनुसार बदलें')),
+        ),
+      ),
+    ],
+  );
+
+  Widget _previewButton() => Align(
+    alignment: Alignment.centerRight,
+    child: TextButton.icon(
+      onPressed: _showSelectedReadingPreview,
+      icon: const Icon(Icons.visibility_outlined),
+      label: Text(_tr('Preview', 'झलक')),
+    ),
+  );
+
+  Future<void> _showSelectedReadingPreview() => showDialog<void>(
+    context: context,
+    builder: (context) {
+      final background = AccessibilitySettings.previewBg(_profile.colorTheme);
+      final foreground = AccessibilitySettings.previewText(_profile.colorTheme);
+      return AlertDialog(
+        title: Text(_tr('Reading preview', 'पढ़ने की झलक')),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _readingPreviewCard(),
+              const SizedBox(height: 12),
+              Text(_tr('Selected settings', 'चुनी गई सेटिंग')),
+              Text('${_tr('Font', 'फ़ॉन्ट')}: ${_profile.fontFamily}'),
+              Text(
+                '${_tr('Text size', 'पाठ का आकार')}: '
+                '${_profile.fontSize.round()} px',
+              ),
+              Text(
+                '${_tr('Letter spacing', 'अक्षरों के बीच दूरी')}: '
+                '${_profile.letterSpacing.toStringAsFixed(1)}',
+              ),
+              Text(
+                '${_tr('Word spacing', 'शब्दों के बीच दूरी')}: '
+                '${_profile.wordSpacing.toStringAsFixed(1)}',
+              ),
+              Text(
+                '${_tr('Line spacing', 'पंक्तियों के बीच दूरी')}: '
+                '${_profile.lineHeight.toStringAsFixed(1)}',
+              ),
+              Text(
+                '${_tr('Colors', 'रंग')}: '
+                '${AccessibilitySettings.themeLabels[_profile.colorTheme]}',
+              ),
+              const SizedBox(height: 8),
+              Container(
+                width: double.infinity,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: background,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: foreground.withOpacity(0.4)),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(_tr('Close', 'बंद करें')),
+          ),
+        ],
+      );
+    },
+  );
+
+  List<Widget> _manualReadingPageOne() => [
+    _section(
+      _tr('Font style', 'फ़ॉन्ट शैली'),
+      DropdownButtonFormField<String>(
+        value: AccessibilitySettings.fonts.contains(_profile.fontFamily)
+            ? _profile.fontFamily
+            : 'Lexend',
+        isExpanded: true,
+        items: AccessibilitySettings.fonts
+            .map((name) => DropdownMenuItem(value: name, child: Text(name)))
+            .toList(),
+        onChanged: (value) {
+          if (value != null) _update(_profile.copyWith(fontFamily: value));
+        },
+      ),
+    ),
+    _slider(
+      title: _tr('Font size', 'फ़ॉन्ट का आकार'),
+      value: _profile.fontSize,
+      min: 16,
+      max: 32,
+      divisions: 16,
+      valueText: '${_profile.fontSize.round()} px',
+      onChanged: (value) => _update(_profile.copyWith(fontSize: value)),
+    ),
+    _slider(
+      title: _tr('Letter spacing', 'अक्षरों के बीच दूरी'),
+      value: _profile.letterSpacing,
+      min: 0,
+      max: 2,
+      divisions: 8,
+      valueText: _profile.letterSpacing.toStringAsFixed(1),
+      onChanged: (value) => _update(_profile.copyWith(letterSpacing: value)),
+    ),
+    _previewButton(),
+  ];
+
+  List<Widget> _manualReadingPageTwo() => [
+    _slider(
+      title: _tr('Word spacing', 'शब्दों के बीच दूरी'),
+      value: _profile.wordSpacing,
+      min: 0,
+      max: 8,
+      divisions: 8,
+      valueText: _profile.wordSpacing.toStringAsFixed(1),
+      onChanged: (value) => _update(_profile.copyWith(wordSpacing: value)),
+    ),
+    _slider(
+      title: _tr('Line spacing', 'पंक्तियों के बीच दूरी'),
+      value: _profile.lineHeight,
+      min: 1.2,
+      max: 2.5,
+      divisions: 13,
+      valueText: _profile.lineHeight.toStringAsFixed(1),
+      onChanged: (value) => _update(_profile.copyWith(lineHeight: value)),
+    ),
+    _section(
+      _tr('Background and text colors', 'पृष्ठभूमि और पाठ के रंग'),
+      DropdownButtonFormField<String>(
+        value: _themeChoices.contains(_profile.colorTheme)
+            ? _profile.colorTheme
+            : 'soft_yellow_black',
+        isExpanded: true,
+        items: _themeChoices.map((key) {
+          return DropdownMenuItem(
+            value: key,
+            child: Text(AccessibilitySettings.themeLabels[key]!),
+          );
+        }).toList(),
+        onChanged: (value) {
+          if (value != null) _update(_profile.copyWith(colorTheme: value));
+        },
+      ),
+    ),
+    _previewButton(),
+  ];
+
+  List<_QuestionnairePage> _questionPages() {
+    final about = _aboutYouQuestions();
+    final reading = _readingNeedsQuestions();
+    final goals = _readingGoalsQuestions();
+    return [
+      _QuestionnairePage(
+        id: 0,
+        content: Column(children: [about[0], about[1]]),
+      ),
+      _QuestionnairePage(
+        id: 1,
+        content: Column(children: [about[2], reading[0]]),
+      ),
+      _QuestionnairePage(
+        id: 2,
+        content: Column(children: [reading[1], reading[2]]),
+      ),
+      _QuestionnairePage(id: 3, content: _suggestedProfilesPage()),
+      if (_customizeReading) ...[
+        _QuestionnairePage(
+          id: 4,
+          content: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                _tr('Customize reading · 1 of 2', 'रीडिंग बदलें · 1 / 2'),
+                style: _accessibilityTheme.textTheme.titleMedium,
+              ),
+              const SizedBox(height: 12),
+              ..._manualReadingPageOne(),
+            ],
+          ),
+        ),
+        _QuestionnairePage(
+          id: 5,
+          content: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                _tr('Customize reading · 2 of 2', 'रीडिंग बदलें · 2 / 2'),
+                style: _accessibilityTheme.textTheme.titleMedium,
+              ),
+              const SizedBox(height: 12),
+              ..._manualReadingPageTwo(),
+            ],
+          ),
+        ),
+      ],
+      _QuestionnairePage(
+        id: _customizeReading ? 8 : 6,
+        content: Column(children: [goals[0], goals[1]]),
+      ),
+      _QuestionnairePage(
+        id: _customizeReading ? 9 : 7,
+        content: goals[2],
+      ),
+    ];
+  }
+
+  Widget _backButton(int step, List<_QuestionnairePage> pages) => OutlinedButton(
+    onPressed: _finishing ? null : () => _goToPage(step - 1, pages),
     child: Text(_tr('Back', 'पीछे')),
   );
 
   Widget _continueButton(
     int step,
-    int pageCount, {
+    List<_QuestionnairePage> pages, {
     bool expand = false,
   }) => FilledButton.icon(
     key: ValueKey(
-      step == pageCount - 1 ? 'onboarding-finish' : 'onboarding-next',
+      step == pages.length - 1 ? 'onboarding-finish' : 'onboarding-next',
     ),
     style: FilledButton.styleFrom(
       minimumSize: Size(expand ? double.infinity : 136, 52),
     ),
     onPressed: _finishing
         ? null
-        : step == pageCount - 1
-        ? () => _finish(pageCount)
-        : () => _goTo(step + 1),
+        : step == pages.length - 1
+        ? () => _finish(pages[step].id)
+        : () => _goToPage(step + 1, pages),
     icon: _finishing
         ? const SizedBox(
             width: 16,
@@ -876,14 +964,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             child: CircularProgressIndicator(strokeWidth: 2),
           )
         : Icon(
-            step == pageCount - 1
+            step == pages.length - 1
                 ? Icons.check_rounded
                 : Icons.arrow_forward_rounded,
           ),
     label: Text(
       _finishing
           ? _tr('Saving…', 'सहेज रहे हैं…')
-          : step == pageCount - 1
+          : step == pages.length - 1
           ? _tr('Finish', 'पूरा करें')
           : _tr('Continue', 'आगे बढ़ें'),
     ),
@@ -891,10 +979,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final questions = _questionWidgets();
-    final pageCount =
-        (questions.length + _questionsPerPage - 1) ~/ _questionsPerPage;
-    final step = _profile.currentStep.clamp(0, pageCount - 1).toInt();
+    final pages = _questionPages();
+    final pageCount = pages.length;
+    final savedPage = pages.indexWhere(
+      (page) => page.id == _profile.currentStep,
+    );
+    final step = savedPage < 0 ? 0 : savedPage;
+    final currentPage = pages[step];
     final screenTheme = _accessibilityTheme.copyWith(
       appBarTheme: _accessibilityTheme.appBarTheme.copyWith(
         titleTextStyle: _accessibilityTheme.appBarTheme.titleTextStyle
@@ -929,37 +1020,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            _tr(
-                              'Step ${step + 1} of $pageCount',
-                              'चरण ${step + 1} / $pageCount',
+                      Text(
+                        _tr(
+                          'Step ${step + 1} of $pageCount',
+                          'चरण ${step + 1} / $pageCount',
+                        ),
+                        style: _accessibilityTheme.textTheme.bodyMedium
+                            ?.copyWith(
+                              color: UIAccessibility.textColor,
+                              fontWeight: FontWeight.w700,
                             ),
-                            style: _accessibilityTheme
-                                .textTheme
-                                .bodyMedium
-                                ?.copyWith(
-                                  color: UIAccessibility.textColor,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                          ),
-                          Text(
-                            _tr(
-                              'Your answers save as you go',
-                              'आपके जवाब साथ-साथ सहेजे जाते हैं',
-                            ),
-                            style: _accessibilityTheme
-                                .textTheme
-                                .bodySmall
-                                ?.copyWith(
-                                  color: UIAccessibility.textColor.withOpacity(
-                                    0.75,
-                                  ),
-                                ),
-                          ),
-                        ],
                       ),
                       const SizedBox(height: 8),
                       LinearProgressIndicator(
@@ -987,11 +1057,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 ),
                 Expanded(
                   child: SingleChildScrollView(
-                    key: ValueKey('onboarding-step-$step'),
+                    key: ValueKey('onboarding-step-${currentPage.id}'),
                     padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
                     child: Column(
                       children: [
-                        _currentPageContent(questions, step),
+                        currentPage.content,
                         if (_saveError != null)
                           Padding(
                             padding: const EdgeInsets.only(bottom: 12),
@@ -1037,20 +1107,20 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                             if (step > 0) ...[
                               Align(
                                 alignment: Alignment.centerLeft,
-                                child: _backButton(step),
+                                child: _backButton(step, pages),
                               ),
                               const SizedBox(height: 8),
                             ],
-                            _continueButton(step, pageCount, expand: true),
+                            _continueButton(step, pages, expand: true),
                           ],
                         );
                       }
                       return Row(
                         children: [
-                          if (step > 0) _backButton(step),
+                          if (step > 0) _backButton(step, pages),
                           if (step > 0) const SizedBox(width: 10),
                           const Spacer(),
-                          _continueButton(step, pageCount),
+                          _continueButton(step, pages),
                         ],
                       );
                     },
@@ -1064,4 +1134,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       ),
     );
   }
+}
+
+class _QuestionnairePage {
+  const _QuestionnairePage({required this.id, required this.content});
+
+  final int id;
+  final Widget content;
 }

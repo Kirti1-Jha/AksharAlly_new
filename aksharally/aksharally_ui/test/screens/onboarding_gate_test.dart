@@ -59,7 +59,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Step 1 of 12'), findsOneWidget);
+    expect(find.text('Step 1 of 6'), findsOneWidget);
     expect(find.text('What should we call you?'), findsOneWidget);
     expect(find.text('Age group (optional)'), findsOneWidget);
     expect(find.text('Interface language'), findsNothing);
@@ -69,7 +69,7 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('onboarding-next')));
     await tester.pumpAndSettle();
 
-    expect(find.text('Step 2 of 12'), findsOneWidget);
+    expect(find.text('Step 2 of 6'), findsOneWidget);
     expect(find.text('Who are you reading for?'), findsOneWidget);
     expect(find.text('How comfortable does reading feel?'), findsOneWidget);
     final saved = await storage.load(uid);
@@ -87,11 +87,11 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('Step 2 of 12'), findsOneWidget);
+    expect(find.text('Step 2 of 6'), findsOneWidget);
 
     await tester.tap(find.text('Back'));
     await tester.pumpAndSettle();
-    expect(find.text('Step 1 of 12'), findsOneWidget);
+    expect(find.text('Step 1 of 6'), findsOneWidget);
     expect(
       tester
           .widget<FilterChip>(
@@ -507,7 +507,7 @@ void main() {
     const uid = 'finished-reader';
     final store = _MemoryAccountStore();
     final selected = OnboardingProfile.initial(fullName: 'Mira').copyWith(
-      currentStep: 11,
+      currentStep: 7,
       preferredLanguages: ['hi', 'mr'],
       defaultReadingLanguage: 'mr',
       ageGroup: '25_44',
@@ -579,7 +579,7 @@ void main() {
       );
     final profile = OnboardingProfile.initial(
       fullName: 'Mira',
-    ).copyWith(currentStep: 11);
+    ).copyWith(currentStep: 7);
 
     await tester.pumpWidget(
       MaterialApp(
