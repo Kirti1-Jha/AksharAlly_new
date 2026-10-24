@@ -10,7 +10,7 @@ class SplashScreen extends StatefulWidget {
   final TTSService? ttsService;
 
   static const String welcomeMessage =
-      'Welcome to AksharAlly, your personalised reading companion. '
+      'Welcome to Akshar Al-eye, your personalised reading companion. '
       'Read with confidence. Select Let’s Begin to get started.';
 
   @override
