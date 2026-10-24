@@ -667,17 +667,21 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     };
   }
 
-  Future<void> _selectSuggestedProfile(String key) async {
+  void _selectSuggestedProfile(String key) {
     _speakOnboarding(
       '${_suggestedProfileTitle(key)}. ${_suggestedProfileDescription(key)}',
     );
     _update(_profileForSuggestion(key));
-    await _saveQueue;
-    if (!mounted || _saveError != null) return;
-    setState(() => _customizeReading = false);
-    final pages = _questionPages();
-    final profilePage = pages.indexWhere((page) => page.id == 3);
-    if (profilePage >= 0) await _goToPage(profilePage + 1, pages);
+  }
+
+  bool _isSuggestedProfileSelected(String key) {
+    final suggestion = _profileForSuggestion(key);
+    return _profile.fontFamily == suggestion.fontFamily &&
+        _profile.fontSize == suggestion.fontSize &&
+        _profile.letterSpacing == suggestion.letterSpacing &&
+        _profile.wordSpacing == suggestion.wordSpacing &&
+        _profile.lineHeight == suggestion.lineHeight &&
+        _profile.colorTheme == suggestion.colorTheme;
   }
 
   Future<void> _openManualPreferences() async {
@@ -716,11 +720,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   Widget _suggestedProfileCard(String key) {
     final suggestion = _profileForSuggestion(key);
+    final selected = _isSuggestedProfileSelected(key);
     final background = AccessibilitySettings.previewBg(suggestion.colorTheme);
     final foreground = AccessibilitySettings.previewText(suggestion.colorTheme);
     final label = _suggestedProfileTitle(key);
     return Semantics(
       button: true,
+      selected: selected,
       label: '$label. ${_suggestedProfileDescription(key)}',
       child: InkWell(
         borderRadius: BorderRadius.circular(AppTheme.radiusMD),
@@ -733,7 +739,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             color: UIAccessibility.backgroundColor,
             borderRadius: BorderRadius.circular(AppTheme.radiusMD),
             border: Border.all(
-              color: UIAccessibility.textColor.withOpacity(0.2),
+              color: selected
+                  ? AppTheme.primaryBlue
+                  : UIAccessibility.textColor.withOpacity(0.2),
+              width: selected ? 2 : 1,
             ),
           ),
           child: Column(
@@ -780,12 +789,26 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   ),
                 ),
               ),
-              Text(
-                _tr('Select', 'चुनें'),
-                style: const TextStyle(
-                  color: AppTheme.primaryBlue,
-                  fontWeight: FontWeight.w700,
-                ),
+              Row(
+                children: [
+                  if (selected) ...[
+                    const Icon(
+                      Icons.check_circle_rounded,
+                      size: 16,
+                      color: AppTheme.primaryBlue,
+                    ),
+                    const SizedBox(width: 4),
+                  ],
+                  Text(
+                    selected
+                        ? _tr('Selected', 'चयनित')
+                        : _tr('Select', 'चुनें'),
+                    style: const TextStyle(
+                      color: AppTheme.primaryBlue,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
