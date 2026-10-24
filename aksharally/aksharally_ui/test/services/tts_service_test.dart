@@ -34,6 +34,42 @@ void main() {
         expect(service.isPaused, isFalse);
       },
     );
+
+    test(
+      'estimated resume offsets do not reject later native progress',
+      () async {
+        final engine = _FakeTtsEngine();
+        final service = TTSService(engine: engine);
+        final progressStarts = <int>[];
+        await service.init(defaultLocale: null);
+
+        await service.speak(
+          'one two three',
+          onProgress: (_, start, __, ___) => progressStarts.add(start),
+        );
+        engine.emitProgress('one two three', 0, 3, 'one');
+        service.setFallbackResumeOffset(4);
+        engine.emitProgress('one two three', 0, 3, 'one');
+
+        expect(progressStarts, [0, 0]);
+      },
+    );
+
+    test('stopped sessions ignore later progress callbacks', () async {
+      final engine = _FakeTtsEngine();
+      final service = TTSService(engine: engine);
+      final progressStarts = <int>[];
+      await service.init(defaultLocale: null);
+
+      await service.speak(
+        'one two',
+        onProgress: (_, start, __, ___) => progressStarts.add(start),
+      );
+      await service.stop();
+      engine.emitProgress('one two', 0, 3, 'one');
+
+      expect(progressStarts, isEmpty);
+    });
   });
 }
 

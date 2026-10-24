@@ -255,7 +255,9 @@ class TTSService {
 
     _engine.setPauseHandler(() {
       if (!_hasActiveUtterance) return;
-      _resumeOffset = _lastProgressStart;
+      if (!_fallbackResumeOffsetPending) {
+        _resumeOffset = _lastProgressStart;
+      }
       isSpeaking = false;
       isPaused = true;
     });
@@ -300,6 +302,7 @@ class TTSService {
 
     _lastProgressStart = globalStart;
     _resumeOffset = globalStart;
+    _fallbackResumeOffsetPending = false;
     _progressCallback?.call(originalText, globalStart, globalEnd, word);
   }
 
@@ -330,7 +333,10 @@ class TTSService {
     if (wasPaused) {
       _rateChangedWhilePaused = true;
     } else if (wasSpeaking) {
-      await _startSegmentFrom(_lastProgressStart);
+      final resumeOffset = _fallbackResumeOffsetPending
+          ? _resumeOffset
+          : _lastProgressStart;
+      await _startSegmentFrom(resumeOffset);
     }
     return _speechRate;
   }
@@ -345,7 +351,6 @@ class TTSService {
     if (text == null || !_hasActiveUtterance) return;
     final safeOffset = offset.clamp(0, text.length).toInt();
     _resumeOffset = safeOffset;
-    _lastProgressStart = safeOffset;
     _fallbackResumeOffsetPending = true;
   }
 
@@ -546,7 +551,9 @@ class TTSService {
       final paused = await _engine.pause();
       if (generation != _generation || !_hasActiveUtterance) return false;
       if (!paused) return false;
-      _resumeOffset = _lastProgressStart;
+      if (!_fallbackResumeOffsetPending) {
+        _resumeOffset = _lastProgressStart;
+      }
       isSpeaking = false;
       isPaused = true;
       return true;

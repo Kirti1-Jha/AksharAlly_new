@@ -263,6 +263,7 @@ class _OutputScreenState extends State<OutputScreen> {
           return;
         }
         if (mapper.isCoarseProgressRange(word, start, end)) {
+          if (_hasPreciseProgress) return;
           _fallbackMode = true;
           _progressWatchdog?.cancel();
           _startFallbackHighlightTimer(session);
@@ -310,6 +311,7 @@ class _OutputScreenState extends State<OutputScreen> {
 
   void _finishPlaybackSession() {
     _timer?.cancel();
+    _progressWatchdog?.cancel();
     setState(() {
       currentIndex = -1;
       _isPlaybackStarting = false;
@@ -319,6 +321,41 @@ class _OutputScreenState extends State<OutputScreen> {
     _activeSpeechWordIndices = const [];
     _progressMapper = null;
     _hasPreciseProgress = false;
+    _fallbackMode = false;
+  }
+
+  void _scheduleProgressWatchdog(int session) {
+    _progressWatchdog?.cancel();
+    if (!_isCurrentPlaybackSession(session) ||
+        !_isPlaybackActive ||
+        _isPlaybackPaused ||
+        _hasPreciseProgress ||
+        _fallbackMode) {
+      return;
+    }
+
+    final mapper = _progressMapper;
+    if (mapper == null || currentIndex < 0) return;
+    final currentWords = mapper.wordsForDisplayIndex(currentIndex);
+    if (currentWords.isEmpty) return;
+    final expectedWordDuration = currentWords.fold<Duration>(
+      Duration.zero,
+      (total, word) =>
+          total + TtsProgressMapper.estimateWordDuration(word, speechRate),
+    );
+
+    // Give native word-boundary events the expected first-word duration to
+    // arrive. Only infer fallback mode if no precise event is received.
+    _progressWatchdog = Timer(expectedWordDuration, () {
+      if (!_isCurrentPlaybackSession(session) ||
+          !_isPlaybackActive ||
+          _isPlaybackPaused ||
+          _hasPreciseProgress) {
+        return;
+      }
+      _fallbackMode = true;
+      _advanceFallbackHighlight(session);
+    });
   }
 
   void _startFallbackHighlightTimer(int session) {
@@ -326,7 +363,8 @@ class _OutputScreenState extends State<OutputScreen> {
     if (!_isCurrentPlaybackSession(session) ||
         !_isPlaybackActive ||
         _isPlaybackPaused ||
-        _hasPreciseProgress) {
+        _hasPreciseProgress ||
+        !_fallbackMode) {
       return;
     }
     final mapper = _progressMapper;
@@ -336,11 +374,6 @@ class _OutputScreenState extends State<OutputScreen> {
     if (currentPosition == null) return;
     final currentWords = mapper.wordsForDisplayIndex(currentIndex);
     if (currentWords.isEmpty) return;
-
-    final nextIndex = _activeSpeechWordIndices.indexWhere(
-      (index) => index > currentIndex,
-    );
-    if (nextIndex < 0) return;
 
     _timer = Timer(
       currentWords.fold<Duration>(
@@ -356,22 +389,40 @@ class _OutputScreenState extends State<OutputScreen> {
             _hasPreciseProgress) {
           return;
         }
-        final nextDisplayIndex = _activeSpeechWordIndices[nextIndex];
-        setState(() => currentIndex = nextDisplayIndex);
-
-        final nextPosition = mapper.positionForDisplayIndex(nextDisplayIndex);
-        final sourceOffset = nextPosition == null
-            ? null
-            : mapper.sourceOffsetAtPosition(nextPosition);
-        if (sourceOffset != null) _tts.setFallbackResumeOffset(sourceOffset);
-        _startFallbackHighlightTimer(session);
+        _advanceFallbackHighlight(session);
       },
     );
   }
 
+  void _advanceFallbackHighlight(int session) {
+    if (!_isCurrentPlaybackSession(session) ||
+        !_isPlaybackActive ||
+        _isPlaybackPaused ||
+        !_fallbackMode ||
+        _hasPreciseProgress) {
+      return;
+    }
+    final mapper = _progressMapper;
+    if (mapper == null) return;
+    final nextDisplayIndex = _activeSpeechWordIndices.firstWhere(
+      (index) => index > currentIndex,
+      orElse: () => -1,
+    );
+    if (nextDisplayIndex < 0) return;
+
+    setState(() => currentIndex = nextDisplayIndex);
+    final nextPosition = mapper.positionForDisplayIndex(nextDisplayIndex);
+    final sourceOffset = nextPosition == null
+        ? null
+        : mapper.sourceOffsetAtPosition(nextPosition);
+    if (sourceOffset != null) _tts.setFallbackResumeOffset(sourceOffset);
+    _startFallbackHighlightTimer(session);
+  }
+
   Future<void> stopReading() async {
-    final session = ++_playbackSession;
+    ++_playbackSession;
     _timer?.cancel();
+    _progressWatchdog?.cancel();
     if (mounted) {
       setState(() {
         currentIndex = -1;
@@ -383,8 +434,8 @@ class _OutputScreenState extends State<OutputScreen> {
     _activeSpeechWordIndices = const [];
     _progressMapper = null;
     _hasPreciseProgress = false;
+    _fallbackMode = false;
     await _tts.stop();
-    if (!_isCurrentPlaybackSession(session)) return;
   }
 
   Future<void> _pauseReading() async {
@@ -393,12 +444,17 @@ class _OutputScreenState extends State<OutputScreen> {
     if (!_isCurrentPlaybackSession(session)) return;
     if (paused) {
       _timer?.cancel();
+      _progressWatchdog?.cancel();
       setState(() {
         _isPlaybackPaused = true;
         _isPlaybackActive = true;
       });
     } else if (!_hasPreciseProgress) {
-      _startFallbackHighlightTimer(session);
+      if (_fallbackMode) {
+        _startFallbackHighlightTimer(session);
+      } else {
+        _scheduleProgressWatchdog(session);
+      }
     }
   }
 
@@ -416,7 +472,11 @@ class _OutputScreenState extends State<OutputScreen> {
         _isPlaybackActive = true;
         _isPlaybackPaused = false;
       });
-      _startFallbackHighlightTimer(session);
+      if (_fallbackMode) {
+        _startFallbackHighlightTimer(session);
+      } else {
+        _scheduleProgressWatchdog(session);
+      }
     }
   }
 
@@ -429,12 +489,17 @@ class _OutputScreenState extends State<OutputScreen> {
       speechRate = newRate;
       AppSettings.speechRate = newRate;
     });
+    _timer?.cancel();
+    _progressWatchdog?.cancel();
     await _tts.setRate(newRate);
     if (!_isCurrentPlaybackSession(session)) return;
     if (_tts.isPaused || _isPlaybackPaused) {
       _timer?.cancel();
-    } else {
+      _progressWatchdog?.cancel();
+    } else if (_fallbackMode) {
       _startFallbackHighlightTimer(session);
+    } else {
+      _scheduleProgressWatchdog(session);
     }
   }
 
@@ -442,6 +507,7 @@ class _OutputScreenState extends State<OutputScreen> {
     _resumeReadingAfterVoiceInput = _tts.isSpeaking || _tts.isPaused;
     if (_tts.isSpeaking) await _pauseReading();
     _timer?.cancel();
+    _progressWatchdog?.cancel();
   }
 
   Future<void> _restoreReadingAfterVoiceInput() async {
@@ -562,6 +628,7 @@ class _OutputScreenState extends State<OutputScreen> {
   void dispose() {
     ++_playbackSession;
     _timer?.cancel();
+    _progressWatchdog?.cancel();
     _tts.stop();
     super.dispose();
   }
