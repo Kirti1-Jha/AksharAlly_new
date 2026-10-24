@@ -6,6 +6,7 @@ import '../services/library_storage.dart';
 import '../models/library_item.dart';
 import '../models/format_result.dart';
 import '../services/reading_text_segments.dart';
+import '../services/output_text_sections.dart';
 import '../services/tts_progress_mapper.dart';
 import '../services/tts_service.dart';
 import '../services/voice_command_handler.dart';
@@ -67,6 +68,8 @@ class OutputScreen extends StatefulWidget {
 class _OutputScreenState extends State<OutputScreen> {
   // ── display text state ────────────────────────────────────────────────────
   String simplifiedText = '';
+  List<OutputTextSection> _sections = const [];
+  int _sectionIndex = 0;
 
   // ── profile & format result ───────────────────────────────────────────────
   // _selectedProfile reflects the active accessibility preset.
@@ -82,7 +85,7 @@ class _OutputScreenState extends State<OutputScreen> {
   double _playbackSpeed = TTSService.playbackSpeedForEngineRate(
     AppSettings.speechRate,
   );
-  bool autoRead = AccessibilitySettings.autoRead;
+  bool get autoRead => AccessibilitySettings.autoRead;
   bool _isPlaybackStarting = false;
   bool _isPlaybackActive = false;
   bool _isPlaybackPaused = false;
@@ -151,8 +154,7 @@ class _OutputScreenState extends State<OutputScreen> {
   void _loadInitialFormatResult(FormatResult r) {
     setState(() {
       _formatResult = r;
-      simplifiedText = r.processedText;
-      words = _splitToWords(r.processedText);
+      _setReadingText(r.processedText);
     });
     _saveToLibrary(r.processedText, r.sourceType);
     if (autoRead) startReading();
@@ -161,8 +163,7 @@ class _OutputScreenState extends State<OutputScreen> {
   // ── load already-processed / already-saved text — no API call ────────────
   void _loadDisplayText(String text) {
     setState(() {
-      simplifiedText = text;
-      words = _splitToWords(text);
+      _setReadingText(text);
     });
     // Save only when the caller (ReadingScreen) signals fresh content via
     // saveOnLoad: true. LibraryScreen and HomeScreen leave saveOnLoad at its
@@ -201,13 +202,79 @@ class _OutputScreenState extends State<OutputScreen> {
   List<int> get _spokenDisplayWordIndices => [
     for (var index = 0; index < words.length; index++)
       if (words[index] != HighlightedTextView.paragraphMarker &&
-          words[index] != HighlightedTextView.lineBreakMarker)
+          words[index] != HighlightedTextView.lineBreakMarker &&
+          index >= _visibleStartIndex &&
+          index < _visibleEndIndex)
         index,
   ];
 
+  OutputTextSection get _currentSection => _sections.isEmpty
+      ? OutputTextSection(
+          text: simplifiedText,
+          startWordIndex: 0,
+          endWordIndex: words.length,
+        )
+      : _sections[_sectionIndex];
+
+  int get _visibleStartIndex => _currentSection.startWordIndex;
+  int get _visibleEndIndex => _currentSection.endWordIndex;
+
+  List<int> _allSpokenWordIndices(List<String> displayWords) => [
+    for (var index = 0; index < displayWords.length; index++)
+      if (displayWords[index] != HighlightedTextView.paragraphMarker &&
+          displayWords[index] != HighlightedTextView.lineBreakMarker)
+        index,
+  ];
+
+  void _setReadingText(String text) {
+    simplifiedText = text;
+    words = _splitToWords(text);
+    _sections = OutputTextSections.paginate(
+      text: text,
+      spokenWordIndices: _allSpokenWordIndices(words),
+      displayWordCount: words.length,
+    );
+    _sectionIndex = 0;
+  }
+
   Future<void> startReading() async {
-    if (simplifiedText.isEmpty) return;
-    await _speakUtterance(simplifiedText, _spokenDisplayWordIndices);
+    final section = _currentSection;
+    if (section.text.isEmpty) return;
+    await _speakUtterance(section.text, _spokenDisplayWordIndices);
+  }
+
+  Future<void> _changeSection(int nextIndex) async {
+    if (nextIndex < 0 || nextIndex >= _sections.length ||
+        nextIndex == _sectionIndex) {
+      return;
+    }
+    final shouldAutoRead = nextIndex > _sectionIndex && autoRead;
+
+    // Invalidate callbacks immediately, before the asynchronous native stop.
+    ++_playbackSession;
+    _timer?.cancel();
+    _progressWatchdog?.cancel();
+    _activeSpeechWordIndices = const [];
+    _progressMapper = null;
+    _hasPreciseProgress = false;
+    _fallbackMode = false;
+    setState(() {
+      _sectionIndex = nextIndex;
+      currentIndex = -1;
+      _isPlaybackStarting = false;
+      _isPlaybackActive = false;
+      _isPlaybackPaused = false;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _readingScrollController.hasClients) {
+        _readingScrollController.jumpTo(0);
+      }
+    });
+
+    await _tts.stop();
+    if (mounted && _sectionIndex == nextIndex && shouldAutoRead) {
+      await startReading();
+    }
   }
 
   Future<void> _speakUtterance(
@@ -601,16 +668,24 @@ class _OutputScreenState extends State<OutputScreen> {
         await stopReading();
         feedback = 'Reading stopped.';
       case VoiceCommandIntent.repeatSentence:
-        final activeIndex = currentIndex < 0 ? 0 : currentIndex;
+        final activeIndex = currentIndex < 0
+            ? _visibleStartIndex
+            : currentIndex;
         final range = ReadingTextSegments.sentenceAt(words, activeIndex);
         if (range == null) {
           feedback = 'There is no sentence to repeat.';
         } else {
+          final firstWordIndex = range.firstWordIndex < _visibleStartIndex
+              ? _visibleStartIndex
+              : range.firstWordIndex;
+          final lastWordIndex = range.lastWordIndex >= _visibleEndIndex
+              ? _visibleEndIndex - 1
+              : range.lastWordIndex;
           _resumeReadingAfterVoiceInput = false;
           final displayIndices = [
             for (
-              var index = range.firstWordIndex;
-              index <= range.lastWordIndex;
+              var index = firstWordIndex;
+              index <= lastWordIndex;
               index++
             )
               if (words[index] != HighlightedTextView.paragraphMarker &&
@@ -625,7 +700,10 @@ class _OutputScreenState extends State<OutputScreen> {
         }
       case VoiceCommandIntent.repeatPassage:
         _resumeReadingAfterVoiceInput = false;
-        await _speakUtterance(simplifiedText, _spokenDisplayWordIndices);
+        await _speakUtterance(
+          _currentSection.text,
+          _spokenDisplayWordIndices,
+        );
         feedback = 'Repeating the passage.';
       case VoiceCommandIntent.increaseSpeechRate:
       case VoiceCommandIntent.decreaseSpeechRate:
@@ -1048,13 +1126,17 @@ class _OutputScreenState extends State<OutputScreen> {
                 content: _formatResult!.structuredContent!,
                 words: words,
                 currentIndex: currentIndex,
+                visibleStartIndex: _visibleStartIndex,
+                visibleEndIndex: _visibleEndIndex,
                 currentWordKey: _currentReadingWordKey,
               )
             else
               HighlightedTextView(
-                text: simplifiedText,
+                text: _currentSection.text,
                 words: words,
                 currentIndex: currentIndex,
+                visibleStartIndex: _visibleStartIndex,
+                visibleEndIndex: _visibleEndIndex,
                 currentWordKey: _currentReadingWordKey,
               ),
             if (originalText != null && originalText.trim().isNotEmpty) ...[
@@ -1082,6 +1164,45 @@ class _OutputScreenState extends State<OutputScreen> {
                         fontSize: 15,
                         height: 1.5,
                       ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+            if (_sections.length > 1) ...[
+              const SizedBox(height: AppTheme.spaceSM),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  Text(
+                    'Section ${_sectionIndex + 1} of ${_sections.length}',
+                    style: TextStyle(
+                      color: getTextColor().withOpacity(0.7),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  IconButton(
+                    tooltip: 'Previous section',
+                    onPressed: _sectionIndex > 0
+                        ? () => _changeSection(_sectionIndex - 1)
+                        : null,
+                    visualDensity: VisualDensity.compact,
+                    icon: const Text(
+                      '<',
+                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Next section',
+                    onPressed: _sectionIndex < _sections.length - 1
+                        ? () => _changeSection(_sectionIndex + 1)
+                        : null,
+                    visualDensity: VisualDensity.compact,
+                    icon: const Text(
+                      '>',
+                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
                     ),
                   ),
                 ],

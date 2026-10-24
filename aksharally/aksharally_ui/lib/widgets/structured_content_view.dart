@@ -11,6 +11,8 @@ class StructuredContentView extends StatelessWidget {
   final Map<String, dynamic> content;
   final List<String> words;
   final int currentIndex;
+  final int visibleStartIndex;
+  final int visibleEndIndex;
   final GlobalKey? currentWordKey;
 
   const StructuredContentView({
@@ -18,8 +20,10 @@ class StructuredContentView extends StatelessWidget {
     required this.content,
     this.words = const [],
     this.currentIndex = -1,
+    this.visibleStartIndex = 0,
+    int? visibleEndIndex,
     this.currentWordKey,
-  });
+  }) : visibleEndIndex = visibleEndIndex ?? words.length;
 
   TextStyle get _bodyStyle => AccessibilitySettings.readingTextStyle(
     color: AccessibilitySettings.textColor(),
@@ -30,6 +34,8 @@ class StructuredContentView extends StatelessWidget {
     final highlighter = _StructuredWordHighlighter(
       words: words,
       currentIndex: currentIndex,
+      visibleStartIndex: visibleStartIndex,
+      visibleEndIndex: visibleEndIndex,
       enabled: AccessibilitySettings.wordHighlighting,
       currentWordKey: currentWordKey,
     );
@@ -40,13 +46,22 @@ class StructuredContentView extends StatelessWidget {
             .toList() ??
         const <Map<String, dynamic>>[];
 
+    final visibleBlocks = <Widget>[];
+    for (final block in blocks) {
+      final visibleBefore = highlighter.visibleWordCount;
+      final rendered = _buildBlock(block, highlighter);
+      if (highlighter.visibleWordCount > visibleBefore) {
+        visibleBlocks.add(rendered);
+      }
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        for (var index = 0; index < blocks.length; index++) ...[
+        for (var index = 0; index < visibleBlocks.length; index++) ...[
           if (index > 0)
             SizedBox(height: AccessibilitySettings.paragraphSpacing),
-          _buildBlock(blocks[index], highlighter),
+          visibleBlocks[index],
         ],
       ],
     );
@@ -322,15 +337,20 @@ class _StructuredWordHighlighter {
   _StructuredWordHighlighter({
     required this.words,
     required this.currentIndex,
+    required this.visibleStartIndex,
+    required this.visibleEndIndex,
     required this.enabled,
     required this.currentWordKey,
   });
 
   final List<String> words;
   final int currentIndex;
+  final int visibleStartIndex;
+  final int visibleEndIndex;
   final bool enabled;
   final GlobalKey? currentWordKey;
   int _wordCursor = 0;
+  int visibleWordCount = 0;
 
   Widget render(String text, TextStyle style) {
     final matches = RegExp(r'\S+').allMatches(text);
@@ -342,11 +362,25 @@ class _StructuredWordHighlighter {
     var textCursor = 0;
     var containsCurrentWord = false;
     for (final match in matches) {
-      if (match.start > textCursor) {
-        spans.add(TextSpan(text: text.substring(textCursor, match.start)));
-      }
       final token = match.group(0)!;
       final displayIndex = words.isEmpty ? null : _findDisplayIndex(token);
+      final visibilityIndex = displayIndex ??
+          (words.isEmpty
+              ? null
+              : _wordCursor.clamp(0, words.length - 1).toInt());
+      final isVisible =
+          words.isEmpty ||
+          (visibilityIndex != null &&
+              visibilityIndex >= visibleStartIndex &&
+              visibilityIndex < visibleEndIndex);
+      if (!isVisible) {
+        textCursor = match.end;
+        continue;
+      }
+      if (match.start > textCursor && spans.isNotEmpty) {
+        spans.add(TextSpan(text: text.substring(textCursor, match.start)));
+      }
+      visibleWordCount++;
       final isCurrentWord = currentIndex >= 0 && displayIndex == currentIndex;
       containsCurrentWord |= isCurrentWord;
       final displayedToken = AccessibilitySettings.syllableBreakdown
@@ -362,9 +396,10 @@ class _StructuredWordHighlighter {
       );
       textCursor = match.end;
     }
-    if (textCursor < text.length) {
+    if (textCursor < text.length && spans.isNotEmpty) {
       spans.add(TextSpan(text: text.substring(textCursor)));
     }
+    if (spans.isEmpty) return const SizedBox.shrink();
     return Text.rich(
       TextSpan(style: style, children: spans),
       key: containsCurrentWord ? currentWordKey : null,

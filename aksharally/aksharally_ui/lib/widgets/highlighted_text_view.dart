@@ -21,6 +21,8 @@ class HighlightedTextView extends StatelessWidget {
   /// Index into [words] that should be highlighted (e.g. the word currently
   /// being spoken). Pass -1 for no highlight.
   final int currentIndex;
+  final int visibleStartIndex;
+  final int visibleEndIndex;
   final GlobalKey? currentWordKey;
 
   const HighlightedTextView({
@@ -28,8 +30,10 @@ class HighlightedTextView extends StatelessWidget {
     required this.text,
     required this.words,
     required this.currentIndex,
+    this.visibleStartIndex = 0,
+    int? visibleEndIndex,
     this.currentWordKey,
-  });
+  }) : visibleEndIndex = visibleEndIndex ?? words.length;
 
   /// Marks paragraph breaks in the words list (never spoken by TTS).
   static const String paragraphMarker = '¶';
@@ -284,6 +288,7 @@ class HighlightedTextView extends StatelessWidget {
     }
 
     for (int i = 0; i < words.length; i++) {
+      if (i < visibleStartIndex || i >= visibleEndIndex) continue;
       if (words[i] == paragraphMarker) {
         flush();
         sections.add(SizedBox(height: pSpacing));
