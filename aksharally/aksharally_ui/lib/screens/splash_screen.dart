@@ -154,7 +154,7 @@ class _SplashScreenState extends State<SplashScreen> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
+      backgroundColor: AppTheme.background,
       body: SafeArea(
         minimum: const EdgeInsets.fromLTRB(
           AppTheme.spaceLG,
@@ -208,7 +208,7 @@ class _SplashScreenState extends State<SplashScreen> {
                               'AksharAlly',
                               textAlign: TextAlign.center,
                               style: theme.textTheme.displayLarge?.copyWith(
-                                color: theme.colorScheme.primary,
+                                color: AppTheme.primaryBlue,
                                 fontWeight: FontWeight.w900,
                                 height: 1.15,
                               ),
@@ -220,8 +220,7 @@ class _SplashScreenState extends State<SplashScreen> {
                                   : 'Read with confidence.',
                               textAlign: TextAlign.center,
                               style: theme.textTheme.bodyMedium?.copyWith(
-                                color: theme.textTheme.bodyMedium?.color
-                                    ?.withOpacity(0.72),
+                                color: AppTheme.textDark.withOpacity(0.72),
                                 height: 1.4,
                               ),
                             ),
@@ -231,6 +230,10 @@ class _SplashScreenState extends State<SplashScreen> {
                               child: SizedBox(
                                 width: double.infinity,
                                 child: ElevatedButton(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppTheme.primaryGreen,
+                                    foregroundColor: Colors.white,
+                                  ),
                                   onPressed: _openLogin,
                                   child: Text(
                                     AppSettings.interfaceLanguage == 'hi'
