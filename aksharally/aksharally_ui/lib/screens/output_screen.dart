@@ -54,12 +54,16 @@ class OutputScreen extends StatefulWidget {
   /// LibraryScreen and HomeScreen leave this false to avoid duplicates.
   final bool saveOnLoad;
 
+  /// Language of the content being read, when known.
+  final String? readingLanguage;
+
   const OutputScreen({
     super.key,
     this.initialText,
     this.initialFormatResult,
     this.displayText,
     this.saveOnLoad = false,
+    this.readingLanguage,
   });
 
   @override
@@ -312,6 +316,15 @@ class _OutputScreenState extends State<OutputScreen> {
     // Invalidate any previous utterance before setting its rate. This keeps a
     // rapid Start/Resume sequence from restarting old speech or overlapping it.
     await _tts.stop();
+    if (!_isCurrentPlaybackSession(session)) return;
+    final readingLocale = TTSService.localeForLanguage(
+      widget.readingLanguage ?? AppSettings.language,
+    );
+    if (readingLocale == null) {
+      await _tts.resetVoiceToDefault();
+    } else {
+      await _tts.setLanguage(readingLocale);
+    }
     if (!_isCurrentPlaybackSession(session)) return;
     await _tts.setRate(speechRate);
     if (!_isCurrentPlaybackSession(session)) return;

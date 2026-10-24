@@ -201,7 +201,13 @@ class _ReadingScreenState extends State<ReadingScreen> {
 
       if (_mode == _ProcessMode.formatOnly) {
         // No API call — text passed directly to the reader.
-        _push(OutputScreen(displayText: text, saveOnLoad: true));
+        _push(
+          OutputScreen(
+            displayText: text,
+            saveOnLoad: true,
+            readingLanguage: _language,
+          ),
+        );
         return;
       }
 
@@ -210,7 +216,13 @@ class _ReadingScreenState extends State<ReadingScreen> {
         text,
         language: _language,   // local state — AppSettings untouched
       );
-      _push(OutputScreen(displayText: simplified, saveOnLoad: true));
+      _push(
+        OutputScreen(
+          displayText: simplified,
+          saveOnLoad: true,
+          readingLanguage: _language,
+        ),
+      );
       return;
     }
 
@@ -227,7 +239,12 @@ class _ReadingScreenState extends State<ReadingScreen> {
         language: _language,   // local state — AppSettings untouched
         profile:  _profile,    // local state — AppSettings untouched
       );
-      _push(OutputScreen(initialFormatResult: result));
+      _push(
+        OutputScreen(
+          initialFormatResult: result,
+          readingLanguage: _language,
+        ),
+      );
       return;
     }
 
@@ -253,6 +270,7 @@ class _ReadingScreenState extends State<ReadingScreen> {
           processedText: simplified.formattedText,
           structuredContent: simplified.structuredContent,
         ),
+        readingLanguage: _language,
       ));
       return;
     }
@@ -261,7 +279,13 @@ class _ReadingScreenState extends State<ReadingScreen> {
       formatResult.rawText,
       language: _language,
     );
-    _push(OutputScreen(displayText: simplified, saveOnLoad: true));
+    _push(
+      OutputScreen(
+        displayText: simplified,
+        saveOnLoad: true,
+        readingLanguage: _language,
+      ),
+    );
   }
 
   void _push(Widget screen) {
