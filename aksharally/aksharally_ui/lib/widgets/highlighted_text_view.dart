@@ -21,16 +21,19 @@ class HighlightedTextView extends StatelessWidget {
   /// Index into [words] that should be highlighted (e.g. the word currently
   /// being spoken). Pass -1 for no highlight.
   final int currentIndex;
+  final GlobalKey? currentWordKey;
 
   const HighlightedTextView({
     super.key,
     required this.text,
     required this.words,
     required this.currentIndex,
+    this.currentWordKey,
   });
 
   /// Marks paragraph breaks in the words list (never spoken by TTS).
   static const String paragraphMarker = '¶';
+
   /// Marks a single source line break so OCR rows and menu items stay
   /// visually separate in the reading view.
   static const String lineBreakMarker = '↵';
@@ -45,9 +48,11 @@ class HighlightedTextView extends StatelessWidget {
     final words = <String>[];
     final paragraphs = normalized.split('\n\n');
 
-    for (var paragraphIndex = 0;
-        paragraphIndex < paragraphs.length;
-        paragraphIndex++) {
+    for (
+      var paragraphIndex = 0;
+      paragraphIndex < paragraphs.length;
+      paragraphIndex++
+    ) {
       final lines = paragraphs[paragraphIndex].split('\n');
       for (var lineIndex = 0; lineIndex < lines.length; lineIndex++) {
         words.addAll(
@@ -101,31 +106,52 @@ class HighlightedTextView extends StatelessWidget {
   /// Known limitation: VCV-only patterns (e.g. "education") are split at
   /// the suffix boundary only → "educa-tion" rather than "ed-u-ca-tion".
   /// A working approximation per spec; original text is never modified.
-  static String _syllabifyWord(String word) {
-    if (word.length < 4) return word;
-    // Only process pure-alphabetic tokens (skip numbers, punctuated words, etc.)
-    if (!RegExp(r'^[a-zA-Z]+$').hasMatch(word)) return word;
+  static String syllabifyWord(String word) {
+    final match = RegExp(
+      r'^([^A-Za-z]*)([A-Za-z]+)([^A-Za-z]*)$',
+    ).firstMatch(word);
+    if (match == null) return word;
+    final prefix = match.group(1)!;
+    final letters = match.group(2)!;
+    final suffix = match.group(3)!;
+    if (letters.length < 4) return word;
 
     // Ordered from longest to shortest to avoid partial matches
     // (e.g. match 'tion' before 'on').
     const suffixes = [
-      'tion', 'sion', 'ness', 'ment', 'ance', 'ence',
-      'ible', 'able', 'ery',  'ary',  'ory',
-      'ful',  'less', 'ous',  'ive',  'ing',  'ly',  'al',
+      'tion',
+      'sion',
+      'ness',
+      'ment',
+      'ance',
+      'ence',
+      'ible',
+      'able',
+      'ery',
+      'ary',
+      'ory',
+      'ful',
+      'less',
+      'ous',
+      'ive',
+      'ing',
+      'ly',
+      'al',
     ];
 
     for (final suf in suffixes) {
-      final lc = word.toLowerCase();
-      if (lc.endsWith(suf) && word.length - suf.length >= 2) {
-        final stem = word.substring(0, word.length - suf.length);
+      final lc = letters.toLowerCase();
+      if (lc.endsWith(suf) && letters.length - suf.length >= 2) {
+        final stem = letters.substring(0, letters.length - suf.length);
         if (stem.isEmpty) continue;
         // Only split if the stem itself contains at least one vowel
         // (avoids orphaned consonant clusters like "str-ong").
         if (!stem.split('').any((c) => 'aeiouAEIOU'.contains(c))) continue;
-        return '${_splitCore(stem)}-$suf';
+        final suffixText = letters.substring(letters.length - suf.length);
+        return '$prefix${_splitCore(stem)}-$suffixText$suffix';
       }
     }
-    return _splitCore(word);
+    return '$prefix${_splitCore(letters)}$suffix';
   }
 
   /// VCCV consonant-cluster splitting on a word with no suffix.
@@ -140,10 +166,36 @@ class HighlightedTextView extends StatelessWidget {
 
     // Digraphs and onset clusters that must stay together
     const noSplit = {
-      'ch', 'sh', 'th', 'ph', 'wh', 'gh', 'ck', 'qu', 'ng',
-      'bl', 'br', 'cl', 'cr', 'dr', 'fl', 'fr', 'gl', 'gr',
-      'pl', 'pr', 'sc', 'sk', 'sl', 'sm', 'sn', 'sp', 'st',
-      'sw', 'tr', 'tw',
+      'ch',
+      'sh',
+      'th',
+      'ph',
+      'wh',
+      'gh',
+      'ck',
+      'qu',
+      'ng',
+      'bl',
+      'br',
+      'cl',
+      'cr',
+      'dr',
+      'fl',
+      'fr',
+      'gl',
+      'gr',
+      'pl',
+      'pr',
+      'sc',
+      'sk',
+      'sl',
+      'sm',
+      'sn',
+      'sp',
+      'st',
+      'sw',
+      'tr',
+      'tw',
     };
 
     final buf = StringBuffer();
@@ -178,18 +230,19 @@ class HighlightedTextView extends StatelessWidget {
 
     // Syllable breakdown is display-only — original words[] list is never mutated.
     final displayWord = AccessibilitySettings.syllableBreakdown
-        ? _syllabifyWord(words[index])
+        ? syllabifyWord(words[index])
         : words[index];
 
     return Text(
       displayWord,
+      key: index == currentIndex ? currentWordKey : null,
       style: _resolveFont(
-        size:     AccessibilitySettings.fontSize,
-        height:   AccessibilitySettings.lineHeight,
+        size: AccessibilitySettings.fontSize,
+        height: AccessibilitySettings.lineHeight,
         letterSp: AccessibilitySettings.letterSpacing,
-        wordSp:   AccessibilitySettings.wordSpacing,
-        color:    isHighlighted ? Colors.red : textColor,
-        weight:   isHighlighted ? FontWeight.bold : FontWeight.normal,
+        wordSp: AccessibilitySettings.wordSpacing,
+        color: isHighlighted ? Colors.red : textColor,
+        weight: isHighlighted ? FontWeight.bold : FontWeight.normal,
       ),
     );
   }
@@ -202,11 +255,11 @@ class HighlightedTextView extends StatelessWidget {
       return Text(
         'Formatted text will appear here...',
         style: _resolveFont(
-          size:     AccessibilitySettings.fontSize,
-          height:   AccessibilitySettings.lineHeight,
+          size: AccessibilitySettings.fontSize,
+          height: AccessibilitySettings.lineHeight,
           letterSp: AccessibilitySettings.letterSpacing,
-          wordSp:   AccessibilitySettings.wordSpacing,
-          color:    textColor.withOpacity(0.5),
+          wordSp: AccessibilitySettings.wordSpacing,
+          color: textColor.withOpacity(0.5),
         ),
       );
     }
@@ -219,11 +272,13 @@ class HighlightedTextView extends StatelessWidget {
 
     void flush() {
       if (currentParagraph.isNotEmpty) {
-        sections.add(Wrap(
-          spacing:    wSpacing,
-          runSpacing: 4.0,
-          children:   List.from(currentParagraph),
-        ));
+        sections.add(
+          Wrap(
+            spacing: wSpacing,
+            runSpacing: 4.0,
+            children: List.from(currentParagraph),
+          ),
+        );
         currentParagraph = [];
       }
     }
@@ -243,8 +298,8 @@ class HighlightedTextView extends StatelessWidget {
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize:       MainAxisSize.min,
-      children:           sections,
+      mainAxisSize: MainAxisSize.min,
+      children: sections,
     );
   }
 }

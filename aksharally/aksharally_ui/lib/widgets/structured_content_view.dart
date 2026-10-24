@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/accessibility_settings.dart';
 import '../theme/app_theme.dart';
+import 'highlighted_text_view.dart';
 
 /// Renders the optional OCR layout model without flattening it into prose.
 /// This widget is intentionally tolerant of missing fields so older or
@@ -10,12 +11,14 @@ class StructuredContentView extends StatelessWidget {
   final Map<String, dynamic> content;
   final List<String> words;
   final int currentIndex;
+  final GlobalKey? currentWordKey;
 
   const StructuredContentView({
     super.key,
     required this.content,
     this.words = const [],
     this.currentIndex = -1,
+    this.currentWordKey,
   });
 
   TextStyle get _bodyStyle => AccessibilitySettings.readingTextStyle(
@@ -28,6 +31,7 @@ class StructuredContentView extends StatelessWidget {
       words: words,
       currentIndex: currentIndex,
       enabled: AccessibilitySettings.wordHighlighting,
+      currentWordKey: currentWordKey,
     );
     final blocks =
         (content['blocks'] as List?)
@@ -91,10 +95,8 @@ class StructuredContentView extends StatelessWidget {
         .map(
           (row) => List<Widget>.generate(
             columnCount,
-            (index) => _tableCell(
-              index < row.length ? row[index] : '',
-              highlighter,
-            ),
+            (index) =>
+                _tableCell(index < row.length ? row[index] : '', highlighter),
           ),
         )
         .toList();
@@ -321,31 +323,39 @@ class _StructuredWordHighlighter {
     required this.words,
     required this.currentIndex,
     required this.enabled,
+    required this.currentWordKey,
   });
 
   final List<String> words;
   final int currentIndex;
   final bool enabled;
+  final GlobalKey? currentWordKey;
   int _wordCursor = 0;
 
   Widget render(String text, TextStyle style) {
     final matches = RegExp(r'\S+').allMatches(text);
-    if (!enabled || currentIndex < 0 || matches.isEmpty) {
+    if (matches.isEmpty) {
       return Text(text, style: style);
     }
 
     final spans = <InlineSpan>[];
     var textCursor = 0;
+    var containsCurrentWord = false;
     for (final match in matches) {
       if (match.start > textCursor) {
         spans.add(TextSpan(text: text.substring(textCursor, match.start)));
       }
       final token = match.group(0)!;
-      final displayIndex = _findDisplayIndex(token);
+      final displayIndex = words.isEmpty ? null : _findDisplayIndex(token);
+      final isCurrentWord = currentIndex >= 0 && displayIndex == currentIndex;
+      containsCurrentWord |= isCurrentWord;
+      final displayedToken = AccessibilitySettings.syllableBreakdown
+          ? HighlightedTextView.syllabifyWord(token)
+          : token;
       spans.add(
         TextSpan(
-          text: token,
-          style: displayIndex == currentIndex
+          text: displayedToken,
+          style: enabled && isCurrentWord
               ? style.copyWith(color: Colors.red, fontWeight: FontWeight.bold)
               : null,
         ),
@@ -355,7 +365,10 @@ class _StructuredWordHighlighter {
     if (textCursor < text.length) {
       spans.add(TextSpan(text: text.substring(textCursor)));
     }
-    return Text.rich(TextSpan(style: style, children: spans));
+    return Text.rich(
+      TextSpan(style: style, children: spans),
+      key: containsCurrentWord ? currentWordKey : null,
+    );
   }
 
   int? _findDisplayIndex(String token) {

@@ -82,7 +82,7 @@ class _OutputScreenState extends State<OutputScreen> {
   double _playbackSpeed = TTSService.playbackSpeedForEngineRate(
     AppSettings.speechRate,
   );
-  bool autoRead = true;
+  bool autoRead = AccessibilitySettings.autoRead;
   bool _isPlaybackStarting = false;
   bool _isPlaybackActive = false;
   bool _isPlaybackPaused = false;
@@ -102,7 +102,9 @@ class _OutputScreenState extends State<OutputScreen> {
   // ── accessibility overlays ────────────────────────────────────────────────
   // Initialised lazily in build() once LayoutBuilder provides a real height.
   double? _focusLineY; // centre of the focus band
-  double? _rulerY; // top edge of the reading ruler
+  final ScrollController _readingScrollController = ScrollController();
+  final GlobalKey _readingViewportKey = GlobalKey();
+  final GlobalKey _currentReadingWordKey = GlobalKey();
 
   // ─────────────────────────────────────────────────────────────────────────
   @override
@@ -226,8 +228,8 @@ class _OutputScreenState extends State<OutputScreen> {
     _hasPreciseProgress = false;
     _fallbackMode = false;
     if (mounted) {
+      _setCurrentIndex(displayWordIndices.first);
       setState(() {
-        currentIndex = displayWordIndices.first;
         _isPlaybackStarting = true;
         _isPlaybackActive = false;
         _isPlaybackPaused = false;
@@ -279,9 +281,7 @@ class _OutputScreenState extends State<OutputScreen> {
             (displayIndex < currentIndex && !wasUsingFallback)) {
           return;
         }
-        if (displayIndex != currentIndex) {
-          setState(() => currentIndex = displayIndex);
-        }
+        if (displayIndex != currentIndex) _setCurrentIndex(displayIndex);
       },
       onComplete: () {
         if (!_isCurrentPlaybackSession(session)) return;
@@ -308,6 +308,63 @@ class _OutputScreenState extends State<OutputScreen> {
 
   bool _isCurrentPlaybackSession(int session) =>
       mounted && session == _playbackSession;
+
+  void _setCurrentIndex(int index) {
+    if (!mounted || currentIndex == index) return;
+    setState(() => currentIndex = index);
+    _scheduleFocusWindowSync();
+  }
+
+  void _scheduleFocusWindowSync() {
+    if (!mounted || !AccessibilitySettings.focusLineMode || currentIndex < 0) {
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !AccessibilitySettings.focusLineMode) return;
+      _syncFocusWindowToCurrentWord();
+    });
+  }
+
+  void _syncFocusWindowToCurrentWord() {
+    if (!_readingScrollController.hasClients) return;
+    final wordBox = _currentReadingWordKey.currentContext?.findRenderObject();
+    final viewportBox = _readingViewportKey.currentContext?.findRenderObject();
+    if (wordBox is! RenderBox ||
+        !wordBox.hasSize ||
+        viewportBox is! RenderBox ||
+        !viewportBox.hasSize) {
+      return;
+    }
+
+    const focusBandHeight = 72.0;
+    final focusCenter = (_focusLineY ?? viewportBox.size.height * 0.45)
+        .clamp(
+          focusBandHeight / 2,
+          viewportBox.size.height - focusBandHeight / 2,
+        )
+        .toDouble();
+    final wordCenter = viewportBox.globalToLocal(
+      wordBox.localToGlobal(wordBox.size.center(Offset.zero)),
+    );
+    final scrollDelta = wordCenter.dy - focusCenter;
+    if (scrollDelta.abs() <= focusBandHeight / 2) return;
+
+    final position = _readingScrollController.position;
+    final targetOffset = (position.pixels + scrollDelta)
+        .clamp(position.minScrollExtent, position.maxScrollExtent)
+        .toDouble();
+    if ((targetOffset - position.pixels).abs() < 1) return;
+
+    if (AccessibilitySettings.reduceMotion) {
+      _readingScrollController.jumpTo(targetOffset);
+    } else {
+      _readingScrollController.animateTo(
+        targetOffset,
+        duration: const Duration(milliseconds: 140),
+        curve: Curves.easeOut,
+      );
+    }
+  }
 
   void _finishPlaybackSession() {
     _timer?.cancel();
@@ -410,7 +467,7 @@ class _OutputScreenState extends State<OutputScreen> {
     );
     if (nextDisplayIndex < 0) return;
 
-    setState(() => currentIndex = nextDisplayIndex);
+    _setCurrentIndex(nextDisplayIndex);
     final nextPosition = mapper.positionForDisplayIndex(nextDisplayIndex);
     final sourceOffset = nextPosition == null
         ? null
@@ -630,6 +687,7 @@ class _OutputScreenState extends State<OutputScreen> {
     _timer?.cancel();
     _progressWatchdog?.cancel();
     _tts.stop();
+    _readingScrollController.dispose();
     super.dispose();
   }
 
@@ -640,8 +698,9 @@ class _OutputScreenState extends State<OutputScreen> {
     final activeChip = _isCustomize ? 'customize' : _selectedProfile;
 
     // Larger Touch Targets: increase chip hit area when the toggle is on.
-    final chipPadH = AccessibilitySettings.largerTouchTargets ? 20.0 : 14.0;
-    final chipPadV = AccessibilitySettings.largerTouchTargets ? 12.0 : 8.0;
+    final largeTap = AccessibilitySettings.largerTouchTargets;
+    final chipPadH = largeTap ? 20.0 : 14.0;
+    final chipPadV = largeTap ? 14.0 : 8.0;
 
     Widget chip(String value, {IconData? icon}) {
       final isSelected = activeChip == value;
@@ -656,6 +715,10 @@ class _OutputScreenState extends State<OutputScreen> {
             borderRadius: BorderRadius.circular(AppTheme.radiusLG),
             onTap: () => _onProfileChanged(value),
             child: Container(
+              constraints: BoxConstraints(
+                minWidth: largeTap ? 48 : 0,
+                minHeight: largeTap ? 48 : 0,
+              ),
               margin: const EdgeInsets.symmetric(horizontal: 3, vertical: 2),
               padding: EdgeInsets.symmetric(
                 horizontal: chipPadH,
@@ -713,7 +776,10 @@ class _OutputScreenState extends State<OutputScreen> {
       await showReadingCustomizeSheet(
         context,
         onChanged: () {
-          if (mounted) setState(() {});
+          if (mounted) {
+            setState(() {});
+            _scheduleFocusWindowSync();
+          }
         },
         detectedText: words.join(' '),
       );
@@ -982,12 +1048,14 @@ class _OutputScreenState extends State<OutputScreen> {
                 content: _formatResult!.structuredContent!,
                 words: words,
                 currentIndex: currentIndex,
+                currentWordKey: _currentReadingWordKey,
               )
             else
               HighlightedTextView(
                 text: simplifiedText,
                 words: words,
                 currentIndex: currentIndex,
+                currentWordKey: _currentReadingWordKey,
               ),
             if (originalText != null && originalText.trim().isNotEmpty) ...[
               const SizedBox(height: AppTheme.spaceMD),
@@ -1032,6 +1100,7 @@ class _OutputScreenState extends State<OutputScreen> {
   // scrolling or text interaction. Only the drag handle absorbs events.
   Widget _focusLineOverlay(double bodyHeight) {
     const bandH = 72.0;
+    final handleSize = AccessibilitySettings.largerTouchTargets ? 48.0 : 32.0;
     final fy = (_focusLineY ?? bodyHeight * 0.45).clamp(
       bandH / 2,
       bodyHeight - bandH / 2,
@@ -1082,19 +1151,22 @@ class _OutputScreenState extends State<OutputScreen> {
         ),
         // ── Drag handle — only interactive element ─────────────────────────
         Positioned(
-          top: bandTop + (bandH / 2) - 16,
+          top: bandTop + (bandH - handleSize) / 2,
           right: 10,
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
-            onPanUpdate: (d) => setState(() {
-              _focusLineY = (fy + d.delta.dy).clamp(
-                bandH / 2,
-                bodyHeight - bandH / 2,
-              );
-            }),
+            onPanUpdate: (d) {
+              setState(() {
+                _focusLineY = (fy + d.delta.dy).clamp(
+                  bandH / 2,
+                  bodyHeight - bandH / 2,
+                );
+              });
+              _scheduleFocusWindowSync();
+            },
             child: Container(
-              width: 32,
-              height: 32,
+              width: handleSize,
+              height: handleSize,
               decoration: BoxDecoration(
                 color: AppTheme.primaryBlue,
                 shape: BoxShape.circle,
@@ -1113,75 +1185,11 @@ class _OutputScreenState extends State<OutputScreen> {
     );
   }
 
-  // ── Reading Ruler overlay ─────────────────────────────────────────────────
-  //
-  // A thin horizontal guide line the user can drag freely. The line itself
-  // is IgnorePointer so it never blocks scrolling; only the circular handle
-  // on the right absorbs pan events.
-  Widget _readingRulerOverlay(double bodyHeight) {
-    final ry = (_rulerY ?? bodyHeight * 0.3).clamp(4.0, bodyHeight - 4.0);
-
-    return Stack(
-      children: [
-        // ── Ruler line ─────────────────────────────────────────────────────
-        Positioned(
-          top: ry,
-          left: 0,
-          right: 48,
-          height: 3,
-          child: IgnorePointer(
-            child: Container(
-              decoration: BoxDecoration(
-                color: AppTheme.primaryBlue.withOpacity(0.80),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppTheme.primaryBlue.withOpacity(0.30),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-        // ── Drag handle ────────────────────────────────────────────────────
-        Positioned(
-          top: ry - 16,
-          right: 10,
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onPanUpdate: (d) => setState(() {
-              _rulerY = (ry + d.delta.dy).clamp(4.0, bodyHeight - 4.0);
-            }),
-            child: Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                color: AppTheme.primaryBlue,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.25),
-                    blurRadius: 4,
-                  ),
-                ],
-              ),
-              child: const Icon(
-                Icons.drag_indicator,
-                color: Colors.white,
-                size: 16,
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
   // ── build ─────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     final hasContent = simplifiedText.isNotEmpty;
+    final mediaQuery = MediaQuery.of(context);
 
     return Scaffold(
       backgroundColor: AppTheme.background,
@@ -1207,114 +1215,109 @@ class _OutputScreenState extends State<OutputScreen> {
         centerTitle: true,
       ),
 
-      // LayoutBuilder gives us the real body height so the overlay
-      // positions (focus band, reading ruler) can be initialised and
-      // clamped correctly.
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          // Lazy initialisation — set once per session, then user can drag.
-          _focusLineY ??= constraints.maxHeight * 0.45;
-          _rulerY ??= constraints.maxHeight * 0.30;
+      // Respect both the platform accessibility setting and the in-app
+      // Reduce Motion preference for animations in the reading view.
+      body: MediaQuery(
+        data: mediaQuery.copyWith(
+          disableAnimations:
+              mediaQuery.disableAnimations ||
+              AccessibilitySettings.reduceMotion,
+        ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            // Lazy initialisation — set once per session, then user can drag.
+            _focusLineY ??= constraints.maxHeight * 0.45;
 
-          return Stack(
-            children: [
-              // ── Scrollable reading content ─────────────────────────────
-              Padding(
-                padding: const EdgeInsets.all(AppTheme.spaceMD),
-                child: ListView(
-                  children: [
-                    // ── PROFILE SELECTOR ──────────────────────────────────
-                    _profileSelector(),
-
-                    const SizedBox(height: AppTheme.spaceSM),
-
-                    // ── FORMATTING INFO BAR ───────────────────────────────
-                    _formattingInfoBar(),
-
-                    const SizedBox(height: AppTheme.spaceMD),
-
-                    if (!hasContent) ...[
-                      _emptyState(),
-                    ] else ...[
-                      // ── START / STOP ─────────────────────────────────────
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _primaryButton(
-                              'Start',
-                              startReading,
-                              icon: Icons.play_arrow,
-                            ),
-                          ),
-                          const SizedBox(width: AppTheme.spaceSM),
-                          Expanded(
-                            child: _primaryButton(
-                              'Stop',
-                              stopReading,
-                              icon: Icons.stop,
-                            ),
-                          ),
-                        ],
-                      ),
+            return Stack(
+              key: _readingViewportKey,
+              fit: StackFit.expand,
+              children: [
+                // ── Scrollable reading content ─────────────────────────────
+                Padding(
+                  padding: const EdgeInsets.all(AppTheme.spaceMD),
+                  child: ListView(
+                    controller: _readingScrollController,
+                    children: [
+                      // ── PROFILE SELECTOR ──────────────────────────────────
+                      _profileSelector(),
 
                       const SizedBox(height: AppTheme.spaceSM),
 
-                      Row(
-                        children: [
-                          Expanded(child: _playbackToggleButton()),
-                          const SizedBox(width: AppTheme.spaceSM),
-                          Expanded(child: _playbackSpeedSelector()),
-                        ],
-                      ),
+                      // ── FORMATTING INFO BAR ───────────────────────────────
+                      _formattingInfoBar(),
 
                       const SizedBox(height: AppTheme.spaceMD),
 
-                      // ── AUTO READ SWITCH ──────────────────────────────────
-                      SwitchListTile(
-                        title: Text(
-                          'Auto Read',
-                          style: TextStyle(color: getTextColor()),
+                      if (!hasContent) ...[
+                        _emptyState(),
+                      ] else ...[
+                        // ── START / STOP ─────────────────────────────────────
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _primaryButton(
+                                'Start',
+                                startReading,
+                                icon: Icons.play_arrow,
+                              ),
+                            ),
+                            const SizedBox(width: AppTheme.spaceSM),
+                            Expanded(
+                              child: _primaryButton(
+                                'Stop',
+                                stopReading,
+                                icon: Icons.stop,
+                              ),
+                            ),
+                          ],
                         ),
-                        value: autoRead,
-                        onChanged: (v) => setState(() => autoRead = v),
-                      ),
 
-                      if (AppSettings.voiceAssistanceEnabled) ...[
+                        const SizedBox(height: AppTheme.spaceSM),
+
+                        Row(
+                          children: [
+                            Expanded(child: _playbackToggleButton()),
+                            const SizedBox(width: AppTheme.spaceSM),
+                            Expanded(child: _playbackSpeedSelector()),
+                          ],
+                        ),
+
                         const SizedBox(height: AppTheme.spaceMD),
-                        VoiceAssistantControls(
-                          initialLanguageCode: AppSettings.voiceLanguage,
-                          initialLocaleId: AppSettings.voiceLocaleId,
-                          onBeforeListening: _prepareForVoiceInput,
-                          onRecognized: _handleVoiceCommand,
-                          onListeningCancelled: _restoreReadingAfterVoiceInput,
-                          onLanguageChanged: _setVoiceLanguage,
-                          feedback: _voiceCommandFeedback,
-                        ),
+
+                        if (AppSettings.voiceAssistanceEnabled) ...[
+                          const SizedBox(height: AppTheme.spaceMD),
+                          VoiceAssistantControls(
+                            initialLanguageCode: AppSettings.voiceLanguage,
+                            initialLocaleId: AppSettings.voiceLocaleId,
+                            onBeforeListening: _prepareForVoiceInput,
+                            onRecognized: _handleVoiceCommand,
+                            onListeningCancelled:
+                                _restoreReadingAfterVoiceInput,
+                            onLanguageChanged: _setVoiceLanguage,
+                            feedback: _voiceCommandFeedback,
+                          ),
+                        ],
+
+                        const SizedBox(height: AppTheme.spaceMD),
+
+                        // ── READING CARD ──────────────────────────────────────
+                        _readingCard(),
                       ],
-
-                      const SizedBox(height: AppTheme.spaceMD),
-
-                      // ── READING CARD ──────────────────────────────────────
-                      _readingCard(),
                     ],
-                  ],
+                  ),
                 ),
-              ),
 
-              // ── Accessibility overlays (above scroll, non-blocking) ─────
-              // Focus Line Mode: dims content above/below a draggable band.
-              // Reduce Motion: overlays appear/disappear instantly (no
-              // animation) — already the case since we use `if` not
-              // AnimatedSwitcher.
-              if (AccessibilitySettings.focusLineMode)
-                _focusLineOverlay(constraints.maxHeight),
-
-              // Reading Ruler: a draggable horizontal guide line.
-              if (AccessibilitySettings.readingRuler)
-                _readingRulerOverlay(constraints.maxHeight),
-            ],
-          );
-        },
+                // ── Accessibility overlays (above scroll, non-blocking) ─────
+                // Focus Line Mode: dims content above/below a draggable band.
+                // Reduce Motion: overlays appear/disappear instantly (no
+                // animation) — already the case since we use `if` not
+                // AnimatedSwitcher.
+                if (AccessibilitySettings.focusLineMode)
+                  _focusLineOverlay(constraints.maxHeight),
+              ],
+            );
+          },
+        ),
       ),
     );
   }

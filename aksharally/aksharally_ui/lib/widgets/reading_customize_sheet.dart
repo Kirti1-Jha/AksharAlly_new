@@ -21,6 +21,9 @@ Future<void> showReadingCustomizeSheet(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
+    sheetAnimationStyle: AccessibilitySettings.reduceMotion
+        ? AnimationStyle.noAnimation
+        : null,
     builder: (ctx) {
       return StatefulBuilder(
         builder: (ctx, setSheet) {
@@ -225,6 +228,14 @@ Future<void> showReadingCustomizeSheet(
                         ),
                       ),
 
+                      _toggle(
+                        'Auto Read',
+                        AccessibilitySettings.autoRead,
+                        (v) => update(() => AccessibilitySettings.autoRead = v),
+                        subtitle:
+                            'Automatically read new content when it opens. Save as Default to keep this choice.',
+                      ),
+
                       // Focus Window — fully implemented in OutputScreen
                       _toggle(
                         'Focus Window',
@@ -234,16 +245,6 @@ Future<void> showReadingCustomizeSheet(
                         ),
                         subtitle:
                             'Dims surrounding text; drag the handle to reposition.',
-                      ),
-
-                      // Reading Ruler — fully implemented in OutputScreen
-                      _toggle(
-                        'Reading Ruler',
-                        AccessibilitySettings.readingRuler,
-                        (v) => update(
-                          () => AccessibilitySettings.readingRuler = v,
-                        ),
-                        subtitle: 'Horizontal guide — drag to track your line.',
                       ),
 
                       // Syllable Breakdown (Experimental) — implemented in HighlightedTextView
@@ -806,17 +807,22 @@ Widget _toggle(
   ValueChanged<bool> onChanged, {
   String? subtitle,
 }) {
-  return SwitchListTile(
-    contentPadding: EdgeInsets.zero,
-    title: Text(label, style: const TextStyle(fontSize: 14)),
-    subtitle: subtitle != null
-        ? Text(
-            subtitle,
-            style: const TextStyle(fontSize: 11, color: Colors.black54),
-          )
-        : null,
-    value: value,
-    onChanged: onChanged,
-    dense: true,
+  return ConstrainedBox(
+    constraints: BoxConstraints(
+      minHeight: AccessibilitySettings.largerTouchTargets ? 64 : 56,
+    ),
+    child: SwitchListTile(
+      contentPadding: EdgeInsets.zero,
+      title: Text(label, style: const TextStyle(fontSize: 14)),
+      subtitle: subtitle != null
+          ? Text(
+              subtitle,
+              style: const TextStyle(fontSize: 11, color: Colors.black54),
+            )
+          : null,
+      value: value,
+      onChanged: onChanged,
+      dense: true,
+    ),
   );
 }
