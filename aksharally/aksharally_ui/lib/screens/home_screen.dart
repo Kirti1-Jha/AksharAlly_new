@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../theme/ui_accessibility.dart';
+import '../theme/app_localizations.dart';
 import '../models/library_item.dart';
 import '../services/library_storage.dart';
 import 'library_screen.dart';
@@ -17,6 +18,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int currentIndex = 0;
+  String _t(String english) => AppLocalizations.text(english);
 
   // ── Subscribe to UIAccessibility.notifier ────────────────────────────────
   // When Apply is pressed in SettingsScreen, notifier.value++ fires.
@@ -135,15 +137,15 @@ class _HomeScreenState extends State<HomeScreen> {
           items: const [
             BottomNavigationBarItem(
               icon:  Icon(Icons.home_outlined),
-              label: 'Home',
+              label: _t('Home'),
             ),
             BottomNavigationBarItem(
               icon:  Icon(Icons.book_outlined),
-              label: 'Library',
+              label: _t('Library'),
             ),
             BottomNavigationBarItem(
               icon:  Icon(Icons.settings_outlined),
-              label: 'Settings',
+              label: _t('Settings'),
             ),
           ],
         ),
@@ -181,9 +183,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   String _timeBasedGreeting() {
     final hour = DateTime.now().hour;
-    if (hour < 12) return 'Good Morning';
-    if (hour < 17) return 'Good Afternoon';
-    return 'Good Evening';
+    if (hour < 12) return _t('Good Morning');
+    if (hour < 17) return _t('Good Afternoon');
+    return _t('Good Evening');
   }
 
   Widget _dashboardHeader() {
@@ -196,7 +198,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         const SizedBox(height: AppTheme.spaceXS),
         Text(
-          'Welcome Back',
+          _t('Welcome Back'),
           style: _ts(15, FontWeight.w500, _mutedTxt),
         ),
       ],
@@ -244,7 +246,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'New Reading',
+                    _t('New Reading'),
                     style: TextStyle(
                       color:      Colors.white,
                       fontSize:   18,
@@ -253,7 +255,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    'Scan, type, or upload content for dyslexia-friendly reading.',
+                    _t('Scan, type, or upload content for dyslexia-friendly reading.'),
                     style: TextStyle(
                       color:    Colors.white.withOpacity(0.9),
                       fontSize: 13,
@@ -309,7 +311,7 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(width: AppTheme.spaceSM),
           Expanded(
             child: Text(
-              'Total Readings',
+              _t('Total Readings'),
               style: _ts(14, FontWeight.w500, _mutedTxt),
             ),
           ),
@@ -327,7 +329,7 @@ class _HomeScreenState extends State<HomeScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Continue Reading',
+          _t('Continue Reading'),
           style: _ts(16, FontWeight.w700, _txt),
         ),
         const SizedBox(height: AppTheme.spaceSM),
@@ -340,7 +342,7 @@ class _HomeScreenState extends State<HomeScreen> {
               border:       Border.all(color: _txt.withOpacity(0.1)),
             ),
             child: Text(
-              'No readings yet — start one above.',
+              _t('No readings yet — start one above.'),
               style: _ts(14, FontWeight.w400, _mutedTxt),
             ),
           )
@@ -359,18 +361,18 @@ class _HomeScreenState extends State<HomeScreen> {
 
   (IconData, String) _sourceMeta(String sourceType) {
     switch (sourceType) {
-      case 'image':      return (Icons.camera_alt_outlined, 'Image');
+      case 'image':      return (Icons.camera_alt_outlined, _t('Image'));
       case 'pdf':        return (Icons.picture_as_pdf_outlined, 'PDF');
-      case 'docx':       return (Icons.description_outlined, 'Document');
-      case 'text':       return (Icons.edit_outlined, 'Typed Text');
-      case 'simplified': return (Icons.auto_awesome_outlined, 'Simplified Text');
-      default:           return (Icons.menu_book_outlined, 'Document');
+      case 'docx':       return (Icons.description_outlined, _t('Document'));
+      case 'text':       return (Icons.edit_outlined, _t('Typed Text'));
+      case 'simplified': return (Icons.auto_awesome_outlined, _t('Simplified Text'));
+      default:           return (Icons.menu_book_outlined, _t('Document'));
     }
   }
 
   String _relativeTime(DateTime date) {
     final diff = DateTime.now().difference(date);
-    if (diff.inMinutes < 1)  return 'Just now';
+    if (diff.inMinutes < 1)  return _t('Just now');
     if (diff.inMinutes < 60) {
       final m = diff.inMinutes;
       return '$m minute${m == 1 ? '' : 's'} ago';
@@ -379,7 +381,7 @@ class _HomeScreenState extends State<HomeScreen> {
       final h = diff.inHours;
       return '$h hour${h == 1 ? '' : 's'} ago';
     }
-    if (diff.inDays == 1)  return 'Yesterday';
+    if (diff.inDays == 1)  return _t('Yesterday');
     if (diff.inDays < 7)   return '${diff.inDays} days ago';
     return '${date.day}/${date.month}/${date.year}';
   }

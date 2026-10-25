@@ -1,6 +1,10 @@
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/foundation.dart';
 
 class AppSettings {
+  static final ValueNotifier<int> interfaceLanguageNotifier =
+      ValueNotifier<int>(0);
+
   static double fontSize = 18;
   static double lineSpacing = 1.5;
   static int themeMode = 0;
@@ -23,6 +27,7 @@ class AppSettings {
     final savedLanguage = preferences.getString(_interfaceLanguageKey);
     if (savedLanguage == 'en' || savedLanguage == 'hi') {
       interfaceLanguage = savedLanguage!;
+      interfaceLanguageNotifier.value++;
     }
   }
 
@@ -36,6 +41,7 @@ class AppSettings {
       throw StateError('Could not persist interface language.');
     }
     interfaceLanguage = language;
+    interfaceLanguageNotifier.value++;
   }
 
   static Future<void> loadVoiceAssistancePreference() async {

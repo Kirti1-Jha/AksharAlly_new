@@ -110,8 +110,10 @@ class AksharAllyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder<int>(
-      valueListenable: UIAccessibility.notifier,
-      builder: (_, __, ___) => MaterialApp(
+      valueListenable: AppSettings.interfaceLanguageNotifier,
+      builder: (_, languageRevision, __) => ValueListenableBuilder<int>(
+        valueListenable: UIAccessibility.notifier,
+        builder: (_, accessibilityRevision, ___) => MaterialApp(
         debugShowCheckedModeBanner: false,
         theme: UIAccessibility.buildTheme(),
         builder: (_, child) => DefaultTextStyle.merge(
@@ -135,6 +137,7 @@ class AksharAllyApp extends StatelessWidget {
             );
           },
         },
+        ),
       ),
     );
   }

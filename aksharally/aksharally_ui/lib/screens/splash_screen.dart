@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../services/tts_service.dart';
 import '../theme/app_settings.dart';
+import '../theme/app_localizations.dart';
 import '../theme/app_theme.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -12,6 +13,9 @@ class SplashScreen extends StatefulWidget {
   static const String welcomeMessage =
       'Welcome to AksharAlly, your personalised reading companion. '
       'Read with confidence. Select Let’s Begin to get started.';
+  static const String hindiWelcomeMessage =
+      'अक्षरअली में आपका स्वागत है, आपका व्यक्तिगत पढ़ने का साथी। '
+      'आत्मविश्वास के साथ पढ़ें। शुरू करने के लिए शुरू करें चुनें।';
 
   @override
   State<SplashScreen> createState() => _SplashScreenState();
@@ -56,21 +60,27 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _speakWelcome(int request) async {
-    await _ttsService.init(defaultLocale: TTSService.preferredEnglishLocale);
+    await _ttsService.init(defaultLocale: null);
     if (_isDisposed || request != _playbackRequest) return;
 
-    if (_ttsService.currentLocale == null) {
-      await _ttsService.setLanguage(TTSService.preferredEnglishLocale);
-      if (_isDisposed || request != _playbackRequest) return;
-    }
+    final isHindi = AppSettings.interfaceLanguage == 'hi';
+    final locale = isHindi ? 'hi-IN' : TTSService.preferredEnglishLocale;
+    final selected = await _ttsService.setLanguage(locale);
+    if (_isDisposed || request != _playbackRequest || !selected) return;
 
-    await _ttsService.speak(SplashScreen.welcomeMessage);
+    await _ttsService.speak(
+      isHindi ? SplashScreen.hindiWelcomeMessage : SplashScreen.welcomeMessage,
+    );
   }
 
   Future<void> _selectInterfaceLanguage(String language) async {
     try {
       await AppSettings.saveInterfaceLanguagePreference(language);
-      if (mounted) setState(() {});
+      final request = ++_playbackRequest;
+      await _ttsService.stop();
+      if (!mounted || request != _playbackRequest) return;
+      setState(() {});
+      await _speakWelcome(request);
     } catch (error) {
       debugPrint('Could not save interface language: $error');
     }
@@ -79,7 +89,7 @@ class _SplashScreenState extends State<SplashScreen> {
   Widget _languageSelector(ThemeData theme) {
     final isHindi = AppSettings.interfaceLanguage == 'hi';
     return Semantics(
-      label: isHindi ? 'भाषा चुनें' : 'Choose language',
+      label: AppLocalizations.text('Choose language'),
       child: DecoratedBox(
         decoration: BoxDecoration(
           color: theme.colorScheme.surface,
@@ -236,9 +246,7 @@ class _SplashScreenState extends State<SplashScreen> {
                                   ),
                                   onPressed: _openLogin,
                                   child: Text(
-                                    AppSettings.interfaceLanguage == 'hi'
-                                        ? 'शुरू करें'
-                                        : "Let's Begin",
+                                    AppLocalizations.text("Let's Begin"),
                                   ),
                                 ),
                               ),
@@ -246,14 +254,10 @@ class _SplashScreenState extends State<SplashScreen> {
                             const SizedBox(height: AppTheme.spaceSM),
                             Semantics(
                               button: true,
-                              label: AppSettings.interfaceLanguage == 'hi'
-                                  ? 'स्वागत संदेश दोहराएँ'
-                                  : 'Repeat welcome message',
+                              label: AppLocalizations.text('Repeat welcome message'),
                               child: IconButton(
                                 tooltip:
-                                    AppSettings.interfaceLanguage == 'hi'
-                                        ? 'स्वागत संदेश दोहराएँ'
-                                        : 'Repeat welcome message',
+                                    AppLocalizations.text('Repeat welcome message'),
                                 onPressed: _replayWelcome,
                                 icon: const Icon(Icons.volume_up_rounded),
                               ),

@@ -3,6 +3,7 @@ import '../models/library_item.dart';
 import '../services/library_storage.dart';
 import '../theme/app_theme.dart';
 import '../theme/ui_accessibility.dart';
+import '../theme/app_localizations.dart';
 import 'output_screen.dart';
 
 class LibraryScreen extends StatefulWidget {
@@ -13,6 +14,7 @@ class LibraryScreen extends StatefulWidget {
 }
 
 class _LibraryScreenState extends State<LibraryScreen> {
+  String _t(String english) => AppLocalizations.text(english);
 
   // ── Subscribe to UIAccessibility.notifier ────────────────────────────────
   // Mirrors the HomeScreen fix: forces build() to re-evaluate colour/font
@@ -67,19 +69,19 @@ class _LibraryScreenState extends State<LibraryScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete reading?'),
+        title: Text(_t('Delete reading?')),
         content: Text(
           '"${item.title}" will be permanently removed from your library.',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
+            child: Text(_t('Cancel')),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Delete'),
+            child: Text(_t('Delete')),
           ),
         ],
       ),
@@ -106,7 +108,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                 size: 48, color: _txt.withOpacity(0.35)),
             const SizedBox(height: 12),
             Text(
-              'No saved readings yet',
+              _t('No saved readings yet'),
               style: _ts(14, FontWeight.w500, _muted),
             ),
           ],
@@ -117,7 +119,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Library', style: _ts(18, FontWeight.w700, _txt)),
+        Text(_t('Library'), style: _ts(18, FontWeight.w700, _txt)),
         const SizedBox(height: AppTheme.spaceSM),
         ...List.generate(
           items.length,

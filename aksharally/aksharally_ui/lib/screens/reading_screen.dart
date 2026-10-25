@@ -5,6 +5,7 @@ import 'package:file_picker/file_picker.dart';
 
 import '../theme/app_theme.dart';
 import '../theme/ui_accessibility.dart';
+import '../theme/app_localizations.dart';
 import '../services/api_service.dart';
 import '../models/format_result.dart';
 import 'output_screen.dart';
@@ -27,6 +28,7 @@ class ReadingScreen extends StatefulWidget {
 }
 
 class _ReadingScreenState extends State<ReadingScreen> {
+  String _t(String english) => AppLocalizations.text(english);
 
   // ── Local UI state ─────────────────────────────────────────────────────────
   late ReadingTab _tab;
@@ -356,11 +358,11 @@ class _ReadingScreenState extends State<ReadingScreen> {
       ),
       child: Row(
         children: [
-          _tabItem(ReadingTab.scan,   Icons.document_scanner_outlined, 'Scan'),
+          _tabItem(ReadingTab.scan,   Icons.document_scanner_outlined, _t('Scan')),
           const SizedBox(width: AppTheme.spaceXS),
-          _tabItem(ReadingTab.type,   Icons.edit_outlined,             'Type'),
+          _tabItem(ReadingTab.type,   Icons.edit_outlined,             _t('Type')),
           const SizedBox(width: AppTheme.spaceXS),
-          _tabItem(ReadingTab.upload, Icons.upload_file_outlined,      'Upload'),
+          _tabItem(ReadingTab.upload, Icons.upload_file_outlined,      _t('Upload')),
         ],
       ),
     );
@@ -429,7 +431,7 @@ class _ReadingScreenState extends State<ReadingScreen> {
             Expanded(
               child: _outlineButton(
                 icon:  Icons.camera_alt_outlined,
-                label: 'Camera',
+                label: _t('Camera'),
                 onTap: () => _pickImage(ImageSource.camera),
               ),
             ),
@@ -437,7 +439,7 @@ class _ReadingScreenState extends State<ReadingScreen> {
             Expanded(
               child: _outlineButton(
                 icon:  Icons.photo_library_outlined,
-                label: 'Gallery',
+                label: _t('Gallery'),
                 onTap: () => _pickImage(ImageSource.gallery),
               ),
             ),
@@ -454,7 +456,7 @@ class _ReadingScreenState extends State<ReadingScreen> {
         ] else
           _emptyStatePlaceholder(
             icon:    Icons.image_search_outlined,
-            message: 'No image selected yet.\nUse Camera or Gallery above.',
+            message: _t('No image selected yet.\nUse Camera or Gallery above.'),
           ),
       ],
     );
@@ -466,7 +468,7 @@ class _ReadingScreenState extends State<ReadingScreen> {
       maxLines:   null,
       minLines:   7,
       decoration: InputDecoration(
-        hintText:    'Type or paste your text here…',
+        hintText:    _t('Type or paste your text here…'),
         filled:      true,
         fillColor:   UIAccessibility.surfaceColor,
         border: OutlineInputBorder(
@@ -487,7 +489,7 @@ class _ReadingScreenState extends State<ReadingScreen> {
       children: [
         _outlineButton(
           icon:  Icons.attach_file_outlined,
-          label: 'Choose File  (PDF · DOCX · TXT · Image)',
+          label: _t('Choose File  (PDF · DOCX · TXT · Image)'),
           onTap: _pickFile,
         ),
         const SizedBox(height: AppTheme.spaceMD),
@@ -496,7 +498,7 @@ class _ReadingScreenState extends State<ReadingScreen> {
         else
           _emptyStatePlaceholder(
             icon:    Icons.folder_open_outlined,
-            message: 'No file selected yet.\nSupports PDF, DOCX, TXT, and images.',
+            message: _t('No file selected yet.\nSupports PDF, DOCX, TXT, and images.'),
           ),
       ],
     );
@@ -517,7 +519,7 @@ class _ReadingScreenState extends State<ReadingScreen> {
 
           // Language
           Text(
-            'Language',
+            _t('Reading language'),
             style: UIAccessibility.applyGlobalTextStyle(
               AppTheme.labelStyle,
             ).copyWith(color: UIAccessibility.textColor),
@@ -539,7 +541,7 @@ class _ReadingScreenState extends State<ReadingScreen> {
 
           // Processing mode
           Text(
-            'Processing Mode',
+            _t('Processing Mode'),
             style: UIAccessibility.applyGlobalTextStyle(
               AppTheme.labelStyle,
             ).copyWith(color: UIAccessibility.textColor),
@@ -547,13 +549,13 @@ class _ReadingScreenState extends State<ReadingScreen> {
           const SizedBox(height: AppTheme.spaceXS),
           _modeRadio(
             value:    _ProcessMode.formatOnly,
-            title:    'Format Only',
-            subtitle: 'Dyslexia-friendly layout. No AI. Words never changed.',
+            title:    _t('Format Only'),
+            subtitle: _t('Dyslexia-friendly layout. No AI. Words never changed.'),
           ),
           _modeRadio(
             value:    _ProcessMode.simplifyFormat,
-            title:    'Simplify + Format',
-            subtitle: 'AI simplifies the text, then formats it for easier reading.',
+            title:    _t('Simplify + Format'),
+            subtitle: _t('AI simplifies the text, then formats it for easier reading.'),
           ),
         ],
       ),
@@ -612,8 +614,8 @@ class _ReadingScreenState extends State<ReadingScreen> {
                   strokeWidth: 2.5,
                 ),
               )
-            : const Text(
-                'Continue',
+            : Text(
+                _t('Continue'),
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
               ),
       ),
@@ -689,7 +691,7 @@ class _ReadingScreenState extends State<ReadingScreen> {
         const SizedBox(width: AppTheme.spaceXS),
         Expanded(
           child: Text(
-            _pickedFileName ?? 'Image selected',
+            _pickedFileName ?? _t('Image selected'),
             style: UIAccessibility.applyGlobalTextStyle(
               AppTheme.captionStyle,
             ).copyWith(color: UIAccessibility.textColor),
@@ -698,7 +700,7 @@ class _ReadingScreenState extends State<ReadingScreen> {
         ),
         TextButton(
           onPressed: _clearPick,
-          child: Text('Clear',
+          child: Text(_t('Clear'),
               style: TextStyle(color: UIAccessibility.textColor)),
         ),
       ],
@@ -725,14 +727,14 @@ class _ReadingScreenState extends State<ReadingScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  _pickedFileName ?? 'File selected',
+                  _pickedFileName ?? _t('File selected'),
                   style: UIAccessibility.applyGlobalTextStyle(
                     AppTheme.bodyStrongStyle,
                   ).copyWith(color: UIAccessibility.textColor),
                   overflow: TextOverflow.ellipsis,
                 ),
                 Text(
-                  'Ready to process',
+                  _t('Ready to process'),
                   style: UIAccessibility.applyGlobalTextStyle(
                     AppTheme.captionStyle,
                   ).copyWith(color: UIAccessibility.mutedTextColor),
@@ -743,7 +745,7 @@ class _ReadingScreenState extends State<ReadingScreen> {
           IconButton(
             icon:      const Icon(Icons.close, size: 20),
             onPressed: _clearPick,
-            tooltip:   'Remove',
+            tooltip:   _t('Remove'),
           ),
         ],
       ),

@@ -11,6 +11,7 @@ import '../services/tts_service.dart';
 import '../theme/app_settings.dart';
 import '../theme/app_theme.dart';
 import '../theme/ui_accessibility.dart';
+import '../theme/app_localizations.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key, this.authFlow, this.ttsService});
@@ -23,6 +24,7 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  String _t(String english) => AppLocalizations.text(english);
   bool isLogin = true;
   bool obscurePassword = true;
   bool _authenticating = false;
@@ -55,15 +57,21 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   String get _screenNarration => [
+    AppLocalizations.choose(
+      'Sign in with your email and password.',
+      'अपने ईमेल और पासवर्ड से लॉग इन करें।',
+    ),
+    AppLocalizations.choose('Email field.', 'ईमेल फ़ील्ड।'),
+    AppLocalizations.choose('Password field.', 'पासवर्ड फ़ील्ड।'),
     isLogin
-        ? 'Sign in with your email and password.'
-        : 'Create Account. Enter your email and password to register.',
-    'Email field.',
-    'Password field.',
-    isLogin ? 'Login button.' : 'Register button.',
-    'Choose Login to sign in or Register to create an account.',
-    'Continue with Google button.',
-    'Continue with Apple button.',
+        ? AppLocalizations.choose('Login button.', 'लॉग इन बटन।')
+        : AppLocalizations.choose('Register button.', 'पंजीकरण बटन।'),
+    AppLocalizations.choose(
+      'Choose Login to sign in or Register to create an account.',
+      'लॉग इन चुनकर प्रवेश करें या खाता बनाने के लिए पंजीकरण चुनें।',
+    ),
+    AppLocalizations.choose('Continue with Google button.', 'Google के साथ जारी रखने का बटन।'),
+    AppLocalizations.choose('Continue with Apple button.', 'Apple के साथ जारी रखने का बटन।'),
   ].join(' ');
 
   void _setLoginMode(bool login) {
@@ -347,8 +355,8 @@ class _LoginScreenState extends State<LoginScreen> {
                         button: true,
                         toggled: _voiceAssistantEnabled,
                         label: _voiceAssistantEnabled
-                            ? 'Voice assistant on'
-                            : 'Voice assistant off',
+                              ? _t('Voice assistant on')
+                              : _t('Voice assistant off'),
                         child: TextButton.icon(
                           key: const ValueKey('voice-assistant-toggle'),
                           onPressed: _toggleVoiceAssistant,
@@ -359,7 +367,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             size: 18,
                           ),
                           label: Text(
-                            _voiceAssistantEnabled ? 'Voice on' : 'Voice off',
+                            _voiceAssistantEnabled ? _t('Voice on') : _t('Voice off'),
                           ),
                           style: TextButton.styleFrom(
                             foregroundColor: UIAccessibility.textColor,
@@ -410,7 +418,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Read with confidence.',
+                      _t('Read with confidence.'),
                       textAlign: TextAlign.center,
                       style: UIAccessibility.applyGlobalTextStyle(
                         AppTheme.bodyStyle,
@@ -445,12 +453,12 @@ class _LoginScreenState extends State<LoginScreen> {
                               child: Row(
                                 children: [
                                   _modeButton(
-                                    'Login',
+                                    _t('Login'),
                                     isLogin,
                                     () => _setLoginMode(true),
                                   ),
                                   _modeButton(
-                                    'Register',
+                                    _t('Register'),
                                     !isLogin,
                                     () => _setLoginMode(false),
                                   ),
@@ -459,7 +467,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                             const SizedBox(height: 22),
                             Text(
-                              isLogin ? 'Welcome Back!' : 'Create Account',
+                              isLogin ? _t('Welcome Back!') : _t('Create Account'),
                               textAlign: TextAlign.center,
                               style: UIAccessibility.applyGlobalTextStyle(
                                 AppTheme.headingStyle,
@@ -470,8 +478,8 @@ class _LoginScreenState extends State<LoginScreen> {
                             const SizedBox(height: 6),
                             Text(
                               isLogin
-                                  ? 'Sign in to continue reading.'
-                                  : 'Create your account to personalise your reading.',
+                                  ? _t('Sign in to continue reading.')
+                                  : _t('Create your account to personalise your reading.'),
                               textAlign: TextAlign.center,
                               style: UIAccessibility.applyGlobalTextStyle(
                                 AppTheme.bodyStyle,
@@ -498,7 +506,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               textInputAction: TextInputAction.next,
                               autocorrect: false,
                               decoration: const InputDecoration(
-                                labelText: 'Email',
+                                labelText: _t('Email'),
                                 prefixIcon: Icon(Icons.email_outlined),
                               ),
                             ),
@@ -512,12 +520,12 @@ class _LoginScreenState extends State<LoginScreen> {
                                 if (!_authenticating) unawaited(handleAuth());
                               },
                               decoration: InputDecoration(
-                                labelText: 'Password',
+                                labelText: _t('Password'),
                                 prefixIcon: const Icon(Icons.lock_outline),
                                 suffixIcon: IconButton(
                                   tooltip: obscurePassword
-                                      ? 'Show password'
-                                      : 'Hide password',
+                                      ? _t('Show password')
+                                      : _t('Hide password'),
                                   icon: Icon(
                                     obscurePassword
                                         ? Icons.visibility_off
@@ -565,7 +573,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                         color: UIAccessibility.onAccentColor,
                                       ),
                                     )
-                                  : Text(isLogin ? 'Login' : 'Register'),
+                                  : Text(isLogin ? _t('Login') : _t('Register')),
                             ),
                             const SizedBox(height: 20),
                             Row(
@@ -582,7 +590,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                     horizontal: 12,
                                   ),
                                   child: Text(
-                                    'Or continue with',
+                                    _t('Or continue with'),
                                     style: UIAccessibility.applyGlobalTextStyle(
                                       AppTheme.captionStyle,
                                     ).copyWith(
@@ -601,12 +609,12 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                             const SizedBox(height: 12),
                             _socialButton(
-                              label: 'Continue with Google',
+                              label: _t('Continue with Google'),
                               apple: false,
                             ),
                             const SizedBox(height: 10),
                             _socialButton(
-                              label: 'Continue with Apple',
+                              label: _t('Continue with Apple'),
                               apple: true,
                             ),
                           ],

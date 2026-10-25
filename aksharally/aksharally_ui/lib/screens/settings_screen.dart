@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../theme/app_settings.dart';
 import '../theme/ui_accessibility.dart';
+import '../theme/app_localizations.dart';
 import '../services/library_storage.dart';
 import '../services/auth_service.dart';
 
@@ -36,6 +37,51 @@ class _SettingsScreenState extends State<SettingsScreen> {
   // Language applies immediately (OCR-only, not a UI preview setting)
   String _language = AppSettings.language;
   final AuthService _auth = AuthService();
+  String _t(String english) => AppLocalizations.text(english);
+
+  Future<void> _selectInterfaceLanguage(String language) async {
+    try {
+      await AppSettings.saveInterfaceLanguagePreference(language);
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            AppLocalizations.choose(
+              'Could not save interface language.',
+              'इंटरफ़ेस की भाषा सहेजी नहीं जा सकी।',
+            ),
+          ),
+        ),
+      );
+    }
+  }
+
+  Widget _interfaceLanguageChip(String language, String label) {
+    final selected = AppSettings.interfaceLanguage == language;
+    return ChoiceChip(
+      label: Text(label),
+      selected: selected,
+      onSelected: (_) => _selectInterfaceLanguage(language),
+    );
+  }
+
+  Widget _interfaceLanguageSection() {
+    return _sectionCard(
+      title: _t('Interface language'),
+      description: AppLocalizations.choose(
+        'Changes the language used for app menus and messages.',
+        'ऐप के मेनू और संदेशों की भाषा बदलें।',
+      ),
+      child: Wrap(
+        spacing: AppTheme.spaceSM,
+        children: [
+          _interfaceLanguageChip('en', 'English'),
+          _interfaceLanguageChip('hi', 'हिंदी'),
+        ],
+      ),
+    );
+  }
 
   // ── Pending mutate helper (preview-only — does NOT touch UIAccessibility) ──
   void _preview(void Function() mutate) {
@@ -1029,31 +1075,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _toggleSection() {
     return _sectionCard(
-      title:       '♿  Accessibility Options',
-      description: 'Further settings for visual comfort and motor accessibility.',
+      title:       '♿  ${_t('Accessibility Options')}',
+      description: _t('Further settings for visual comfort and motor accessibility.'),
       child: Column(
         children: [
           _toggle(
             icon:      Icons.format_bold,
-            label:     'Bold UI Text',
+            label:     _t('Bold UI Text'),
             value:     _pendingBold,
             onChanged: (v) => _preview(() => _pendingBold = v),
           ),
           _toggle(
             icon:      Icons.animation,
-            label:     'Reduced Animations',
+            label:     _t('Reduced Animations'),
             value:     _pendingAnim,
             onChanged: (v) => _preview(() => _pendingAnim = v),
           ),
           _toggle(
             icon:      Icons.touch_app_outlined,
-            label:     'Larger Touch Targets',
+            label:     _t('Larger Touch Targets'),
             value:     _pendingLargeTap,
             onChanged: (v) => _preview(() => _pendingLargeTap = v),
           ),
           _toggle(
             icon:      Icons.contrast,
-            label:     'High Contrast Mode',
+            label:     _t('High Contrast Mode'),
             value:     _pendingContrast,
             onChanged: (v) => _preview(() => _pendingContrast = v),
           ),
@@ -1064,7 +1110,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const Icon(Icons.language, color: AppTheme.primaryBlue, size: 20),
               const SizedBox(width: AppTheme.spaceSM),
               Expanded(
-                child: Text('Language',
+                child: Text(_t('Reading language'),
                     style: TextStyle(
                         fontWeight: FontWeight.w500, color: _cardText)),
               ),
@@ -1078,7 +1124,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             width: double.infinity,
             child: OutlinedButton.icon(
               icon:  const Icon(Icons.refresh, size: 18),
-              label: const Text('Reset to Default'),
+              label: Text(_t('Reset to Default')),
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppTheme.primaryBlue,
                 side:  const BorderSide(color: AppTheme.primaryBlue),
@@ -1406,7 +1452,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         // Screen header — colour is computed from background luminance so it
         // is always readable regardless of which theme is applied.
         Text(
-          'Accessibility Center',
+          _t('Accessibility Center'),
           style: TextStyle(
             fontSize:   20,
             fontWeight: FontWeight.w800,
@@ -1415,7 +1461,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
         const SizedBox(height: 4),
         Text(
-          'Customise how AksharAlly looks — preview changes before applying.',
+          _t('Customise how AksharAlly looks — preview changes before applying.'),
           style: TextStyle(
             fontSize: 12,
             color:    _headerColor.withOpacity(0.75),
@@ -1427,6 +1473,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         // Action banner — appears when preview differs from applied
         _actionBanner(),
 
+        _interfaceLanguageSection(),
         _profileSection(),
         _typographySection(),
         _colorThemeSection(),
