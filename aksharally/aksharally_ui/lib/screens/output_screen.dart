@@ -9,6 +9,7 @@ import '../services/reading_text_segments.dart';
 import '../services/output_text_sections.dart';
 import '../services/tts_progress_mapper.dart';
 import '../services/tts_service.dart';
+import '../services/accessibility_narrator.dart';
 import '../services/voice_command_handler.dart';
 import '../theme/app_settings.dart';
 import '../theme/app_localizations.dart';
@@ -17,6 +18,7 @@ import '../theme/ui_accessibility.dart';
 import '../widgets/highlighted_text_view.dart';
 import '../widgets/structured_content_view.dart';
 import '../widgets/reading_customize_sheet.dart';
+import '../widgets/narration_speaker_button.dart';
 import '../widgets/voice_assistant_controls.dart';
 
 /// OutputScreen — DISPLAY / READING screen only.
@@ -93,6 +95,7 @@ class _OutputScreenState extends State<OutputScreen> {
 
   // ── TTS ───────────────────────────────────────────────────────────────────
   final TTSService _tts = TTSService();
+  late final AccessibilityNarrator _narrator = AccessibilityNarrator(_tts);
   double speechRate = AppSettings.speechRate;
   double _playbackSpeed = TTSService.playbackSpeedForEngineRate(
     AppSettings.speechRate,
@@ -414,6 +417,27 @@ class _OutputScreenState extends State<OutputScreen> {
       if (!mounted || !AccessibilitySettings.focusLineMode) return;
       _syncFocusWindowToCurrentWord();
     });
+  }
+
+  Future<void> _narrateAccessibility(String text) => _narrator.speak(
+    text,
+    interrupt: stopReading,
+  );
+
+  String _selectedProfileNarration() {
+    final theme =
+        AccessibilitySettings.themeLabels[AccessibilitySettings.colorTheme] ??
+        'Custom';
+    return [
+      _t(_cap(_selectedProfile)),
+      '${_t('Font')}: ${_t(AccessibilitySettings.fontFamily)}',
+      '${_t('Size')}: ${AccessibilitySettings.fontSize.toStringAsFixed(0)}',
+      '${_t('Letter')}: ${AccessibilitySettings.letterSpacing.toStringAsFixed(1)}',
+      '${_t('Word')}: ${AccessibilitySettings.wordSpacing.toStringAsFixed(1)}',
+      '${_t('Line')}: ${AccessibilitySettings.lineHeight.toStringAsFixed(1)}',
+      '${_t('Para')}: ${AccessibilitySettings.paragraphSpacing.toStringAsFixed(0)}',
+      '${_t('Theme')}: ${_t(theme)}',
+    ].join('. ');
   }
 
   void _syncFocusWindowToCurrentWord() {
@@ -791,6 +815,7 @@ class _OutputScreenState extends State<OutputScreen> {
     ++_playbackSession;
     _timer?.cancel();
     _progressWatchdog?.cancel();
+    _narrator.cancel();
     _tts.stop();
     _readingScrollController.dispose();
     super.dispose();
@@ -866,13 +891,36 @@ class _OutputScreenState extends State<OutputScreen> {
       );
     }
 
-    return Wrap(
-      alignment: WrapAlignment.center,
-      spacing: 4,
-      runSpacing: 4,
+    return Column(
       children: [
-        for (final p in presets) chip(p),
-        chip('customize', icon: Icons.tune),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              _t('Reading profile'),
+              style: TextStyle(
+                color: UIAccessibility.textColor,
+                fontWeight: FontWeight.w700,
+                fontSize: 13,
+              ),
+            ),
+            NarrationSpeakerButton(
+              text: AppLocalizations.explanation('Reading profile'),
+              onSpeak: _narrateAccessibility,
+              color: UIAccessibility.textColor,
+              iconSize: 18,
+            ),
+          ],
+        ),
+        Wrap(
+          alignment: WrapAlignment.center,
+          spacing: 4,
+          runSpacing: 4,
+          children: [
+            for (final p in presets) chip(p),
+            chip('customize', icon: Icons.tune),
+          ],
+        ),
       ],
     );
   }
@@ -883,6 +931,7 @@ class _OutputScreenState extends State<OutputScreen> {
       // Customize is purely client-side.
       setState(() => _isCustomize = true);
       AccessibilitySettings.profile = 'customize';
+      await _narrateAccessibility(_t('Customize'));
       await showReadingCustomizeSheet(
         context,
         onChanged: () {
@@ -892,6 +941,7 @@ class _OutputScreenState extends State<OutputScreen> {
           }
         },
         detectedText: words.join(' '),
+        onNarrate: _narrateAccessibility,
       );
       return;
     }
@@ -903,6 +953,7 @@ class _OutputScreenState extends State<OutputScreen> {
       _isCustomize = false;
     });
     await AccessibilitySettings.save();
+    await _narrateAccessibility(_selectedProfileNarration());
   }
 
   // ── formatting info bar ───────────────────────────────────────────────────

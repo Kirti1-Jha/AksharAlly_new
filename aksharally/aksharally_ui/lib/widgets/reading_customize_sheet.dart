@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../theme/accessibility_settings.dart';
 import '../theme/app_localizations.dart';
 import '../theme/app_settings.dart';
+import 'narration_speaker_button.dart';
 
 String _t(String english) => AppLocalizations.text(english);
 
@@ -19,6 +22,7 @@ String _t(String english) => AppLocalizations.text(english);
 Future<void> showReadingCustomizeSheet(
   BuildContext context, {
   required VoidCallback onChanged,
+  required Future<void> Function(String text) onNarrate,
   String detectedText = '',
 }) async {
   await showModalBottomSheet(
@@ -78,6 +82,13 @@ Future<void> showReadingCustomizeSheet(
                         ),
                       ),
                     ),
+                    NarrationSpeakerButton(
+                      text: AppLocalizations.explanation(
+                        'Customize Reading Experience',
+                      ),
+                      onSpeak: onNarrate,
+                      color: const Color(0xFF1565C0),
+                    ),
                     IconButton(
                       icon: const Icon(Icons.close),
                       onPressed: () => Navigator.of(ctx).pop(),
@@ -92,7 +103,11 @@ Future<void> showReadingCustomizeSheet(
                     padding: const EdgeInsets.all(16),
                     children: [
                       // ── FONT FAMILY ─────────────────────────────────────
-                      _sectionHeader('Font Family'),
+                      _sectionHeader(
+                        'Font Family',
+                        onNarrate: onNarrate,
+                        explanation: AppLocalizations.explanation('Font Family'),
+                      ),
                       const SizedBox(height: 8),
                       _fontCategory(
                         'English Reading Fonts',
@@ -104,6 +119,7 @@ Future<void> showReadingCustomizeSheet(
                               detectedText,
                             ),
                         recommendedLabel: 'Recommended for English',
+                        onNarrate: onNarrate,
                       ),
                       const SizedBox(height: 14),
                       _fontCategory(
@@ -116,6 +132,7 @@ Future<void> showReadingCustomizeSheet(
                               detectedText,
                             ),
                         recommendedLabel: 'Recommended for Hindi & Marathi',
+                        onNarrate: onNarrate,
                       ),
                       const SizedBox(height: 14),
                       _readingTestPanel(),
@@ -126,6 +143,8 @@ Future<void> showReadingCustomizeSheet(
                       _sectionHeader(
                         'Font Size  •  '
                         '${AccessibilitySettings.fontSize.toStringAsFixed(0)}px',
+                        onNarrate: onNarrate,
+                        explanation: AppLocalizations.explanation('Font Size'),
                       ),
                       Slider(
                         value: AccessibilitySettings.fontSize,
@@ -134,12 +153,18 @@ Future<void> showReadingCustomizeSheet(
                         divisions: 44,
                         onChanged: (v) =>
                             update(() => AccessibilitySettings.fontSize = v),
+                        onChangeEnd: (v) =>
+                            unawaited(onNarrate(v.toStringAsFixed(0))),
                       ),
 
                       // ── LETTER SPACING ──────────────────────────────────
                       _sectionHeader(
                         'Letter Spacing  •  '
                         '${AccessibilitySettings.letterSpacing.toStringAsFixed(1)}',
+                        onNarrate: onNarrate,
+                        explanation: AppLocalizations.explanation(
+                          'Letter Spacing',
+                        ),
                       ),
                       Slider(
                         value: AccessibilitySettings.letterSpacing,
@@ -149,12 +174,18 @@ Future<void> showReadingCustomizeSheet(
                         onChanged: (v) => update(
                           () => AccessibilitySettings.letterSpacing = v,
                         ),
+                        onChangeEnd: (v) =>
+                            unawaited(onNarrate(v.toStringAsFixed(1))),
                       ),
 
                       // ── WORD SPACING ────────────────────────────────────
                       _sectionHeader(
                         'Word Spacing  •  '
                         '${AccessibilitySettings.wordSpacing.toStringAsFixed(1)}',
+                        onNarrate: onNarrate,
+                        explanation: AppLocalizations.explanation(
+                          'Word Spacing',
+                        ),
                       ),
                       Slider(
                         value: AccessibilitySettings.wordSpacing,
@@ -163,12 +194,16 @@ Future<void> showReadingCustomizeSheet(
                         divisions: 16,
                         onChanged: (v) =>
                             update(() => AccessibilitySettings.wordSpacing = v),
+                        onChangeEnd: (v) =>
+                            unawaited(onNarrate(v.toStringAsFixed(1))),
                       ),
 
                       // ── LINE HEIGHT ─────────────────────────────────────
                       _sectionHeader(
                         'Line Height  •  '
                         '${AccessibilitySettings.lineHeight.toStringAsFixed(1)}×',
+                        onNarrate: onNarrate,
+                        explanation: AppLocalizations.explanation('Line Height'),
                       ),
                       Slider(
                         value: AccessibilitySettings.lineHeight,
@@ -177,12 +212,18 @@ Future<void> showReadingCustomizeSheet(
                         divisions: 20,
                         onChanged: (v) =>
                             update(() => AccessibilitySettings.lineHeight = v),
+                        onChangeEnd: (v) =>
+                            unawaited(onNarrate(v.toStringAsFixed(1))),
                       ),
 
                       // ── PARAGRAPH SPACING ───────────────────────────────
                       _sectionHeader(
                         'Paragraph Spacing  •  '
                         '${AccessibilitySettings.paragraphSpacing.toStringAsFixed(0)}px',
+                        onNarrate: onNarrate,
+                        explanation: AppLocalizations.explanation(
+                          'Paragraph Spacing',
+                        ),
                       ),
                       Slider(
                         value: AccessibilitySettings.paragraphSpacing,
@@ -192,6 +233,8 @@ Future<void> showReadingCustomizeSheet(
                         onChanged: (v) => update(
                           () => AccessibilitySettings.paragraphSpacing = v,
                         ),
+                        onChangeEnd: (v) =>
+                            unawaited(onNarrate(v.toStringAsFixed(0))),
                       ),
 
                       const SizedBox(height: 8),
@@ -199,7 +242,11 @@ Future<void> showReadingCustomizeSheet(
                       const SizedBox(height: 8),
 
                       // ── COLOR THEMES ────────────────────────────────────
-                      _sectionHeader('Color Theme'),
+                      _sectionHeader(
+                        'Color Theme',
+                        onNarrate: onNarrate,
+                        explanation: AppLocalizations.explanation('Color Theme'),
+                      ),
                       const SizedBox(height: 10),
 
                       // Category → list of theme cards
@@ -211,7 +258,7 @@ Future<void> showReadingCustomizeSheet(
                           children: [
                             _categoryHeader(entry.key),
                             ...entry.value.map(
-                              (key) => _themeCard(key, update),
+                              (key) => _themeCard(key, update, onNarrate),
                             ),
                           ],
                         );
@@ -222,7 +269,13 @@ Future<void> showReadingCustomizeSheet(
                       const SizedBox(height: 4),
 
                       // ── ACCESSIBILITY FEATURES ──────────────────────────
-                      _sectionHeader('Accessibility Features'),
+                      _sectionHeader(
+                        'Accessibility Features',
+                        onNarrate: onNarrate,
+                        explanation: AppLocalizations.explanation(
+                          'Accessibility Features',
+                        ),
+                      ),
 
                       // Word Highlighting — always functional
                       _toggle(
@@ -231,6 +284,7 @@ Future<void> showReadingCustomizeSheet(
                         (v) => update(
                           () => AccessibilitySettings.wordHighlighting = v,
                         ),
+                        onNarrate: onNarrate,
                       ),
 
                       _toggle(
@@ -239,6 +293,7 @@ Future<void> showReadingCustomizeSheet(
                         (v) => update(() => AccessibilitySettings.autoRead = v),
                         subtitle:
                             'Automatically read new content when it opens. Save as Default to keep this choice.',
+                        onNarrate: onNarrate,
                       ),
 
                       // Focus Window — fully implemented in OutputScreen
@@ -250,6 +305,7 @@ Future<void> showReadingCustomizeSheet(
                         ),
                         subtitle:
                             'Dims surrounding text; drag the handle to reposition.',
+                        onNarrate: onNarrate,
                       ),
 
                       // Syllable Breakdown (Experimental) — implemented in HighlightedTextView
@@ -261,6 +317,7 @@ Future<void> showReadingCustomizeSheet(
                         ),
                         subtitle:
                             'Inserts visible breaks into words (e.g. read-ing, im-por-tant).',
+                        onNarrate: onNarrate,
                       ),
 
                       // Larger Touch Targets — applied to chips in OutputScreen
@@ -270,6 +327,7 @@ Future<void> showReadingCustomizeSheet(
                         (v) => update(
                           () => AccessibilitySettings.largerTouchTargets = v,
                         ),
+                        onNarrate: onNarrate,
                       ),
 
                       // Reduce Motion — removes transitions in reader overlays
@@ -279,6 +337,7 @@ Future<void> showReadingCustomizeSheet(
                         (v) => update(
                           () => AccessibilitySettings.reduceMotion = v,
                         ),
+                        onNarrate: onNarrate,
                       ),
 
                       const SizedBox(height: 20),
@@ -319,7 +378,11 @@ Future<void> showReadingCustomizeSheet(
 
 // ── Theme card ─────────────────────────────────────────────────────────────
 
-Widget _themeCard(String key, void Function(VoidCallback) update) {
+Widget _themeCard(
+  String key,
+  void Function(VoidCallback) update,
+  Future<void> Function(String text) onNarrate,
+) {
   final sel = AccessibilitySettings.colorTheme == key;
   final bg = AccessibilitySettings.previewBg(key);
   final tc = AccessibilitySettings.previewText(key);
@@ -335,7 +398,10 @@ Widget _themeCard(String key, void Function(VoidCallback) update) {
       color: Colors.transparent,
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
-        onTap: () => update(() => AccessibilitySettings.colorTheme = key),
+        onTap: () {
+          update(() => AccessibilitySettings.colorTheme = key);
+          unawaited(onNarrate(label));
+        },
         child: Container(
           constraints: const BoxConstraints(minHeight: 68),
           margin: const EdgeInsets.only(bottom: 8),
@@ -561,6 +627,7 @@ Widget _fontCategory(
   required bool largeTap,
   required bool recommended,
   required String recommendedLabel,
+  required Future<void> Function(String text) onNarrate,
 }) {
   final isDevanagari = title == 'Hindi & Marathi Fonts';
   return Column(
@@ -605,8 +672,10 @@ Widget _fontCategory(
               color: Colors.transparent,
               child: InkWell(
                 borderRadius: BorderRadius.circular(10),
-                onTap: () =>
-                    update(() => AccessibilitySettings.fontFamily = font),
+                onTap: () {
+                  update(() => AccessibilitySettings.fontFamily = font);
+                  unawaited(onNarrate(label));
+                },
                 child: Container(
                   constraints: BoxConstraints(
                     minWidth: 92,
@@ -792,16 +861,32 @@ Widget _readingTestPanel() {
 
 // ── Shared helpers ─────────────────────────────────────────────────────────
 
-Widget _sectionHeader(String title) {
+Widget _sectionHeader(
+  String title, {
+  required Future<void> Function(String text) onNarrate,
+  required String explanation,
+}) {
   return Padding(
     padding: const EdgeInsets.only(bottom: 2),
-    child: Text(
-                _t(title),
-      style: const TextStyle(
-        fontSize: 13,
-        fontWeight: FontWeight.w600,
-        color: Color(0xFF555555),
-      ),
+    child: Row(
+      children: [
+        Expanded(
+          child: Text(
+            _t(title),
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF555555),
+            ),
+          ),
+        ),
+        NarrationSpeakerButton(
+          text: explanation,
+          onSpeak: onNarrate,
+          color: const Color(0xFF1565C0),
+          iconSize: 18,
+        ),
+      ],
     ),
   );
 }
@@ -811,6 +896,7 @@ Widget _toggle(
   bool value,
   ValueChanged<bool> onChanged, {
   String? subtitle,
+  required Future<void> Function(String text) onNarrate,
 }) {
   return ConstrainedBox(
     constraints: BoxConstraints(
@@ -818,7 +904,19 @@ Widget _toggle(
     ),
     child: SwitchListTile(
       contentPadding: EdgeInsets.zero,
-      title: Text(label, style: const TextStyle(fontSize: 14)),
+      title: Row(
+        children: [
+          Expanded(
+            child: Text(label, style: const TextStyle(fontSize: 14)),
+          ),
+          NarrationSpeakerButton(
+            text: AppLocalizations.explanation(label),
+            onSpeak: onNarrate,
+            color: const Color(0xFF1565C0),
+            iconSize: 18,
+          ),
+        ],
+      ),
       subtitle: subtitle != null
           ? Text(
               subtitle,
@@ -826,7 +924,10 @@ Widget _toggle(
             )
           : null,
       value: value,
-      onChanged: onChanged,
+      onChanged: (enabled) {
+        onChanged(enabled);
+        unawaited(onNarrate(_t(enabled ? 'On' : 'Off')));
+      },
       dense: true,
     ),
   );

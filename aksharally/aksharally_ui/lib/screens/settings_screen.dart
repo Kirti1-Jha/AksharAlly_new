@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../theme/app_settings.dart';
@@ -5,6 +7,9 @@ import '../theme/ui_accessibility.dart';
 import '../theme/app_localizations.dart';
 import '../services/library_storage.dart';
 import '../services/auth_service.dart';
+import '../services/accessibility_narrator.dart';
+import '../services/tts_service.dart';
+import '../widgets/narration_speaker_button.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -37,7 +42,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
   // Reading language remains separate from the app interface language.
   String _language = AppSettings.language;
   final AuthService _auth = AuthService();
+  final TTSService _tts = TTSService();
+  late final AccessibilityNarrator _narrator = AccessibilityNarrator(_tts);
   String _t(String english) => AppLocalizations.text(english);
+  Future<void> _narrate(String text) => _narrator.speak(text);
 
   @override
   void initState() {
@@ -52,6 +60,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     AppSettings.interfaceLanguageNotifier.removeListener(
       _onInterfaceLanguageChanged,
     );
+    _narrator.cancel();
+    _tts.stop();
     super.dispose();
   }
 
@@ -62,7 +72,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _selectInterfaceLanguage(String language) async {
     try {
       await AppSettings.saveInterfaceLanguagePreference(language);
-      if (mounted) setState(() {});
+      if (mounted) {
+        setState(() {});
+        await _narrate(_t(language == 'en' ? 'English' : 'Hindi'));
+      }
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -101,6 +114,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _interfaceLanguageChip('hi', 'Hindi'),
         ],
       ),
+    );
+  }
+
+  Widget _settingHeading(String key, String explanation) {
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            _t(key),
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              fontSize: 13,
+              color: _cardText,
+            ),
+          ),
+        ),
+        NarrationSpeakerButton(
+          text: explanation,
+          onSpeak: _narrate,
+          color: _cardText,
+          iconSize: 18,
+        ),
+      ],
     );
   }
 
@@ -264,6 +300,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget _sectionCard({
     required String title,
     String? description,
+    String? speechText,
     required Widget child,
   }) {
     return Container(
@@ -284,13 +321,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              title,
-              style: TextStyle(
-                fontSize:   17,
-                fontWeight: FontWeight.w800,
-                color:      _cardText,
-              ),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w800,
+                      color: _cardText,
+                    ),
+                  ),
+                ),
+                if (speechText != null || description != null)
+                  NarrationSpeakerButton(
+                    text: speechText ?? description!,
+                    onSpeak: _narrate,
+                    color: _cardText,
+                  ),
+              ],
             ),
             if (description != null) ...[
               const SizedBox(height: 4),
@@ -436,6 +485,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return _sectionCard(
       title:       '🧠  ${_t('Dyslexia Profiles')}',
       description: _t('Choose a starting point optimised for your accessibility needs.'),
+      speechText: AppLocalizations.explanation('Dyslexia Profiles'),
       child: SizedBox(
         height: 205,
         child: ListView(
@@ -496,7 +546,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
 
     return GestureDetector(
-      onTap: () => _pendingApplyProfile(key),
+      onTap: () {
+        _pendingApplyProfile(key);
+        unawaited(_narrate(label));
+      },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 220),
         width:   152,
@@ -597,19 +650,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return _sectionCard(
       title:       '🔤  ${_t('Typography')}',
       description: _t('Adjust fonts and spacing so text is comfortable to read.'),
+      speechText: AppLocalizations.explanation('Typography'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(_t('Font Family'),
-              style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize:   13,
-                  color:      _cardText)),
+          _settingHeading(
+            'Font Family',
+            AppLocalizations.explanation('Font Family'),
+          ),
           const SizedBox(height: AppTheme.spaceSM),
           _fontChips(),
           const SizedBox(height: AppTheme.spaceMD),
           _slider(
             label:     _t('Font Size'),
+            explanation: AppLocalizations.explanation('Font Size'),
             value:     _pendingSize,
             min: 12, max: 22, divisions: 10,
             display:   _pendingSize.toStringAsFixed(0),
@@ -617,6 +671,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           _slider(
             label:     _t('Letter Spacing'),
+            explanation: AppLocalizations.explanation('Letter Spacing'),
             value:     _pendingLetterSp,
             min: 0.0, max: 2.5, divisions: 10,
             display:   _pendingLetterSp.toStringAsFixed(1),
@@ -624,6 +679,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           _slider(
             label:     _t('Word Spacing'),
+            explanation: AppLocalizations.explanation('Word Spacing'),
             value:     _pendingWordSp,
             min: 0.0, max: 8.0, divisions: 8,
             display:   _pendingWordSp.toStringAsFixed(1),
@@ -631,6 +687,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           _slider(
             label:     _t('Line Height'),
+            explanation: AppLocalizations.explanation('Line Height'),
             value:     _pendingLineH,
             min: 1.0, max: 3.0, divisions: 10,
             display:   _pendingLineH.toStringAsFixed(1),
@@ -649,10 +706,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
         final active  = _pendingFont == name;
         final preview = UIAccessibility.previewStyleFor(name);
         return GestureDetector(
-          onTap: () => _preview(() {
-            _pendingFont    = name;
-            _pendingProfile = 'custom';
-          }),
+          onTap: () {
+            _preview(() {
+              _pendingFont = name;
+              _pendingProfile = 'custom';
+            });
+            unawaited(_narrate(_t(name)));
+          },
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 180),
             padding: const EdgeInsets.symmetric(
@@ -680,6 +740,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _slider({
     required String label,
+    required String explanation,
     required double value,
     required double min,
     required double max,
@@ -693,11 +754,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(label,
-                style: TextStyle(
-                    fontSize:   13,
-                    fontWeight: FontWeight.w500,
-                    color:      _cardText)),
+        Expanded(
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: _cardText,
+            ),
+          ),
+        ),
+        NarrationSpeakerButton(
+          text: explanation,
+          onSpeak: _narrate,
+          color: _cardText,
+          iconSize: 18,
+        ),
+        const SizedBox(width: 4),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
               decoration: BoxDecoration(
@@ -726,6 +799,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
             max:       max,
             divisions: divisions,
             onChanged: onChanged,
+            onChangeEnd: (nextValue) {
+              unawaited(
+                _narrate(
+                  nextValue == nextValue.roundToDouble()
+                      ? nextValue.toStringAsFixed(0)
+                      : nextValue.toStringAsFixed(1),
+                ),
+              );
+            },
           ),
         ),
       ],
@@ -740,6 +822,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return _sectionCard(
       title:       '🎨  ${_t('Colour Themes')}',
       description: _t('Pick a background and text colour combination proven to reduce eye strain.'),
+      speechText: AppLocalizations.explanation('Colour Themes'),
       child: LayoutBuilder(
         builder: (ctx, constraints) {
           const spacing   = 8.0;
@@ -812,12 +895,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final badge     = rawBadge == null ? null : _t(rawBadge);
 
     return GestureDetector(
-      onTap: () => _preview(() {
-        _pendingTheme     = key;
-        _pendingTextColor = tc;
-        _pendingBgColor   = bg;
-        _pendingProfile   = 'custom';
-      }),
+      onTap: () {
+        _preview(() {
+          _pendingTheme = key;
+          _pendingTextColor = tc;
+          _pendingBgColor = bg;
+          _pendingProfile = 'custom';
+        });
+        unawaited(_narrate(label));
+      },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
         padding: const EdgeInsets.all(8),
@@ -964,14 +1050,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return _sectionCard(
       title:       '✏️  ${_t('Custom Appearance')}',
       description: _t('Override colours manually for a fully personalised look.'),
+      speechText: _t('Override colours manually for a fully personalised look.'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(_t('Text Colour'),
-              style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize:   13,
-                  color:      _cardText)),
+          _settingHeading(
+            'Text Colour',
+            AppLocalizations.explanation('Text Colour'),
+          ),
           const SizedBox(height: AppTheme.spaceSM),
           _swatchRow(
             swatches: UIAccessibility.textSwatches,
@@ -981,13 +1067,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _pendingProfile   = 'custom';
               _pendingTheme     = 'custom';
             }),
+            onNarrate: (c) => _narrate(_t(_colorName(c))),
           ),
           const SizedBox(height: AppTheme.spaceMD),
-          Text(_t('Background Colour'),
-              style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize:   13,
-                  color:      _cardText)),
+          _settingHeading(
+            'Background Colour',
+            AppLocalizations.explanation('Background Colour'),
+          ),
           const SizedBox(height: AppTheme.spaceSM),
           _swatchRow(
             swatches: UIAccessibility.bgSwatches,
@@ -997,6 +1083,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _pendingProfile = 'custom';
               _pendingTheme   = 'custom';
             }),
+            onNarrate: (c) => _narrate(_t(_colorName(c))),
           ),
 
           // ── Contrast warning — live, non-blocking ─────────────────────────
@@ -1056,6 +1143,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     required List<Color> swatches,
     required Color selected,
     required ValueChanged<Color> onSelect,
+    required ValueChanged<Color> onNarrate,
   }) {
     return Wrap(
       spacing:    AppTheme.spaceSM,
@@ -1063,7 +1151,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       children:   swatches.map((c) {
         final isSelected = selected.value == c.value;
         return GestureDetector(
-          onTap: () => onSelect(c),
+          onTap: () {
+            onSelect(c);
+            onNarrate(c);
+          },
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 180),
             width: 36, height: 36,
@@ -1102,28 +1193,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return _sectionCard(
       title:       '♿  ${_t('Accessibility Options')}',
       description: _t('Further settings for visual comfort and motor accessibility.'),
+      speechText: AppLocalizations.explanation('Accessibility Options'),
       child: Column(
         children: [
           _toggle(
             icon:      Icons.format_bold,
+            settingKey: 'Bold UI Text',
             label:     _t('Bold UI Text'),
             value:     _pendingBold,
             onChanged: (v) => _preview(() => _pendingBold = v),
           ),
           _toggle(
             icon:      Icons.animation,
+            settingKey: 'Reduced Animations',
             label:     _t('Reduced Animations'),
             value:     _pendingAnim,
             onChanged: (v) => _preview(() => _pendingAnim = v),
           ),
           _toggle(
             icon:      Icons.touch_app_outlined,
+            settingKey: 'Larger Touch Targets',
             label:     _t('Larger Touch Targets'),
             value:     _pendingLargeTap,
             onChanged: (v) => _preview(() => _pendingLargeTap = v),
           ),
           _toggle(
             icon:      Icons.contrast,
+            settingKey: 'High Contrast Mode',
             label:     _t('High Contrast Mode'),
             value:     _pendingContrast,
             onChanged: (v) => _preview(() => _pendingContrast = v),
@@ -1138,6 +1234,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 child: Text(_t('Reading language'),
                     style: TextStyle(
                         fontWeight: FontWeight.w500, color: _cardText)),
+              ),
+              NarrationSpeakerButton(
+                text: AppLocalizations.explanation('Reading language'),
+                onSpeak: _narrate,
+                color: _cardText,
+                iconSize: 18,
               ),
               _langChip('English', 'en'),
               const SizedBox(width: 6),
@@ -1187,6 +1289,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _toggle({
     required IconData icon,
+    required String settingKey,
     required String label,
     required bool value,
     required ValueChanged<bool> onChanged,
@@ -1201,19 +1304,55 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: Text(label,
                   style: TextStyle(
                       fontWeight: FontWeight.w500, color: _cardText))),
-          Switch(value: value, onChanged: onChanged),
+          NarrationSpeakerButton(
+            text: AppLocalizations.explanation(settingKey),
+            onSpeak: _narrate,
+            color: _cardText,
+            iconSize: 18,
+          ),
+          Switch(
+            value: value,
+            onChanged: (enabled) {
+              onChanged(enabled);
+              unawaited(_narrate(_t(enabled ? 'On' : 'Off')));
+            },
+          ),
         ],
       ),
     );
   }
 
+  String _colorName(Color color) {
+    return switch (color.value) {
+      0xFF1A1A1A => 'Dark gray',
+      0xFF333333 => 'Charcoal',
+      0xFF4A3728 => 'Brown',
+      0xFF1A237E => 'Indigo',
+      0xFF2E5B2E => 'Dark green',
+      0xFF880E4F => 'Burgundy',
+      0xFF000000 => 'Black',
+      0xFFFFFFFF => 'White',
+      0xFFF5F1E6 => 'Cream',
+      0xFFFFF8C6 => 'Pale yellow',
+      0xFFDCEEFF => 'Pale blue',
+      0xFFE8F5E9 => 'Pale green',
+      0xFFFFE5D0 => 'Peach',
+      0xFFF3E5F5 => 'Lavender',
+      0xFF121212 => 'Dark gray',
+      _ => 'Selected color',
+    };
+  }
+
   Widget _langChip(String label, String code) {
     final sel = _language == code;
     return GestureDetector(
-      onTap: () => setState(() {
-        _language = code;
-        AppSettings.language = code;
-      }),
+      onTap: () {
+        setState(() {
+          _language = code;
+          AppSettings.language = code;
+        });
+        unawaited(_narrate(_t(label)));
+      },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
         decoration: BoxDecoration(
@@ -1338,6 +1477,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final savedReadings = LibraryStorage.getItems().length;
     return _sectionCard(
       title: '📚  ${_t('Reading History')}',
+      speechText: AppLocalizations.explanation('Reading History'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1454,6 +1594,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return _sectionCard(
       title: _t('Account'),
       description: _t('Manage your current AksharAlly session.'),
+      speechText: AppLocalizations.explanation('Account'),
       child: SizedBox(
         width: double.infinity,
         child: OutlinedButton.icon(

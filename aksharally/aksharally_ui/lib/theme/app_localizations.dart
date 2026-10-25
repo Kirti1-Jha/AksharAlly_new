@@ -35,6 +35,96 @@ class AppLocalizations {
   static String choose(String english, String hindi) =>
       isHindi ? hindi : english;
 
+  static String explanation(String setting) {
+    final explanations = isHindi ? _hindiExplanations : _englishExplanations;
+    return explanations[setting] ?? '';
+  }
+
+  static const Map<String, String> _englishExplanations = {
+    'Reading profile':
+        'Choose a reading profile to set comfortable text and spacing.',
+    'Font Family': 'Choose the font you would feel the most comfortable with.',
+    'Font Size': 'Adjust how large the reading text appears.',
+    'Letter Spacing': 'Adjust the space between letters.',
+    'Word Spacing': 'Adjust the space between words.',
+    'Line Height': 'Adjust the space between lines.',
+    'Paragraph Spacing': 'Adjust the space between paragraphs.',
+    'Color Theme': 'Choose a background and text colour combination.',
+    'Accessibility Features':
+        'Turn reading and visual accessibility features on or off.',
+    'Word Highlighting during TTS':
+        'Highlight each word as it is spoken aloud.',
+    'Auto Read': 'Automatically start reading new content aloud.',
+    'Focus Window': 'Dim surrounding text to help you follow one line.',
+    'Syllable Breakdown (Experimental)':
+        'Show breaks between syllables to make longer words easier to read.',
+    'Larger Touch Targets':
+        'Make buttons and controls easier to tap.',
+    'Reduce Motion / Animations':
+        'Reduce movement and animation on the reading screen.',
+    'Interface language':
+        'Choose the language used for app menus and messages.',
+    'Dyslexia Profiles':
+        'Choose a preset with a comfortable font, spacing, and colours.',
+    'Typography': 'Adjust the app font and text spacing.',
+    'Colour Themes': 'Choose a background and text colour combination.',
+    'Color Themes': 'Choose a background and text colour combination.',
+    'Text Colour': 'Choose the colour used for text.',
+    'Background Colour': 'Choose the page background colour.',
+    'Accessibility Options':
+        'Adjust visual comfort and touch accessibility settings.',
+    'Bold UI Text': 'Make app interface text bolder.',
+    'Reduced Animations': 'Reduce animation throughout the app.',
+    'High Contrast Mode': 'Increase contrast in app interface text.',
+    'Reading language': 'Choose the language of the text you want to read.',
+    'Interface language setting':
+        'Choose the language used for app menus and messages.',
+    'Reading History': 'Review and manage your saved readings.',
+    'Account': 'Manage your current AksharAlly session.',
+  };
+
+  static const Map<String, String> _hindiExplanations = {
+    'Reading profile':
+        'पाठ और दूरी को आरामदायक बनाने के लिए पढ़ने की शैली चुनें।',
+    'Font Family': 'वह फ़ॉन्ट चुनें जिसमें आपको पढ़ना सबसे आरामदायक लगे।',
+    'Font Size': 'पढ़ने वाले पाठ का आकार बदलें।',
+    'Letter Spacing': 'अक्षरों के बीच की दूरी बदलें।',
+    'Word Spacing': 'शब्दों के बीच की दूरी बदलें।',
+    'Line Height': 'पंक्तियों के बीच की दूरी बदलें।',
+    'Paragraph Spacing': 'अनुच्छेदों के बीच की दूरी बदलें।',
+    'Color Theme': 'पृष्ठभूमि और पाठ के रंगों का संयोजन चुनें।',
+    'Accessibility Features':
+        'पढ़ने और देखने की सुलभता सुविधाएँ चालू या बंद करें।',
+    'Word Highlighting during TTS':
+        'आवाज़ में पढ़े जा रहे हर शब्द को हाइलाइट करें।',
+    'Auto Read': 'नई सामग्री खुलने पर उसे अपने-आप पढ़ें।',
+    'Focus Window': 'एक पंक्ति पर ध्यान रखने के लिए आसपास के पाठ को धुँधला करें।',
+    'Syllable Breakdown (Experimental)':
+        'लंबे शब्दों को पढ़ना आसान बनाने के लिए अक्षरों के बीच विराम दिखाएँ।',
+    'Larger Touch Targets': 'बटन और नियंत्रणों को छूना आसान बनाएँ।',
+    'Reduce Motion / Animations':
+        'रीडिंग स्क्रीन पर गति और एनिमेशन कम करें।',
+    'Interface language':
+        'ऐप के मेनू और संदेशों की भाषा चुनें।',
+    'Dyslexia Profiles':
+        'आरामदायक फ़ॉन्ट, दूरी और रंगों वाली शैली चुनें।',
+    'Typography': 'ऐप का फ़ॉन्ट और पाठ की दूरी बदलें।',
+    'Colour Themes': 'पृष्ठभूमि और पाठ के रंगों का संयोजन चुनें।',
+    'Color Themes': 'पृष्ठभूमि और पाठ के रंगों का संयोजन चुनें।',
+    'Text Colour': 'पाठ का रंग चुनें।',
+    'Background Colour': 'पृष्ठ का पृष्ठभूमि रंग चुनें।',
+    'Accessibility Options':
+        'देखने के आराम और टच सुलभता की सेटिंग बदलें।',
+    'Bold UI Text': 'ऐप के इंटरफ़ेस का पाठ मोटा करें।',
+    'Reduced Animations': 'ऐप में एनिमेशन कम करें।',
+    'High Contrast Mode': 'ऐप के इंटरफ़ेस के पाठ का कंट्रास्ट बढ़ाएँ।',
+    'Reading language': 'पढ़ी जाने वाली सामग्री की भाषा चुनें।',
+    'Interface language setting':
+        'ऐप के मेनू और संदेशों की भाषा चुनें।',
+    'Reading History': 'सहेजी गई रीडिंग देखें और प्रबंधित करें।',
+    'Account': 'अपने मौजूदा AksharAlly सत्र का प्रबंधन करें।',
+  };
+
   static const Map<String, String> _hindi = {
     'Choose language': 'भाषा चुनें',
     'Welcome to AksharAlly, your personalised reading companion. Read with confidence. Select Let’s Begin to get started.':
@@ -96,6 +186,50 @@ class AppLocalizations {
     'Home': 'होम',
     'Library': 'पुस्तकालय',
     'Settings': 'सेटिंग्स',
+    'Listen to explanation': 'विवरण सुनें',
+    'On': 'चालू',
+    'Off': 'बंद',
+    'Cream': 'क्रीम',
+    'Black': 'काला',
+    'Dark gray': 'गहरा धूसर',
+    'Charcoal': 'चारकोल',
+    'Brown': 'भूरा',
+    'Indigo': 'इंडिगो',
+    'Dark green': 'गहरा हरा',
+    'Burgundy': 'बरगंडी',
+    'Pale yellow': 'हल्का पीला',
+    'Pale blue': 'हल्का नीला',
+    'Pale green': 'हल्का हरा',
+    'Peach': 'आड़ू रंग',
+    'Lavender': 'लैवेंडर',
+    'White': 'सफ़ेद',
+    'Purple': 'बैंगनी',
+    'Pink': 'गुलाबी',
+    'Font Family': 'फ़ॉन्ट परिवार',
+    'Font Size': 'फ़ॉन्ट आकार',
+    'Letter Spacing': 'अक्षरों के बीच दूरी',
+    'Word Spacing': 'शब्दों के बीच दूरी',
+    'Line Height': 'पंक्ति की ऊँचाई',
+    'Paragraph Spacing': 'अनुच्छेदों के बीच दूरी',
+    'OpenDyslexic': 'ओपनडिस्लेक्सिक',
+    'Lexend': 'लेक्सेंड',
+    'Atkinson': 'एटकिंसन',
+    'Atkinson Hyperlegible': 'एटकिंसन हाइपरलेजेबल',
+    'Noto Sans': 'नोटो सैन्स',
+    'Inter': 'इंटर',
+    'Roboto': 'रोबोटो',
+    'Comic Neue': 'कॉमिक न्यू',
+    'Verdana': 'वर्दाना',
+    'Tahoma': 'तहोमा',
+    'Arial': 'एरियल',
+    'Georgia': 'जॉर्जिया',
+    'Trebuchet MS': 'ट्रेबुशेट एमएस',
+    'Mukta': 'मुक्ता',
+    'Noto Sans Devanagari': 'नोटो सैन्स देवनागरी',
+    'Hind': 'हिंद',
+    'Baloo 2': 'बालू 2',
+    'Tiro Devanagari Hindi': 'टिरो देवनागरी हिंदी',
+    'System Default': 'सिस्टम डिफ़ॉल्ट',
     'Hindi': 'हिंदी',
     'Marathi': 'मराठी',
     'English': 'अंग्रेज़ी',
