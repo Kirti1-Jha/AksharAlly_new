@@ -9,8 +9,28 @@ class AppLocalizations {
 
   static bool get isHindi => AppSettings.interfaceLanguage == 'hi';
 
-  static String text(String english) =>
-      isHindi ? (_hindi[english] ?? english) : english;
+  static String text(String english) {
+    if (!isHindi) return english;
+
+    final translated = _hindi[english];
+    if (translated != null) return translated;
+
+    const dynamicPrefixes = [
+      'Unable to process the image:',
+      'Connection failed:',
+      'Could not start speech recognition:',
+      'Could not listen:',
+      'Could not process that command:',
+      'Speech recognition error:',
+    ];
+    for (final prefix in dynamicPrefixes) {
+      if (english.startsWith(prefix)) {
+        final detail = english.substring(prefix.length).trimLeft();
+        return '${_hindi[prefix]} ${text(detail)}';
+      }
+    }
+    return english;
+  }
 
   static String choose(String english, String hindi) =>
       isHindi ? hindi : english;
@@ -107,7 +127,7 @@ class AppLocalizations {
         'दृश्य आराम और उपयोग-सुलभता के लिए अतिरिक्त सेटिंग्स।',
     'Bold UI Text': 'इंटरफ़ेस का पाठ मोटा करें',
     'Reduced Animations': 'एनिमेशन कम करें',
-    'Larger Touch Targets': 'टच क्षेत्र बड़ा करें',
+    'Larger Touch Targets': 'बड़े टच क्षेत्र',
     'High Contrast Mode': 'उच्च कंट्रास्ट मोड',
     'Reading language': 'पढ़ने की सामग्री की भाषा',
     'Interface language': 'इंटरफ़ेस की भाषा',
@@ -121,7 +141,8 @@ class AppLocalizations {
     'Most Popular': 'सबसे लोकप्रिय',
     'High Contrast': 'उच्च कंट्रास्ट',
     'Dyslexia Recommended': 'डिस्लेक्सिया के लिए सुझाया गया',
-    'English': 'अंग्रेज़ी',
+    'Extreme Contrast': 'अत्यधिक कंट्रास्ट',
+    'Study Mode': 'अध्ययन मोड',
     'हिंदी': 'हिंदी',
     'Reset to Default': 'डिफ़ॉल्ट पर रीसेट करें',
     'Changes not yet applied': 'बदलाव अभी लागू नहीं हुए हैं',
@@ -256,11 +277,30 @@ class AppLocalizations {
     'Pale Green + Dark Gray': 'हल्का हरा + गहरा धूसर',
     'Peach + Black': 'आड़ू रंग + काला',
     'White + Black': 'सफ़ेद + काला',
+    'Pale Green + Gray': 'हल्का हरा + धूसर',
+    'Lavender + Purple': 'लैवेंडर + बैंगनी',
+    'Black + White': 'काला + सफ़ेद',
+    'White + Navy': 'सफ़ेद + नेवी',
+    'Navy + White': 'नेवी + सफ़ेद',
+    'Dark Gray + White': 'गहरा धूसर + सफ़ेद',
+    'Yellow + Black': 'पीला + काला',
+    'Black + Yellow': 'काला + पीला',
+    'Cyan + Black': 'सियान + काला',
+    'Black + Cyan': 'काला + सियान',
+    'Dark Blue + Yellow': 'गहरा नीला + पीला',
+    'Sepia': 'सेपिया',
+    'Kindle Dark': 'Kindle डार्क',
+    'Slate': 'स्लेट',
+    'Graphite': 'ग्रेफाइट',
+    'Midnight': 'मिडनाइट',
     'Dark Mode': 'डार्क मोड',
     'Cream + Navy': 'क्रीम + नेवी',
     'Cream + Dark Green': 'क्रीम + गहरा हरा',
     'Cream + Burgundy': 'क्रीम + बरगंडी',
     'Soft Yellow + Purple': 'हल्का पीला + बैंगनी',
+    'Soft Reading': 'आरामदायक रीडिंग',
+    'Extreme Accessibility': 'अत्यधिक सुलभता',
+    'Modern Reading': 'आधुनिक रीडिंग',
     'High readability with reduced glare.':
         'कम चमक के साथ बेहतर पठनीयता।',
     'Reduces eye strain and improves focus.':
@@ -282,6 +322,28 @@ class AppLocalizations {
         'गर्म क्रीम पृष्ठभूमि पर गहरा बरगंडी पाठ।',
     'Calming yellow with vivid purple contrast.':
         'शांत पीला रंग और स्पष्ट बैंगनी कंट्रास्ट।',
+    'Strong contrast without harsh black text.':
+        'काले पाठ की कठोरता के बिना स्पष्ट कंट्रास्ट।',
+    'Calming contrast with softer tones.':
+        'हल्के रंगों के साथ आरामदायक कंट्रास्ट।',
+    'Maximum readability.': 'अधिकतम पठनीयता।',
+    'Strong contrast for dark reading.':
+        'डार्क मोड में पढ़ने के लिए स्पष्ट कंट्रास्ट।',
+    'Cleaner than pure black.': 'पूरे काले रंग से अधिक सहज।',
+    'Dark reading with crisp text.': 'डार्क मोड में स्पष्ट पाठ के साथ पढ़ें।',
+    'Reduced glare dark theme.': 'कम चमक वाली डार्क थीम।',
+    'Maximum foreground/background separation.':
+        'पाठ और पृष्ठभूमि के बीच अधिकतम अंतर।',
+    'Frequently preferred by some visually impaired readers.':
+        'कुछ दृष्टिबाधित पाठकों द्वारा अक्सर पसंद किया जाता है।',
+    'Bright high-visibility theme.': 'अधिक दृश्यता वाली चमकीली थीम।',
+    'Strong visual distinction.': 'स्पष्ट दृश्य अंतर।',
+    'Maximum letter differentiation.': 'अक्षरों के बीच अधिकतम अंतर।',
+    'Book-like reading experience.': 'किताब जैसा पढ़ने का अनुभव।',
+    'Comfortable long-session reading.': 'लंबे समय तक पढ़ने के लिए आरामदायक।',
+    'Modern low-glare dark theme.': 'कम चमक वाली आधुनिक डार्क थीम।',
+    'Balanced dark reading mode.': 'संतुलित डार्क रीडिंग मोड।',
+    'Pure dark accessibility theme.': 'सुलभता के लिए पूरी तरह डार्क थीम।',
     'Applied': 'लागू',
     'Selected': 'चुना गया',
     'Override colours manually for a fully personalised look.':
@@ -368,16 +430,10 @@ class AppLocalizations {
     'I did not recognize that command. Try one command at a time, such as “read this page,” “pause reading,” or “read slower.” Sentence navigation is not available yet.':
         'कमांड समझ नहीं आया। एक बार में एक कमांड बोलें, जैसे “यह पेज पढ़ें”, “पढ़ना रोकें” या “धीरे पढ़ें”। वाक्य पर आगे-पीछे जाना अभी उपलब्ध नहीं है।',
     'Customize Reading Experience': 'पढ़ने का अनुभव अनुकूलित करें',
-    'Font Family': 'फ़ॉन्ट परिवार',
     'English Reading Fonts': 'अंग्रेज़ी पढ़ने के फ़ॉन्ट',
     'Recommended for English': 'अंग्रेज़ी के लिए सुझाया गया',
     'Hindi & Marathi Fonts': 'हिंदी और मराठी के फ़ॉन्ट',
-    'Recommended for Hindi & Marathi':
-        'हिंदी और मराठी के लिए सुझाया गया',
-    'Font Size': 'फ़ॉन्ट आकार',
-    'Letter Spacing': 'अक्षरों के बीच दूरी',
-    'Word Spacing': 'शब्दों के बीच दूरी',
-    'Line Height': 'पंक्ति की ऊँचाई',
+    'Recommended for Hindi & Marathi': 'हिंदी और मराठी के लिए सुझाया गया',
     'Paragraph Spacing': 'अनुच्छेदों के बीच दूरी',
     'Color Theme': 'रंग थीम',
     'Accessibility Features': 'सुलभता सुविधाएँ',
@@ -391,9 +447,7 @@ class AppLocalizations {
     'Syllable Breakdown (Experimental)': 'शब्दांश विभाजन (प्रयोगात्मक)',
     'Inserts visible breaks into words (e.g. read-ing, im-por-tant).':
         'शब्दों में दिखने वाले विराम जोड़ता है (जैसे read-ing, im-por-tant)।',
-    'Larger Touch Targets': 'बड़े टच लक्ष्य',
     'Reduce Motion / Animations': 'गतिशीलता / एनिमेशन कम करें',
-    'Save as Default': 'डिफ़ॉल्ट के रूप में सहेजें',
     'Reading Test Preview': 'पढ़ने के परीक्षण का पूर्वावलोकन',
     'System': 'सिस्टम',
     'Backend response was not JSON.':
@@ -418,5 +472,27 @@ class AppLocalizations {
         'संरचित पाठ सरल नहीं हो सका।',
     'Structured text processing took too long. Please try again.':
         'संरचित पाठ प्रोसेस करने में बहुत समय लगा। कृपया फिर कोशिश करें।',
+    'error_audio_error': 'माइक्रोफ़ोन से ऑडियो नहीं मिला। उसकी अनुमति जाँचें।',
+    'error_client': 'वॉइस पहचान शुरू नहीं हो सकी। कृपया फिर कोशिश करें।',
+    'error_permission':
+        'माइक्रोफ़ोन की अनुमति नहीं है। डिवाइस सेटिंग में अनुमति चालू करें।',
+    'error_network': 'नेटवर्क त्रुटि। अपना कनेक्शन जाँचें और फिर कोशिश करें।',
+    'error_network_timeout': 'नेटवर्क का समय समाप्त हुआ। कृपया फिर कोशिश करें।',
+    'error_no_match': 'कोई आवाज़ पहचानी नहीं गई। फिर कोशिश करें।',
+    'error_busy': 'वॉइस पहचान अभी व्यस्त है। थोड़ी देर बाद कोशिश करें।',
+    'error_server': 'वॉइस पहचान सेवा उपलब्ध नहीं है। कृपया फिर कोशिश करें।',
+    'error_speech_timeout': 'कोई आवाज़ नहीं मिली। फिर कोशिश करें।',
+    'error_language_not_supported':
+        'यह भाषा वॉइस पहचान के लिए समर्थित नहीं है।',
+    'error_language_unavailable': 'यह भाषा वॉइस पहचान के लिए उपलब्ध नहीं है।',
+    'error_server_disconnected':
+        'वॉइस पहचान सेवा से संपर्क टूट गया। कृपया फिर कोशिश करें।',
+    'error_too_many_requests':
+        'बहुत ज़्यादा अनुरोध किए गए। थोड़ी देर बाद फिर कोशिश करें।',
+    'error_speech_recognizer_disabled':
+        'डिवाइस पर वॉइस पहचान बंद है। डिवाइस सेटिंग में इसे चालू करें।',
+    'error_retry': 'वॉइस पहचान में समस्या हुई। कृपया फिर कोशिश करें।',
+    'not supported': 'यह डिवाइस वॉइस पहचान का समर्थन नहीं करता।',
+    'speech_not_supported': 'यह डिवाइस वॉइस पहचान का समर्थन नहीं करता।',
   };
 }

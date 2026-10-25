@@ -394,7 +394,7 @@ class _VoiceAssistantControlsState extends State<VoiceAssistantControls> {
     ]) {
       if (_message.startsWith(prefix)) {
         final detail = _message.substring(prefix.length).trimLeft();
-        return '${_t(prefix)} $detail';
+        return '${_t(prefix)} ${_t(detail)}';
       }
     }
     return _t(_message);
