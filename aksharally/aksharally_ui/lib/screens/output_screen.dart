@@ -424,10 +424,34 @@ class _OutputScreenState extends State<OutputScreen> {
     interrupt: stopReading,
   );
 
+  String _selectedProfileDescription() {
+    final font = _t(AccessibilitySettings.fontFamily);
+    final theme =
+        AccessibilitySettings.themeLabels[AccessibilitySettings.colorTheme] ??
+        'Custom';
+    final pixels = _t('pixels');
+    final times = _t('times');
+
+    return [
+      '${_t('Font')}: $font',
+      '${_t('Font size')}: '
+          '${AccessibilitySettings.fontSize.toStringAsFixed(0)} $pixels',
+      '${_t('Letter spacing')}: '
+          '${AccessibilitySettings.letterSpacing.toStringAsFixed(1)}',
+      '${_t('Word spacing')}: '
+          '${AccessibilitySettings.wordSpacing.toStringAsFixed(1)} $pixels',
+      '${_t('Line spacing')}: '
+          '${AccessibilitySettings.lineHeight.toStringAsFixed(1)} $times',
+      '${_t('Paragraph spacing')}: '
+          '${AccessibilitySettings.paragraphSpacing.toStringAsFixed(0)} $pixels',
+      '${_t('Theme')}: ${_t(theme)}',
+    ].join('. ');
+  }
+
   String _selectedProfileNarration() {
     return [
       _t(_cap(_selectedProfile)),
-      _t('${_cap(_selectedProfile)} profile description'),
+      _selectedProfileDescription(),
     ].join('. ');
   }
 
@@ -917,7 +941,7 @@ class _OutputScreenState extends State<OutputScreen> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Text(
-              _t('${_cap(_selectedProfile)} profile description'),
+              _selectedProfileDescription(),
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: UIAccessibility.mutedTextColor,
