@@ -269,7 +269,6 @@ class AppLocalizations {
     'OpenDyslexic · Light Blue · Very large text':
         'ओपनडिस्लेक्सिक · हल्का नीला · बहुत बड़ा पाठ',
     'pixels': 'पिक्सेल',
-    'Font Family': 'फ़ॉन्ट परिवार',
     'Selected color': 'चुना हुआ रंग',
     'Hindi': 'हिंदी',
     'Marathi': 'मराठी',
@@ -400,7 +399,6 @@ class AppLocalizations {
     'English Reading Fonts': 'अंग्रेज़ी पढ़ने के फ़ॉन्ट',
     'Hindi & Marathi Fonts': 'हिंदी और मराठी फ़ॉन्ट',
     'Reading Test Preview': 'पढ़ने के नमूने का पूर्वावलोकन',
-    'pixels': 'पिक्सेल',
     'times': 'गुना',
     'Customize': 'अपने अनुसार बदलें',
     'Custom': 'कस्टम',
@@ -436,24 +434,11 @@ class AppLocalizations {
     'Low Eye Strain': 'आँखों पर कम दबाव',
     'Maximum Clarity': 'अधिकतम स्पष्टता',
     'Beginner Reader': 'शुरुआती पाठक',
-    'OpenDyslexic · Cream · Generous spacing':
-        'OpenDyslexic · क्रीम · अधिक अक्षर दूरी',
-    'Inter · Soft Yellow · Reduced glare':
-        'Inter · हल्का पीला · कम चमक',
-    'Monospace · White · Large, spaced text':
-        'Monospace · सफ़ेद · बड़ा और खुला पाठ',
-    'OpenDyslexic · Light Blue · Very large text':
-        'OpenDyslexic · हल्का नीला · बहुत बड़ा पाठ',
     '✓ Applied': '✓ लागू',
     'Previewing': 'पूर्वावलोकन',
     'Select': 'चुनें',
     'Adjust fonts and spacing so text is comfortable to read.':
         'पाठ को आराम से पढ़ने के लिए फ़ॉन्ट और दूरी बदलें।',
-    'Font Family': 'फ़ॉन्ट परिवार',
-    'Font Size': 'फ़ॉन्ट आकार',
-    'Letter Spacing': 'अक्षरों के बीच दूरी',
-    'Word Spacing': 'शब्दों के बीच दूरी',
-    'Line Height': 'पंक्ति की ऊँचाई',
     'Colour Themes': 'रंग थीम',
     'Pick a background and text colour combination proven to reduce eye strain.':
         'आँखों पर दबाव कम करने वाला पृष्ठभूमि और पाठ का रंग चुनें।',
@@ -616,12 +601,8 @@ class AppLocalizations {
     'Reading colors updated.': 'पढ़ने के रंग बदल दिए गए।',
     'I did not recognize that command. Try one command at a time, such as “read this page,” “pause reading,” or “read slower.” Sentence navigation is not available yet.':
         'कमांड समझ नहीं आया। एक बार में एक कमांड बोलें, जैसे “यह पेज पढ़ें”, “पढ़ना रोकें” या “धीरे पढ़ें”। वाक्य पर आगे-पीछे जाना अभी उपलब्ध नहीं है।',
-    'Customize Reading Experience': 'पढ़ने का अनुभव अनुकूलित करें',
-    'English Reading Fonts': 'अंग्रेज़ी पढ़ने के फ़ॉन्ट',
     'Recommended for English': 'अंग्रेज़ी के लिए सुझाया गया',
-    'Hindi & Marathi Fonts': 'हिंदी और मराठी के फ़ॉन्ट',
     'Recommended for Hindi & Marathi': 'हिंदी और मराठी के लिए सुझाया गया',
-    'Paragraph Spacing': 'अनुच्छेदों के बीच दूरी',
     'Color Theme': 'रंग थीम',
     'Accessibility Features': 'सुलभता सुविधाएँ',
     'Word Highlighting during TTS': 'TTS के दौरान शब्द हाइलाइट करें',
@@ -635,7 +616,6 @@ class AppLocalizations {
     'Inserts visible breaks into words (e.g. read-ing, im-por-tant).':
         'शब्दों में दिखने वाले विराम जोड़ता है (जैसे read-ing, im-por-tant)।',
     'Reduce Motion / Animations': 'गतिशीलता / एनिमेशन कम करें',
-    'Reading Test Preview': 'पढ़ने के परीक्षण का पूर्वावलोकन',
     'System': 'सिस्टम',
     'Backend response was not JSON.':
         'बैकएंड से मिला जवाब मान्य JSON प्रारूप में नहीं है।',
