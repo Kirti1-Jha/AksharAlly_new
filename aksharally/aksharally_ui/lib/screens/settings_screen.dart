@@ -34,14 +34,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
   // Dirty flag — true whenever pending differs from applied
   bool _hasPendingChanges = false;
 
-  // Language applies immediately (OCR-only, not a UI preview setting)
+  // Reading language remains separate from the app interface language.
   String _language = AppSettings.language;
   final AuthService _auth = AuthService();
   String _t(String english) => AppLocalizations.text(english);
 
+  @override
+  void initState() {
+    super.initState();
+    AppSettings.interfaceLanguageNotifier.addListener(
+      _onInterfaceLanguageChanged,
+    );
+  }
+
+  @override
+  void dispose() {
+    AppSettings.interfaceLanguageNotifier.removeListener(
+      _onInterfaceLanguageChanged,
+    );
+    super.dispose();
+  }
+
+  void _onInterfaceLanguageChanged() {
+    if (mounted) setState(() {});
+  }
+
   Future<void> _selectInterfaceLanguage(String language) async {
     try {
       await AppSettings.saveInterfaceLanguagePreference(language);
+      if (mounted) setState(() {});
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -60,7 +81,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget _interfaceLanguageChip(String language, String label) {
     final selected = AppSettings.interfaceLanguage == language;
     return ChoiceChip(
-      label: Text(label),
+      label: Text(_t(label)),
       selected: selected,
       onSelected: (_) => _selectInterfaceLanguage(language),
     );
@@ -77,7 +98,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         spacing: AppTheme.spaceSM,
         children: [
           _interfaceLanguageChip('en', 'English'),
-          _interfaceLanguageChip('hi', 'हिंदी'),
+          _interfaceLanguageChip('hi', 'Hindi'),
         ],
       ),
     );
@@ -229,7 +250,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         borderRadius: BorderRadius.circular(AppTheme.radiusFull),
       ),
       child: Text(
-        '⭐ $badge',
+        '⭐ ${_t(badge)}',
         style: TextStyle(
           fontSize:   fontSize,
           fontWeight: FontWeight.w700,
@@ -314,12 +335,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
               Icon(Icons.info_outline, color: Colors.white70, size: 16),
               SizedBox(width: 6),
               Text(
-                'Changes not yet applied',
+                _t('Changes not yet applied'),
                 style: TextStyle(
                   color:      Colors.white,
                   fontWeight: FontWeight.w700,
@@ -329,9 +350,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ],
           ),
           const SizedBox(height: 4),
-          const Text(
-            'The Live Preview below reflects your selections. '
-            'Press Apply Now to update the entire app.',
+          Text(
+            _t(
+              'The Live Preview below reflects your selections. '
+              'Press Apply Now to update the entire app.',
+            ),
             style: TextStyle(color: Colors.white70, fontSize: 11, height: 1.4),
           ),
           const SizedBox(height: AppTheme.spaceSM),
@@ -349,7 +372,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           BorderRadius.circular(AppTheme.radiusFull),
                     ),
                   ),
-                  child: const Text('Reset Preview',
+                  child: Text(_t('Reset Preview'),
                       style: TextStyle(fontSize: 13)),
                 ),
               ),
@@ -367,7 +390,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     elevation: 0,
                   ),
-                  child: const Text('Apply Now',
+                  child: Text(_t('Apply Now'),
                       style: TextStyle(
                           fontSize: 13, fontWeight: FontWeight.w700)),
                 ),
@@ -391,7 +414,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         child: ElevatedButton.icon(
           onPressed: _applyChanges,
           icon: const Icon(Icons.check_circle_outline),
-          label: const Text('Apply Now'),
+          label: Text(_t('Apply Now')),
           style: ElevatedButton.styleFrom(
             backgroundColor: UIAccessibility.accentColor,
             foregroundColor: UIAccessibility.onAccentColor,
@@ -411,8 +434,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _profileSection() {
     return _sectionCard(
-      title:       '🧠  Dyslexia Profiles',
-      description: 'Choose a starting point optimised for your accessibility needs.',
+      title:       '🧠  ${_t('Dyslexia Profiles')}',
+      description: _t('Choose a starting point optimised for your accessibility needs.'),
       child: SizedBox(
         height: 205,
         child: ListView(
@@ -428,9 +451,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget _profileCard(String key) {
     final isPending = _pendingProfile == key;
     final isApplied = UIAccessibility.activeProfile == key;
-    final label     = UIAccessibility.profileLabels[key]!;
-    final desc      = UIAccessibility.profileDescriptions[key]!;
-    final badge     = UIAccessibility.profileBadges[key];
+    final label     = _t(UIAccessibility.profileLabels[key]!);
+    final desc      = _t(UIAccessibility.profileDescriptions[key]!);
+    final rawBadge  = UIAccessibility.profileBadges[key];
+    final badge     = rawBadge == null ? null : _t(rawBadge);
 
     // Use the new theme keys for preview colours.
     final String themeKey;
@@ -458,16 +482,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
     String buttonLabel;
     Color  buttonBg;
     if (isApplied && !isPending) {
-      buttonLabel = '✓ Applied';
+      buttonLabel = _t('✓ Applied');
       buttonBg    = AppTheme.primaryBlue.withOpacity(0.15);
     } else if (isPending && !isApplied) {
-      buttonLabel = 'Previewing';
+      buttonLabel = _t('Previewing');
       buttonBg    = Colors.white.withOpacity(0.25);
     } else if (isPending) {
-      buttonLabel = '✓ Applied';
+      buttonLabel = _t('✓ Applied');
       buttonBg    = Colors.white.withOpacity(0.25);
     } else {
-      buttonLabel = 'Select';
+      buttonLabel = _t('Select');
       buttonBg    = AppTheme.primaryBlue;
     }
 
@@ -571,12 +595,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _typographySection() {
     return _sectionCard(
-      title:       '🔤  Typography',
-      description: 'Adjust fonts and spacing so text is comfortable to read.',
+      title:       '🔤  ${_t('Typography')}',
+      description: _t('Adjust fonts and spacing so text is comfortable to read.'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Font Family',
+          Text(_t('Font Family'),
               style: TextStyle(
                   fontWeight: FontWeight.w600,
                   fontSize:   13,
@@ -585,28 +609,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _fontChips(),
           const SizedBox(height: AppTheme.spaceMD),
           _slider(
-            label:     'Font Size',
+            label:     _t('Font Size'),
             value:     _pendingSize,
             min: 12, max: 22, divisions: 10,
             display:   _pendingSize.toStringAsFixed(0),
             onChanged: (v) => _preview(() => _pendingSize = v),
           ),
           _slider(
-            label:     'Letter Spacing',
+            label:     _t('Letter Spacing'),
             value:     _pendingLetterSp,
             min: 0.0, max: 2.5, divisions: 10,
             display:   _pendingLetterSp.toStringAsFixed(1),
             onChanged: (v) => _preview(() => _pendingLetterSp = v),
           ),
           _slider(
-            label:     'Word Spacing',
+            label:     _t('Word Spacing'),
             value:     _pendingWordSp,
             min: 0.0, max: 8.0, divisions: 8,
             display:   _pendingWordSp.toStringAsFixed(1),
             onChanged: (v) => _preview(() => _pendingWordSp = v),
           ),
           _slider(
-            label:     'Line Height',
+            label:     _t('Line Height'),
             value:     _pendingLineH,
             min: 1.0, max: 3.0, divisions: 10,
             display:   _pendingLineH.toStringAsFixed(1),
@@ -714,8 +738,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _colorThemeSection() {
     return _sectionCard(
-      title:       '🎨  Colour Themes',
-      description: 'Pick a background and text colour combination proven to reduce eye strain.',
+      title:       '🎨  ${_t('Colour Themes')}',
+      description: _t('Pick a background and text colour combination proven to reduce eye strain.'),
       child: LayoutBuilder(
         builder: (ctx, constraints) {
           const spacing   = 8.0;
@@ -756,7 +780,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 8),
                     child: Text(
-                      'Premium Themes',
+                      _t('Premium Themes'),
                       style: TextStyle(
                         fontSize:   11,
                         fontWeight: FontWeight.w700,
@@ -782,9 +806,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final isApplied = UIAccessibility.activeColorTheme == key;
     final bg        = UIAccessibility.themeBg(key);
     final tc        = UIAccessibility.themeText(key);
-    final label     = UIAccessibility.colorThemeLabels[key] ?? key;
-    final desc      = UIAccessibility.colorThemeDescriptions[key] ?? '';
-    final badge     = UIAccessibility.colorThemeBadges[key];
+    final label     = _t(UIAccessibility.colorThemeLabels[key] ?? key);
+    final desc      = _t(UIAccessibility.colorThemeDescriptions[key] ?? '');
+    final rawBadge  = UIAccessibility.colorThemeBadges[key];
+    final badge     = rawBadge == null ? null : _t(rawBadge);
 
     return GestureDetector(
       onTap: () => _preview(() {
@@ -893,7 +918,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       size: 10, color: AppTheme.primaryBlue),
                   const SizedBox(width: 3),
                   Text(
-                    isApplied ? 'Applied' : 'Selected',
+                    isApplied ? _t('Applied') : _t('Selected'),
                     style: const TextStyle(
                       fontSize:   9,
                       fontWeight: FontWeight.w600,
@@ -918,7 +943,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(width: 3),
           Expanded(
             child: Text(
-              text,
+              _t(text),
               style: TextStyle(
                 fontSize: 7,
                 color:    color.withOpacity(0.8),
@@ -937,12 +962,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _customAppearanceSection() {
     return _sectionCard(
-      title:       '✏️  Custom Appearance',
-      description: 'Override colours manually for a fully personalised look.',
+      title:       '✏️  ${_t('Custom Appearance')}',
+      description: _t('Override colours manually for a fully personalised look.'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Text Colour',
+          Text(_t('Text Colour'),
               style: TextStyle(
                   fontWeight: FontWeight.w600,
                   fontSize:   13,
@@ -958,7 +983,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             }),
           ),
           const SizedBox(height: AppTheme.spaceMD),
-          Text('Background Colour',
+          Text(_t('Background Colour'),
               style: TextStyle(
                   fontWeight: FontWeight.w600,
                   fontSize:   13,
@@ -989,7 +1014,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     final String level;
     if (ratio < 2.0) {
-      level = 'Very low (${ratio.toStringAsFixed(1)}:1)';
+      level = '${_t('Very low')} (${ratio.toStringAsFixed(1)}:1)';
     } else {
       level = '${ratio.toStringAsFixed(1)}:1';
     }
@@ -1013,8 +1038,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              '⚠ Low contrast combination detected ($level).\n'
-              'This may reduce readability.',
+              '⚠ ${_t('Low contrast combination detected')} ($level).\n'
+              '${_t('This may reduce readability.')}',
               style: const TextStyle(
                 fontSize: 11,
                 color:    Color(0xFF4E342E),
@@ -1116,7 +1141,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               _langChip('English', 'en'),
               const SizedBox(width: 6),
-              _langChip('हिंदी', 'hi'),
+              _langChip('Hindi', 'hi'),
             ],
           ),
           const SizedBox(height: AppTheme.spaceSM),
@@ -1195,7 +1220,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           color:        sel ? AppTheme.primaryBlue : Colors.grey.shade200,
           borderRadius: BorderRadius.circular(AppTheme.radiusFull),
         ),
-        child: Text(label,
+        child: Text(_t(label),
             style: TextStyle(
                 color:      sel ? Colors.white : Colors.black,
                 fontWeight: FontWeight.w600,
@@ -1223,12 +1248,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
 
     return _sectionCard(
-      title: '👁️  Live Preview',
+      title: '👁️  ${_t('Live Preview')}',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Reflects your current selections only. Press Apply Now to update the app.',
+            _t(
+              'Reflects your current selections only. Press Apply Now to update the app.',
+            ),
             style: TextStyle(
                 fontSize: 12,
                 color:    _cardText.withOpacity(0.65),
@@ -1251,19 +1278,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     style:    pts(_pendingSize + 6, FontWeight.w900),
                     overflow: TextOverflow.ellipsis),
                 const SizedBox(height: 2),
-                Text('Welcome Back',
+                Text(_t('Welcome Back'),
                     style:    pts(_pendingSize - 1, FontWeight.w500)
                         .copyWith(color: _pendingTextColor.withOpacity(0.7)),
                     overflow: TextOverflow.ellipsis),
                 const SizedBox(height: 10),
                 _previewRow(Icons.book_outlined,
-                    'Continue Reading', pts(_pendingSize, FontWeight.w600)),
+                    _t('Continue Reading'), pts(_pendingSize, FontWeight.w600)),
                 _previewRow(Icons.add_circle_outline,
-                    'New Reading',      pts(_pendingSize, FontWeight.w600)),
+                    _t('New Reading'),  pts(_pendingSize, FontWeight.w600)),
                 _previewRow(Icons.auto_stories_outlined,
-                    'Library',          pts(_pendingSize, FontWeight.w600)),
+                    _t('Library'),      pts(_pendingSize, FontWeight.w600)),
                 _previewRow(Icons.settings_outlined,
-                    'Settings',         pts(_pendingSize, FontWeight.w600)),
+                    _t('Settings'),     pts(_pendingSize, FontWeight.w600)),
               ],
             ),
           ),
@@ -1274,8 +1301,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(width: 4),
               Expanded(
                 child: Text(
-                  'Font: $_pendingFont  ·  Size: ${_pendingSize.toStringAsFixed(0)}'
-                  '  ·  Theme: ${UIAccessibility.colorThemeLabels[_pendingTheme] ?? 'Custom'}',
+                  '${_t('Font:')} ${_pendingFont == 'Custom' ? _t('Custom') : _pendingFont}'
+                  '  ·  ${_t('Size:')} ${_pendingSize.toStringAsFixed(0)}'
+                  '  ·  ${_t('Theme:')} ${_t(UIAccessibility.colorThemeLabels[_pendingTheme] ?? 'Custom')}',
                   style:    const TextStyle(fontSize: 10, color: AppTheme.textMuted),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -1307,13 +1335,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
   // ════════════════════════════════════════════════════════════════════════════
 
   Widget _readingHistorySection() {
+    final savedReadings = LibraryStorage.getItems().length;
     return _sectionCard(
-      title: '📚  Reading History',
+      title: '📚  ${_t('Reading History')}',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '${LibraryStorage.getItems().length} saved readings',
+            '$savedReadings '
+            '${_t(savedReadings == 1 ? 'saved reading' : 'saved readings')}',
             style: TextStyle(fontSize: 13, color: _cardText.withOpacity(0.7)),
           ),
           const SizedBox(height: AppTheme.spaceMD),
@@ -1322,7 +1352,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: OutlinedButton.icon(
               icon:  const Icon(Icons.delete_sweep_outlined,
                   color: Colors.redAccent),
-              label: const Text('Clear Reading History',
+              label: Text(_t('Clear Reading History'),
                   style: TextStyle(color: Colors.redAccent)),
               style: OutlinedButton.styleFrom(
                 side:    const BorderSide(color: Colors.redAccent),
@@ -1343,27 +1373,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final count = LibraryStorage.getItems().length;
     if (count == 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Reading history is already empty.')),
+        SnackBar(content: Text(_t('Reading history is already empty.'))),
       );
       return;
     }
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Clear reading history?'),
+        title: Text(_t('Clear reading history?')),
         content: Text(
-          'This will permanently delete all $count saved '
-          '${count == 1 ? 'reading' : 'readings'}. This cannot be undone.',
+          AppLocalizations.choose(
+            'This will permanently delete all $count saved '
+                '${count == 1 ? 'reading' : 'readings'}. This cannot be undone.',
+            'इससे $count रीडिंग स्थायी रूप से हट जाएँगी। यह कार्रवाई वापस नहीं की जा सकती।',
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
+            child: Text(_t('Cancel')),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Clear All'),
+            child: Text(_t('Clear All')),
           ),
         ],
       ),
@@ -1372,7 +1405,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       LibraryStorage.clearAll();
       setState(() {});
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Reading history cleared.')),
+        SnackBar(content: Text(_t('Reading history cleared.'))),
       );
     }
   }
@@ -1381,17 +1414,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Log out?'),
-        content: const Text('Are you sure you want to log out of AksharAlly?'),
+        title: Text(_t('Log out?')),
+        content: Text(_t('Are you sure you want to log out of AksharAlly?')),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
+            child: Text(_t('Cancel')),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Log Out'),
+            child: Text(_t('Log Out')),
           ),
         ],
       ),
@@ -1410,8 +1443,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Unable to log out right now. Please try again.'),
+        SnackBar(
+          content: Text(_t('Unable to log out right now. Please try again.')),
         ),
       );
     }
@@ -1419,14 +1452,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _logoutSection() {
     return _sectionCard(
-      title: 'Account',
-      description: 'Manage your current AksharAlly session.',
+      title: _t('Account'),
+      description: _t('Manage your current AksharAlly session.'),
       child: SizedBox(
         width: double.infinity,
         child: OutlinedButton.icon(
           onPressed: _confirmLogout,
           icon: const Icon(Icons.logout),
-          label: const Text('Log Out'),
+          label: Text(_t('Log Out')),
           style: OutlinedButton.styleFrom(
             foregroundColor: Colors.red,
             side: const BorderSide(color: Colors.red),

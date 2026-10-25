@@ -43,9 +43,41 @@ class AppLocalizations {
     'Continue with Google': 'Google के साथ जारी रखें',
     'Continue with Apple': 'Apple के साथ जारी रखें',
     'Please enter email & password': 'कृपया ईमेल और पासवर्ड दर्ज करें',
+    'That email is already registered. Try logging in instead.':
+        'यह ईमेल पहले से पंजीकृत है। इसके बजाय लॉग इन करें।',
+    'Please enter a valid email address.':
+        'कृपया मान्य ईमेल पता दर्ज करें।',
+    'Choose a stronger password with at least 6 characters.':
+        'कम-से-कम 6 अक्षरों वाला मज़बूत पासवर्ड चुनें।',
+    'The email or password is incorrect.':
+        'ईमेल या पासवर्ड गलत है।',
+    'No account was found for that email.':
+        'इस ईमेल के लिए कोई खाता नहीं मिला।',
+    'Network error. Check your connection and try again.':
+        'नेटवर्क त्रुटि। अपना कनेक्शन जाँचें और फिर कोशिश करें।',
+    'An account already exists with a different sign-in method.':
+        'इस खाते के लिए कोई दूसरा साइन-इन तरीका पहले से मौजूद है।',
+    'This sign-in method is not enabled in Firebase yet.':
+        'यह साइन-इन तरीका अभी Firebase में चालू नहीं है।',
+    'Too many attempts. Please wait a moment and try again.':
+        'बहुत ज़्यादा कोशिशें हुईं। थोड़ी देर बाद फिर कोशिश करें।',
+    'Authentication failed. Please try again.':
+        'प्रमाणीकरण विफल हुआ। कृपया फिर कोशिश करें।',
+    'Apple Sign-In is not configured for this device yet.':
+        'इस डिवाइस पर Apple से साइन-इन अभी कॉन्फ़िगर नहीं है।',
+    'Apple Sign-In on Android needs its Apple service configuration.':
+        'Android पर Apple से साइन-इन के लिए Apple सेवा कॉन्फ़िगरेशन चाहिए।',
+    'Something went wrong. Please try again.':
+        'कुछ गड़बड़ हुई। कृपया फिर कोशिश करें।',
+    'Voice assistance is unavailable on this device.':
+        'इस डिवाइस पर वॉइस सहायता उपलब्ध नहीं है।',
+    'Voice assistant could not read this screen. Turn it off and on to retry.':
+        'वॉइस सहायक यह स्क्रीन नहीं पढ़ सका। फिर कोशिश करने के लिए इसे बंद करके चालू करें।',
     'Home': 'होम',
     'Library': 'पुस्तकालय',
     'Settings': 'सेटिंग्स',
+    'Hindi': 'हिंदी',
+    'Marathi': 'मराठी',
     'Good Morning': 'सुप्रभात',
     'Good Afternoon': 'नमस्कार',
     'Good Evening': 'शुभ संध्या',
@@ -78,14 +110,11 @@ class AppLocalizations {
     'High Contrast Mode': 'उच्च कंट्रास्ट मोड',
     'Reading language': 'पढ़ने की सामग्री की भाषा',
     'Interface language': 'इंटरफ़ेस की भाषा',
-    'Accessibility Options': 'सुलभता विकल्प',
-    'Dyslexia Profiles': 'डिस्लेक्सिया प्रोफ़ाइल',
     'Typography': 'टाइपोग्राफी',
     'Color Themes': 'रंग थीम',
     'Custom Appearance': 'कस्टम रूप',
     'Live Preview': 'लाइव पूर्वावलोकन',
     'Language': 'भाषा',
-    'Accessibility Center': 'सुलभता केंद्र',
     'Reading History': 'पढ़ने का इतिहास',
     'Account': 'खाता',
     'Most Popular': 'सबसे लोकप्रिय',
@@ -99,17 +128,14 @@ class AppLocalizations {
         'नीचे का लाइव पूर्वावलोकन आपके चयन दिखाता है। पूरे ऐप में बदलाव लागू करने के लिए “अभी लागू करें” दबाएँ।',
     'Reset Preview': 'पूर्वावलोकन रीसेट करें',
     'Apply Now': 'अभी लागू करें',
-    'Live Preview': 'लाइव पूर्वावलोकन',
     'Reflects your current selections only. Press Apply Now to update the app.':
         'यह केवल आपके मौजूदा चयन दिखाता है। ऐप में बदलाव लागू करने के लिए “अभी लागू करें” दबाएँ।',
-    'Reading History': 'पढ़ने का इतिहास',
     'Clear Reading History': 'पढ़ने का इतिहास मिटाएँ',
     'Clear reading history?': 'पढ़ने का इतिहास मिटाएँ?',
     'Cancel': 'रद्द करें',
     'Clear All': 'सभी मिटाएँ',
     'Reading history cleared.': 'पढ़ने का इतिहास मिटा दिया गया।',
     'Reading history is already empty.': 'पढ़ने का इतिहास पहले से खाली है।',
-    'Account': 'खाता',
     'Manage your current AksharAlly session.': 'अपने मौजूदा अक्षरअली सत्र का प्रबंधन करें।',
     'Log Out': 'लॉग आउट',
     'Log out?': 'लॉग आउट करें?',
@@ -120,6 +146,8 @@ class AppLocalizations {
     'Delete reading?': 'रीडिंग मिटाएँ?',
     'Delete': 'मिटाएँ',
     'No saved readings yet': 'अभी कोई रीडिंग सहेजी नहीं गई है',
+    'will be permanently removed from your library.':
+        'आपकी लाइब्रेरी से हमेशा के लिए हटा दी जाएगी।',
     'Scan': 'स्कैन',
     'Type': 'टाइप करें',
     'Upload': 'अपलोड',
@@ -162,5 +190,97 @@ class AppLocalizations {
     'Please capture or select an image first.':
         'कृपया पहले छवि लें या चुनें।',
     'Please select a file first.': 'कृपया पहले फ़ाइल चुनें।',
+    'Could not open file picker.': 'फ़ाइल चुनने का विकल्प नहीं खुल सका।',
+    'The camera did not return a readable image.':
+        'कैमरे से पढ़ने योग्य छवि नहीं मिली।',
+    'The captured image is empty. Please scan it again.':
+        'ली गई छवि खाली है। कृपया फिर से स्कैन करें।',
+    'The selected image is no longer available. Please scan it again.':
+        'चुनी गई छवि अब उपलब्ध नहीं है। कृपया फिर से स्कैन करें।',
+    'Low Eye Strain': 'आँखों पर कम दबाव',
+    'Maximum Clarity': 'अधिकतम स्पष्टता',
+    'Beginner Reader': 'शुरुआती पाठक',
+    'OpenDyslexic · Cream · Generous spacing':
+        'OpenDyslexic · क्रीम · अधिक अक्षर दूरी',
+    'Inter · Soft Yellow · Reduced glare':
+        'Inter · हल्का पीला · कम चमक',
+    'Monospace · White · Large, spaced text':
+        'Monospace · सफ़ेद · बड़ा और खुला पाठ',
+    'OpenDyslexic · Light Blue · Very large text':
+        'OpenDyslexic · हल्का नीला · बहुत बड़ा पाठ',
+    '✓ Applied': '✓ लागू',
+    'Previewing': 'पूर्वावलोकन',
+    'Select': 'चुनें',
+    'Adjust fonts and spacing so text is comfortable to read.':
+        'पाठ को आराम से पढ़ने के लिए फ़ॉन्ट और दूरी बदलें।',
+    'Font Family': 'फ़ॉन्ट परिवार',
+    'Font Size': 'फ़ॉन्ट आकार',
+    'Letter Spacing': 'अक्षरों के बीच दूरी',
+    'Word Spacing': 'शब्दों के बीच दूरी',
+    'Line Height': 'पंक्ति की ऊँचाई',
+    'Colour Themes': 'रंग थीम',
+    'Pick a background and text colour combination proven to reduce eye strain.':
+        'आँखों पर दबाव कम करने वाला पृष्ठभूमि और पाठ का रंग चुनें।',
+    'Premium Themes': 'प्रीमियम थीम',
+    'Cream + Black': 'क्रीम + काला',
+    'Soft Yellow + Black': 'हल्का पीला + काला',
+    'Pale Blue + Navy': 'हल्का नीला + नेवी',
+    'Pale Green + Dark Gray': 'हल्का हरा + गहरा धूसर',
+    'Peach + Black': 'आड़ू रंग + काला',
+    'White + Black': 'सफ़ेद + काला',
+    'Dark Mode': 'डार्क मोड',
+    'Cream + Navy': 'क्रीम + नेवी',
+    'Cream + Dark Green': 'क्रीम + गहरा हरा',
+    'Cream + Burgundy': 'क्रीम + बरगंडी',
+    'Soft Yellow + Purple': 'हल्का पीला + बैंगनी',
+    'High readability with reduced glare.':
+        'कम चमक के साथ बेहतर पठनीयता।',
+    'Reduces eye strain and improves focus.':
+        'आँखों का तनाव कम करता है और ध्यान बढ़ाता है।',
+    'Helps visual tracking and letter distinction.':
+        'पंक्ति पर नज़र बनाए रखने और अक्षरों को अलग पहचानने में मदद करता है।',
+    'Comfortable for long reading sessions.':
+        'लंबे समय तक पढ़ने के लिए आरामदायक।',
+    'Warm tone with strong contrast.':
+        'गर्म रंग और स्पष्ट कंट्रास्ट।',
+    'Maximum contrast.': 'अधिकतम कंट्रास्ट।',
+    'Comfortable for low-light environments.':
+        'कम रोशनी में पढ़ने के लिए आरामदायक।',
+    'Classic cream with deep navy text.':
+        'क्लासिक क्रीम पृष्ठभूमि पर गहरा नेवी पाठ।',
+    'Earthy tones for reduced eye strain.':
+        'आँखों का तनाव कम करने वाले प्राकृतिक रंग।',
+    'Warm cream with rich burgundy text.':
+        'गर्म क्रीम पृष्ठभूमि पर गहरा बरगंडी पाठ।',
+    'Calming yellow with vivid purple contrast.':
+        'शांत पीला रंग और स्पष्ट बैंगनी कंट्रास्ट।',
+    'Applied': 'लागू',
+    'Selected': 'चुना गया',
+    'Override colours manually for a fully personalised look.':
+        'अपने अनुसार रूप बनाने के लिए रंग खुद चुनें।',
+    'Text Colour': 'पाठ का रंग',
+    'Background Colour': 'पृष्ठभूमि का रंग',
+    'Very low': 'बहुत कम',
+    'Low contrast combination detected':
+        'कम कंट्रास्ट वाला रंग संयोजन मिला',
+    'This may reduce readability.':
+        'इससे पढ़ना कठिन हो सकता है।',
+    'Font:': 'फ़ॉन्ट:',
+    'Size:': 'आकार:',
+    'Theme:': 'थीम:',
+    'saved readings': 'सहेजी गई रीडिंग',
+    'saved reading': 'सहेजी गई रीडिंग',
+    'This will permanently delete all': 'इससे स्थायी रूप से हट जाएँगी',
+    'reading': 'रीडिंग',
+    'readings': 'रीडिंग',
+    'This cannot be undone.': 'इस बदलाव को वापस नहीं किया जा सकता।',
+    'minute': 'मिनट',
+    'minutes': 'मिनट',
+    'hour': 'घंटा',
+    'hours': 'घंटे',
+    'day': 'दिन',
+    'days': 'दिन',
+    'ago': 'पहले',
+    'words': 'शब्द',
   };
 }

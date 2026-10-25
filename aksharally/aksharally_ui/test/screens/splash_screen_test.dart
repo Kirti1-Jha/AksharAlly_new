@@ -3,9 +3,12 @@ import 'package:aksharally_ui/services/tts_service.dart';
 import 'package:aksharally_ui/theme/app_settings.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   setUp(() {
+    SharedPreferences.setMockInitialValues({});
+    AppSettings.interfaceLanguage = 'en';
     AppSettings.voiceAssistanceEnabled = false;
   });
 
@@ -43,13 +46,40 @@ void main() {
     await tester.pumpWidget(_app(engine));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Hear welcome message again'));
+    await tester.tap(find.byTooltip('Repeat welcome message'));
     await tester.pumpAndSettle();
     expect(engine.spoken, [SplashScreen.welcomeMessage]);
 
     await tester.tap(find.text("Let's Begin"));
     await tester.pumpAndSettle();
     expect(find.text('LOGIN'), findsOneWidget);
+  });
+
+  testWidgets('Hindi selection persists and speaks the Hindi welcome', (
+    tester,
+  ) async {
+    AppSettings.voiceAssistanceEnabled = true;
+    final engine = _FakeTtsEngine();
+
+    await tester.pumpWidget(_app(engine));
+    await tester.pumpAndSettle();
+    expect(engine.spoken, [SplashScreen.welcomeMessage]);
+
+    await tester.tap(find.text('हि'));
+    await tester.pumpAndSettle();
+
+    expect(AppSettings.interfaceLanguage, 'hi');
+    expect(engine.spoken, [
+      SplashScreen.welcomeMessage,
+      SplashScreen.hindiWelcomeMessage,
+    ]);
+    expect(engine.language, 'hi-IN');
+    final preferences = await SharedPreferences.getInstance();
+    expect(
+      preferences.getString('aksharally.interface-language.v1'),
+      'hi',
+    );
+    expect(find.text('आत्मविश्वास के साथ पढ़ें।'), findsOneWidget);
   });
 }
 

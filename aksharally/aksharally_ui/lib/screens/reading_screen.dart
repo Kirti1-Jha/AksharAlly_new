@@ -6,8 +6,8 @@ import 'package:file_picker/file_picker.dart';
 import '../theme/app_theme.dart';
 import '../theme/ui_accessibility.dart';
 import '../theme/app_localizations.dart';
+import '../theme/app_settings.dart';
 import '../services/api_service.dart';
-import '../models/format_result.dart';
 import 'output_screen.dart';
 
 /// Public enum so HomeScreen can specify which tab opens by default.
@@ -56,10 +56,17 @@ class _ReadingScreenState extends State<ReadingScreen> {
   void initState() {
     super.initState();
     _tab = widget.initialTab;
+    AppSettings.interfaceLanguageNotifier.addListener(
+      _onInterfaceLanguageChanged,
+    );
 
     // Recover an image if Android recreated MainActivity
     // while the camera/gallery picker was open.
     _retrieveLostImage();
+  }
+
+  void _onInterfaceLanguageChanged() {
+    if (mounted) setState(() {});
   }
 
   Future<void> _retrieveLostImage() async {
@@ -100,6 +107,9 @@ class _ReadingScreenState extends State<ReadingScreen> {
 
   @override
   void dispose() {
+    AppSettings.interfaceLanguageNotifier.removeListener(
+      _onInterfaceLanguageChanged,
+    );
     _textController.dispose();
     super.dispose();
   }
@@ -526,10 +536,10 @@ class _ReadingScreenState extends State<ReadingScreen> {
           ),
           const SizedBox(height: AppTheme.spaceSM),
           _segmentRow(
-            options:  const [
-              ('en', 'English'),
-              ('hi', 'हिन्दी'),
-              ('mr', 'मराठी'),
+            options: [
+              ('en', _t('English')),
+              ('hi', _t('Hindi')),
+              ('mr', _t('Marathi')),
             ],
             selected: _language,
             onSelect: (v) => setState(() => _language = v),
@@ -578,7 +588,7 @@ class _ReadingScreenState extends State<ReadingScreen> {
           const SizedBox(width: AppTheme.spaceSM),
           Expanded(
             child: Text(
-              _error!,
+              _t(_error!),
               style: UIAccessibility.applyGlobalTextStyle(
                 AppTheme.captionStyle,
               ).copyWith(color: AppTheme.error),

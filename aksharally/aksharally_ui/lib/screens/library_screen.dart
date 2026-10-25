@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/library_item.dart';
 import '../services/library_storage.dart';
 import '../theme/app_theme.dart';
+import '../theme/app_settings.dart';
 import '../theme/ui_accessibility.dart';
 import '../theme/app_localizations.dart';
 import 'output_screen.dart';
@@ -23,15 +24,25 @@ class _LibraryScreenState extends State<LibraryScreen> {
   void initState() {
     super.initState();
     UIAccessibility.notifier.addListener(_onAccessibilityChanged);
+    AppSettings.interfaceLanguageNotifier.addListener(
+      _onInterfaceLanguageChanged,
+    );
   }
 
   @override
   void dispose() {
     UIAccessibility.notifier.removeListener(_onAccessibilityChanged);
+    AppSettings.interfaceLanguageNotifier.removeListener(
+      _onInterfaceLanguageChanged,
+    );
     super.dispose();
   }
 
   void _onAccessibilityChanged() {
+    if (mounted) setState(() {});
+  }
+
+  void _onInterfaceLanguageChanged() {
     if (mounted) setState(() {});
   }
 
@@ -71,7 +82,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
       builder: (ctx) => AlertDialog(
         title: Text(_t('Delete reading?')),
         content: Text(
-          '"${item.title}" will be permanently removed from your library.',
+          '"${item.title}" ${_t('will be permanently removed from your library.')}',
         ),
         actions: [
           TextButton(

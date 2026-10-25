@@ -36,7 +36,9 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _playWelcome() async {
-    if (_welcomeStarted || _isDisposed) return;
+    if (_welcomeStarted || _isDisposed || !AppSettings.voiceAssistanceEnabled) {
+      return;
+    }
     _welcomeStarted = true;
     final request = ++_playbackRequest;
 
@@ -80,14 +82,15 @@ class _SplashScreenState extends State<SplashScreen> {
       await _ttsService.stop();
       if (!mounted || request != _playbackRequest) return;
       setState(() {});
-      await _speakWelcome(request);
+      if (AppSettings.voiceAssistanceEnabled) {
+        await _speakWelcome(request);
+      }
     } catch (error) {
       debugPrint('Could not save interface language: $error');
     }
   }
 
   Widget _languageSelector(ThemeData theme) {
-    final isHindi = AppSettings.interfaceLanguage == 'hi';
     return Semantics(
       label: AppLocalizations.text('Choose language'),
       child: DecoratedBox(
@@ -101,8 +104,18 @@ class _SplashScreenState extends State<SplashScreen> {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              _languageOption(theme, 'en', 'EN', 'English'),
-              _languageOption(theme, 'hi', 'हि', 'हिंदी'),
+              _languageOption(
+                theme,
+                'en',
+                'EN',
+                AppLocalizations.text('English'),
+              ),
+              _languageOption(
+                theme,
+                'hi',
+                'हि',
+                AppLocalizations.text('Hindi'),
+              ),
             ],
           ),
         ),

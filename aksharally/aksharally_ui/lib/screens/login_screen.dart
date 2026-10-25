@@ -49,11 +49,18 @@ class _LoginScreenState extends State<LoginScreen> {
     super.initState();
     _authFlow = widget.authFlow ?? FirebaseAuthFlow();
     _tts = widget.ttsService ?? TTSService();
+    AppSettings.interfaceLanguageNotifier.addListener(
+      _onInterfaceLanguageChanged,
+    );
     if (_voiceAssistantEnabled) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) unawaited(_narrateText(_screenNarration));
       });
     }
+  }
+
+  void _onInterfaceLanguageChanged() {
+    if (mounted) setState(() {});
   }
 
   String get _screenNarration => [
@@ -121,8 +128,10 @@ class _LoginScreenState extends State<LoginScreen> {
       if (_tts.currentLocale == null) {
         setState(() {
           _voiceNotice =
-              _tts.localeNotice ??
-              'Voice assistance is unavailable on this device.';
+              _t(
+                _tts.localeNotice ??
+                    'Voice assistance is unavailable on this device.',
+              );
         });
         return;
       }
@@ -135,7 +144,9 @@ class _LoginScreenState extends State<LoginScreen> {
           if (!_isCurrentNarration(request)) return;
           setState(() {
             _voiceNotice =
-                'Voice assistant could not read this screen. Turn it off and on to retry.';
+              _t(
+                'Voice assistant could not read this screen. Turn it off and on to retry.',
+              );
           });
         },
       );
@@ -146,8 +157,10 @@ class _LoginScreenState extends State<LoginScreen> {
       if (_isCurrentNarration(request)) {
         setState(() {
           _voiceNotice =
-              'Voice assistant could not read this screen. '
-              'Turn it off and on to retry.';
+              _t(
+                'Voice assistant could not read this screen. '
+                'Turn it off and on to retry.',
+              );
         });
       }
     }
@@ -179,6 +192,9 @@ class _LoginScreenState extends State<LoginScreen> {
   void dispose() {
     _narrationRequest++;
     unawaited(_stopAndRestoreTts());
+    AppSettings.interfaceLanguageNotifier.removeListener(
+      _onInterfaceLanguageChanged,
+    );
     emailController.dispose();
     passwordController.dispose();
     super.dispose();
@@ -201,10 +217,10 @@ class _LoginScreenState extends State<LoginScreen> {
     if (_authenticating) return;
 
     if (email.isEmpty || password.isEmpty) {
-      const message = 'Please enter email & password';
+      final message = _t('Please enter email & password');
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text(message)));
+      ).showSnackBar(SnackBar(content: Text(message)));
       unawaited(_narrateText(message));
       return;
     }
@@ -246,7 +262,9 @@ class _LoginScreenState extends State<LoginScreen> {
           debugPrintStack(stackTrace: stackTrace);
         }
       }
-      final message = _withoutEnteredValues(AuthService.friendlyError(error));
+      final message = _t(
+        _withoutEnteredValues(AuthService.friendlyError(error)),
+      );
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
@@ -505,9 +523,9 @@ class _LoginScreenState extends State<LoginScreen> {
                               keyboardType: TextInputType.emailAddress,
                               textInputAction: TextInputAction.next,
                               autocorrect: false,
-                              decoration: const InputDecoration(
+                              decoration: InputDecoration(
                                 labelText: _t('Email'),
-                                prefixIcon: Icon(Icons.email_outlined),
+                                prefixIcon: const Icon(Icons.email_outlined),
                               ),
                             ),
                             const SizedBox(height: 14),

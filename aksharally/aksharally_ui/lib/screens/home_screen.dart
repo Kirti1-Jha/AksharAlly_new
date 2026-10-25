@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
+import '../theme/app_settings.dart';
 import '../theme/ui_accessibility.dart';
 import '../theme/app_localizations.dart';
 import '../models/library_item.dart';
@@ -28,15 +29,25 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     UIAccessibility.notifier.addListener(_onAccessibilityChanged);
+    AppSettings.interfaceLanguageNotifier.addListener(
+      _onInterfaceLanguageChanged,
+    );
   }
 
   @override
   void dispose() {
     UIAccessibility.notifier.removeListener(_onAccessibilityChanged);
+    AppSettings.interfaceLanguageNotifier.removeListener(
+      _onInterfaceLanguageChanged,
+    );
     super.dispose();
   }
 
   void _onAccessibilityChanged() {
+    if (mounted) setState(() {});
+  }
+
+  void _onInterfaceLanguageChanged() {
     if (mounted) setState(() {});
   }
 
@@ -134,7 +145,7 @@ class _HomeScreenState extends State<HomeScreen> {
           unselectedItemColor:  _txt.withOpacity(0.45),
           selectedLabelStyle:   const TextStyle(fontWeight: FontWeight.w700),
           onTap: (index) => setState(() => currentIndex = index),
-          items: const [
+          items: [
             BottomNavigationBarItem(
               icon:  Icon(Icons.home_outlined),
               label: _t('Home'),
@@ -245,7 +256,7 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                    Text(
                     _t('New Reading'),
                     style: TextStyle(
                       color:      Colors.white,
@@ -375,14 +386,16 @@ class _HomeScreenState extends State<HomeScreen> {
     if (diff.inMinutes < 1)  return _t('Just now');
     if (diff.inMinutes < 60) {
       final m = diff.inMinutes;
-      return '$m minute${m == 1 ? '' : 's'} ago';
+      return '$m ${_t(m == 1 ? 'minute' : 'minutes')} ${_t('ago')}';
     }
     if (diff.inHours < 24) {
       final h = diff.inHours;
-      return '$h hour${h == 1 ? '' : 's'} ago';
+      return '$h ${_t(h == 1 ? 'hour' : 'hours')} ${_t('ago')}';
     }
     if (diff.inDays == 1)  return _t('Yesterday');
-    if (diff.inDays < 7)   return '${diff.inDays} days ago';
+    if (diff.inDays < 7) {
+      return '${diff.inDays} ${_t('days')} ${_t('ago')}';
+    }
     return '${date.day}/${date.month}/${date.year}';
   }
 
@@ -437,7 +450,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    '$label · ${wordCount}w',
+                    '$label · $wordCount ${_t('words')}',
                     style:    _ts(12, FontWeight.w400, _mutedTxt),
                     overflow: TextOverflow.ellipsis,
                   ),
