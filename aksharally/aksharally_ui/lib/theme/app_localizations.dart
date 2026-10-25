@@ -44,12 +44,21 @@ class AppLocalizations {
     'Reading profile':
         'Choose a reading profile to set comfortable text and spacing.',
     'Font Family': 'Choose the font you would feel the most comfortable with.',
+    'English Reading Fonts': 'Choose a font for reading English text.',
+    'Hindi & Marathi Fonts':
+        'Choose a font for reading Hindi or Marathi text.',
     'Font Size': 'Adjust how large the reading text appears.',
     'Letter Spacing': 'Adjust the space between letters.',
     'Word Spacing': 'Adjust the space between words.',
     'Line Height': 'Adjust the space between lines.',
     'Paragraph Spacing': 'Adjust the space between paragraphs.',
     'Color Theme': 'Choose a background and text colour combination.',
+    'Soft Reading': 'Choose colours designed for comfortable reading.',
+    'High Contrast':
+        'Choose colours that make text and backgrounds easier to distinguish.',
+    'Extreme Accessibility':
+        'Choose palettes with strong visual differences for easier reading.',
+    'Modern Reading': 'Choose a contemporary colour palette for reading.',
     'Accessibility Features':
         'Turn reading and visual accessibility features on or off.',
     'Word Highlighting during TTS':
@@ -83,6 +92,8 @@ class AppLocalizations {
     'Account': 'Manage your current AksharAlly session.',
     'Customize Reading Experience':
         'Adjust fonts, spacing, colours, and accessibility features for a more comfortable reading experience.',
+    'Reading Test Preview':
+        'Preview sample text in your selected reading font.',
     'Live Preview':
         'Preview your current accessibility settings before applying them.',
   };
@@ -91,12 +102,20 @@ class AppLocalizations {
     'Reading profile':
         'पाठ और दूरी को आरामदायक बनाने के लिए पढ़ने की शैली चुनें।',
     'Font Family': 'वह फ़ॉन्ट चुनें जिसमें आपको पढ़ना सबसे आरामदायक लगे।',
+    'English Reading Fonts': 'अंग्रेज़ी पाठ पढ़ने के लिए फ़ॉन्ट चुनें।',
+    'Hindi & Marathi Fonts': 'हिंदी या मराठी पाठ पढ़ने के लिए फ़ॉन्ट चुनें।',
     'Font Size': 'पढ़ने वाले पाठ का आकार बदलें।',
     'Letter Spacing': 'अक्षरों के बीच की दूरी बदलें।',
     'Word Spacing': 'शब्दों के बीच की दूरी बदलें।',
     'Line Height': 'पंक्तियों के बीच की दूरी बदलें।',
     'Paragraph Spacing': 'अनुच्छेदों के बीच की दूरी बदलें।',
     'Color Theme': 'पृष्ठभूमि और पाठ के रंगों का संयोजन चुनें।',
+    'Soft Reading': 'आराम से पढ़ने के लिए बनाए गए रंग चुनें।',
+    'High Contrast':
+        'पाठ और पृष्ठभूमि को आसानी से अलग पहचानने वाले रंग चुनें।',
+    'Extreme Accessibility':
+        'आसानी से पढ़ने के लिए स्पष्ट अंतर वाले रंग चुनें।',
+    'Modern Reading': 'पढ़ने के लिए आधुनिक रंग संयोजन चुनें।',
     'Accessibility Features':
         'पढ़ने और देखने की सुलभता सुविधाएँ चालू या बंद करें।',
     'Word Highlighting during TTS':
@@ -129,6 +148,8 @@ class AppLocalizations {
     'Account': 'अपने मौजूदा AksharAlly सत्र का प्रबंधन करें।',
     'Customize Reading Experience':
         'आरामदायक पढ़ने के लिए फ़ॉन्ट, दूरी, रंग और सुलभता सुविधाएँ बदलें।',
+    'Reading Test Preview':
+        'चुने हुए पढ़ने के फ़ॉन्ट में नमूना पाठ देखें।',
     'Live Preview':
         'लागू करने से पहले अपनी मौजूदा सुलभता सेटिंग का पूर्वावलोकन करें।',
   };
@@ -225,6 +246,7 @@ class AppLocalizations {
     'Atkinson Hyperlegible': 'एटकिंसन हाइपरलेजेबल',
     'Noto Sans': 'नोटो सैन्स',
     'Inter': 'इंटर',
+    'Monospace': 'मोनोस्पेस',
     'Roboto': 'रोबोटो',
     'Comic Neue': 'कॉमिक न्यू',
     'Verdana': 'वर्दाना',

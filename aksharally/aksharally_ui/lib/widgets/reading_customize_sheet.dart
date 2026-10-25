@@ -10,17 +10,6 @@ import 'narration_speaker_button.dart';
 
 String _t(String english) => AppLocalizations.text(english);
 
-String _spokenSettingValue(
-  String key,
-  double value, {
-  int decimals = 1,
-  String? unit,
-}) {
-  final formattedValue = value.toStringAsFixed(decimals);
-  final translatedUnit = unit == null ? '' : ' ${_t(unit)}';
-  return '${_t(key)}: $formattedValue$translatedUnit';
-}
-
 /// Shows the "Customize Reading Experience" bottom sheet.
 ///
 /// All changes are client-side only — they modify [AccessibilitySettings]
@@ -94,9 +83,9 @@ Future<void> showReadingCustomizeSheet(
                       ),
                     ),
                     NarrationSpeakerButton(
-                      text:
-                          '${_t('Customize Reading Experience')}. '
-                          '${AppLocalizations.explanation('Customize Reading Experience')}',
+                      text: AppLocalizations.explanation(
+                        'Customize Reading Experience',
+                      ),
                       onSpeak: onNarrate,
                       color: const Color(0xFF1565C0),
                     ),
@@ -117,8 +106,6 @@ Future<void> showReadingCustomizeSheet(
                       _sectionHeader(
                         'Font Family',
                         onNarrate: onNarrate,
-                        speechValue:
-                            '${_t('Font')}: ${_t(_fontChipLabel(AccessibilitySettings.fontFamily))}',
                         explanation: AppLocalizations.explanation('Font Family'),
                       ),
                       const SizedBox(height: 8),
@@ -158,12 +145,6 @@ Future<void> showReadingCustomizeSheet(
                         value:
                             '${AccessibilitySettings.fontSize.toStringAsFixed(0)}px',
                         onNarrate: onNarrate,
-                        speechValue: _spokenSettingValue(
-                          'Font Size',
-                          AccessibilitySettings.fontSize,
-                          decimals: 0,
-                          unit: 'pixels',
-                        ),
                         explanation: AppLocalizations.explanation('Font Size'),
                       ),
                       Slider(
@@ -175,12 +156,7 @@ Future<void> showReadingCustomizeSheet(
                             update(() => AccessibilitySettings.fontSize = v),
                         onChangeEnd: (v) => unawaited(
                           onNarrate(
-                            _spokenSettingValue(
-                              'Font Size',
-                              v,
-                              decimals: 0,
-                              unit: 'pixels',
-                            ),
+                            '${v.toStringAsFixed(0)} ${_t('pixels')}',
                           ),
                         ),
                       ),
@@ -191,10 +167,6 @@ Future<void> showReadingCustomizeSheet(
                         value: AccessibilitySettings.letterSpacing
                             .toStringAsFixed(1),
                         onNarrate: onNarrate,
-                        speechValue: _spokenSettingValue(
-                          'Letter Spacing',
-                          AccessibilitySettings.letterSpacing,
-                        ),
                         explanation: AppLocalizations.explanation(
                           'Letter Spacing',
                         ),
@@ -208,7 +180,7 @@ Future<void> showReadingCustomizeSheet(
                           () => AccessibilitySettings.letterSpacing = v,
                         ),
                         onChangeEnd: (v) => unawaited(
-                          onNarrate(_spokenSettingValue('Letter Spacing', v)),
+                          onNarrate(v.toStringAsFixed(1)),
                         ),
                       ),
 
@@ -218,10 +190,6 @@ Future<void> showReadingCustomizeSheet(
                         value: AccessibilitySettings.wordSpacing
                             .toStringAsFixed(1),
                         onNarrate: onNarrate,
-                        speechValue: _spokenSettingValue(
-                          'Word Spacing',
-                          AccessibilitySettings.wordSpacing,
-                        ),
                         explanation: AppLocalizations.explanation(
                           'Word Spacing',
                         ),
@@ -234,7 +202,7 @@ Future<void> showReadingCustomizeSheet(
                         onChanged: (v) =>
                             update(() => AccessibilitySettings.wordSpacing = v),
                         onChangeEnd: (v) => unawaited(
-                          onNarrate(_spokenSettingValue('Word Spacing', v)),
+                          onNarrate(v.toStringAsFixed(1)),
                         ),
                       ),
 
@@ -244,11 +212,6 @@ Future<void> showReadingCustomizeSheet(
                         value:
                             '${AccessibilitySettings.lineHeight.toStringAsFixed(1)}×',
                         onNarrate: onNarrate,
-                        speechValue: _spokenSettingValue(
-                          'Line Height',
-                          AccessibilitySettings.lineHeight,
-                          unit: 'times',
-                        ),
                         explanation: AppLocalizations.explanation('Line Height'),
                       ),
                       Slider(
@@ -260,7 +223,7 @@ Future<void> showReadingCustomizeSheet(
                             update(() => AccessibilitySettings.lineHeight = v),
                         onChangeEnd: (v) => unawaited(
                           onNarrate(
-                            _spokenSettingValue('Line Height', v, unit: 'times'),
+                            '${v.toStringAsFixed(1)} ${_t('times')}',
                           ),
                         ),
                       ),
@@ -271,12 +234,6 @@ Future<void> showReadingCustomizeSheet(
                         value:
                             '${AccessibilitySettings.paragraphSpacing.toStringAsFixed(0)}px',
                         onNarrate: onNarrate,
-                        speechValue: _spokenSettingValue(
-                          'Paragraph Spacing',
-                          AccessibilitySettings.paragraphSpacing,
-                          decimals: 0,
-                          unit: 'pixels',
-                        ),
                         explanation: AppLocalizations.explanation(
                           'Paragraph Spacing',
                         ),
@@ -291,12 +248,7 @@ Future<void> showReadingCustomizeSheet(
                         ),
                         onChangeEnd: (v) => unawaited(
                           onNarrate(
-                            _spokenSettingValue(
-                              'Paragraph Spacing',
-                              v,
-                              decimals: 0,
-                              unit: 'pixels',
-                            ),
+                            '${v.toStringAsFixed(0)} ${_t('pixels')}',
                           ),
                         ),
                       ),
@@ -309,8 +261,6 @@ Future<void> showReadingCustomizeSheet(
                       _sectionHeader(
                         'Color Theme',
                         onNarrate: onNarrate,
-                        speechValue:
-                            '${_t('Color Theme')}: ${_t(AccessibilitySettings.themeLabels[AccessibilitySettings.colorTheme] ?? 'Custom')}',
                         explanation: AppLocalizations.explanation('Color Theme'),
                       ),
                       const SizedBox(height: 10),
@@ -466,7 +416,7 @@ Widget _themeCard(
         borderRadius: BorderRadius.circular(12),
         onTap: () {
           update(() => AccessibilitySettings.colorTheme = key);
-          unawaited(onNarrate(desc.isEmpty ? label : '$label. $desc'));
+          unawaited(onNarrate(label));
         },
         child: Container(
           constraints: const BoxConstraints(minHeight: 68),
@@ -629,7 +579,9 @@ Widget _categoryHeader(
         ),
         const Spacer(),
         NarrationSpeakerButton(
-          text: _t(category),
+          text: AppLocalizations.explanation(category).isEmpty
+              ? _t(category)
+              : AppLocalizations.explanation(category),
           onSpeak: onNarrate,
           color: const Color(0xFF1565C0),
           iconSize: 18,
@@ -724,7 +676,9 @@ Widget _fontCategory(
               ),
             ),
             NarrationSpeakerButton(
-              text: _t(title),
+              text: AppLocalizations.explanation(title).isEmpty
+                  ? _t(title)
+                  : AppLocalizations.explanation(title),
               onSpeak: onNarrate,
               color: const Color(0xFF1565C0),
               iconSize: 18,
@@ -756,9 +710,7 @@ Widget _fontCategory(
                 borderRadius: BorderRadius.circular(10),
                 onTap: () {
                   update(() => AccessibilitySettings.fontFamily = font);
-                  unawaited(
-                    onNarrate('${_t('Font Family')}. ${_t('Font')}: $label'),
-                  );
+                  unawaited(onNarrate(label));
                 },
                 child: Container(
                   constraints: BoxConstraints(
@@ -914,7 +866,7 @@ Widget _readingTestPanel({
           ),
         ),
         NarrationSpeakerButton(
-          text: _t('Reading Test Preview'),
+          text: AppLocalizations.explanation('Reading Test Preview'),
           onSpeak: onNarrate,
           color: const Color(0xFF1565C0),
           iconSize: 18,
@@ -956,7 +908,6 @@ Widget _readingTestPanel({
 Widget _sectionHeader(
   String title, {
   String? value,
-  String? speechValue,
   required Future<void> Function(String text) onNarrate,
   required String explanation,
 }) {
@@ -975,11 +926,7 @@ Widget _sectionHeader(
           ),
         ),
         NarrationSpeakerButton(
-          text: [
-            _t(title),
-            explanation,
-            if (speechValue != null) speechValue,
-          ].join('. '),
+          text: explanation,
           onSpeak: onNarrate,
           color: const Color(0xFF1565C0),
           iconSize: 18,
@@ -1024,7 +971,7 @@ Widget _toggle(
       value: value,
       onChanged: (enabled) {
         onChanged(enabled);
-        unawaited(onNarrate('${_t(label)}: ${_t(enabled ? 'On' : 'Off')}'));
+        unawaited(onNarrate(_t(enabled ? 'On' : 'Off')));
       },
       dense: true,
     ),

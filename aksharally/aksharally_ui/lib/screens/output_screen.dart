@@ -425,19 +425,9 @@ class _OutputScreenState extends State<OutputScreen> {
   );
 
   String _selectedProfileNarration() {
-    final theme =
-        AccessibilitySettings.themeLabels[AccessibilitySettings.colorTheme] ??
-        'Custom';
     return [
       _t(_cap(_selectedProfile)),
       _t('${_cap(_selectedProfile)} profile description'),
-      '${_t('Font')}: ${_t(AccessibilitySettings.fontFamily)}',
-      '${_t('Size')}: ${AccessibilitySettings.fontSize.toStringAsFixed(0)}',
-      '${_t('Letter')}: ${AccessibilitySettings.letterSpacing.toStringAsFixed(1)}',
-      '${_t('Word')}: ${AccessibilitySettings.wordSpacing.toStringAsFixed(1)}',
-      '${_t('Line')}: ${AccessibilitySettings.lineHeight.toStringAsFixed(1)}',
-      '${_t('Para')}: ${AccessibilitySettings.paragraphSpacing.toStringAsFixed(0)}',
-      '${_t('Theme')}: ${_t(theme)}',
     ].join('. ');
   }
 

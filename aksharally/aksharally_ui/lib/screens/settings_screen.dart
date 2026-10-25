@@ -108,6 +108,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         'Changes the language used for app menus and messages.',
         'ऐप के मेनू और संदेशों की भाषा बदलें।',
       ),
+      speechText: AppLocalizations.explanation('Interface language'),
       child: Wrap(
         spacing: AppTheme.spaceSM,
         children: [
@@ -336,7 +337,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 if (speechText != null || description != null)
                   NarrationSpeakerButton(
-                    text: '$title. ${speechText ?? description!}',
+                    text: speechText ?? description!,
                     onSpeak: _narrate,
                     color: _cardText,
                   ),
@@ -742,7 +743,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _pendingFont = name;
               _pendingProfile = 'custom';
             });
-            unawaited(_narrate(_settingValue('Font Family', _t(name))));
+            unawaited(_narrate(_t(name)));
           },
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 180),
@@ -797,7 +798,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         ),
         NarrationSpeakerButton(
-          text: '$label. $explanation. $display',
+          text: explanation,
           onSpeak: _narrate,
           color: _cardText,
           iconSize: 18,
@@ -939,7 +940,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _pendingBgColor = bg;
           _pendingProfile = 'custom';
         });
-        unawaited(_narrate('$label. $desc'));
+        unawaited(_narrate(label));
       },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
@@ -1105,7 +1106,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _pendingTheme     = 'custom';
             }),
             onNarrate: (c) => _narrate(
-              _settingValue('Text Colour', _t(_colorName(c))),
+              _t(_colorName(c)),
             ),
           ),
           const SizedBox(height: AppTheme.spaceMD),
@@ -1123,7 +1124,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _pendingTheme   = 'custom';
             }),
             onNarrate: (c) => _narrate(
-              _settingValue('Background Colour', _t(_colorName(c))),
+              _t(_colorName(c)),
             ),
           ),
 
@@ -1356,7 +1357,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onChanged: (enabled) {
               onChanged(enabled);
               unawaited(
-                _narrate(_settingValue(label, _t(enabled ? 'On' : 'Off'))),
+                _narrate(_t(enabled ? 'On' : 'Off')),
               );
             },
           ),
@@ -1431,6 +1432,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     return _sectionCard(
       title: '👁️  ${_t('Live Preview')}',
+      speechText: AppLocalizations.explanation('Live Preview'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
