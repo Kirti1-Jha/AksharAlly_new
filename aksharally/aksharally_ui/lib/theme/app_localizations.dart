@@ -78,6 +78,7 @@ class AppLocalizations {
     'Settings': 'सेटिंग्स',
     'Hindi': 'हिंदी',
     'Marathi': 'मराठी',
+    'English': 'अंग्रेज़ी',
     'Good Morning': 'सुप्रभात',
     'Good Afternoon': 'नमस्कार',
     'Good Evening': 'शुभ संध्या',
@@ -172,9 +173,36 @@ class AppLocalizations {
     'File selected': 'फ़ाइल चुनी गई',
     'Ready to process': 'प्रोसेस करने के लिए तैयार',
     'Remove': 'हटाएँ',
+    'Clear': 'साफ़ करें',
+    'Start': 'शुरू करें',
+    'Stop': 'रोकें',
+    'Pause': 'विराम दें',
+    'Resume': 'फिर शुरू करें',
+    'Nothing to read yet': 'अभी पढ़ने के लिए कुछ नहीं है',
+    'Go back and scan, type, or upload some content first.':
+        'पहले वापस जाकर सामग्री स्कैन करें, टाइप करें या अपलोड करें।',
+    'Go Back': 'वापस जाएँ',
+    'View original OCR': 'मूल OCR देखें',
+    'Profile': 'प्रोफ़ाइल',
+    'Font': 'फ़ॉन्ट',
+    'Size': 'आकार',
+    'Letter': 'अक्षर',
+    'Word': 'शब्द',
+    'Line': 'पंक्ति',
+    'Para': 'अनुच्छेद',
+    'Theme': 'थीम',
+    'Mild': 'हल्का',
+    'Moderate': 'मध्यम',
+    'Severe': 'गंभीर',
+    'Customize': 'अपने अनुसार बदलें',
+    'Custom': 'कस्टम',
+    'reading profile': 'रीडिंग प्रोफ़ाइल',
+    'reading font': 'पढ़ने का फ़ॉन्ट',
+    'color theme': 'रंग थीम',
     'Playback speed': 'पढ़ने की गति',
     'Previous section': 'पिछला अनुभाग',
     'Next section': 'अगला अनुभाग',
+    'Original OCR': 'मूल OCR',
     'Save as Default': 'डिफ़ॉल्ट के रूप में सहेजें',
     'Delete reading': 'रीडिंग मिटाएँ',
     'Enter Text': 'पाठ दर्ज करें',
@@ -282,5 +310,113 @@ class AppLocalizations {
     'days': 'दिन',
     'ago': 'पहले',
     'words': 'शब्द',
+    'Section': 'अनुभाग',
+    'Voice commands': 'वॉइस कमांड',
+    'Listening': 'सुन रहा है',
+    'Mic off': 'माइक्रोफ़ोन बंद',
+    'Voice-command language': 'वॉइस कमांड की भाषा',
+    'Choose a supported language': 'समर्थित भाषा चुनें',
+    'Voice commands use': 'वॉइस कमांड के लिए भाषा',
+    'Tap the microphone to give a reading command.':
+        'पढ़ने का निर्देश देने के लिए माइक्रोफ़ोन दबाएँ।',
+    'Checking microphone and speech-recognition access…':
+        'माइक्रोफ़ोन और वॉइस पहचान की अनुमति जाँची जा रही है…',
+    'Speech recognition is unavailable. Check microphone and speech permissions in device settings.':
+        'वॉइस पहचान उपलब्ध नहीं है। डिवाइस सेटिंग में माइक्रोफ़ोन और वॉइस अनुमतियाँ जाँचें।',
+    'This device does not list English, Hindi, or Marathi speech recognition.':
+        'इस डिवाइस में अंग्रेज़ी, हिंदी या मराठी वॉइस पहचान उपलब्ध नहीं है।',
+    'Choose a command language supported by this device.':
+        'इस डिवाइस पर उपलब्ध कमांड भाषा चुनें।',
+    'No English speech-recognition locale is available. Select a listed language; AksharAlly will not switch languages automatically.':
+        'अंग्रेज़ी वॉइस पहचान उपलब्ध नहीं है। सूची में दी गई भाषा चुनें; अक्षरअली भाषा अपने-आप नहीं बदलेगा।',
+    'No Hindi speech-recognition locale is available. Select a listed language; AksharAlly will not switch languages automatically.':
+        'हिंदी वॉइस पहचान उपलब्ध नहीं है। सूची में दी गई भाषा चुनें; अक्षरअली भाषा अपने-आप नहीं बदलेगा।',
+    'No Marathi speech-recognition locale is available. Select a listed language; AksharAlly will not switch languages automatically.':
+        'मराठी वॉइस पहचान उपलब्ध नहीं है। सूची में दी गई भाषा चुनें; अक्षरअली भाषा अपने-आप नहीं बदलेगा।',
+    'No supported speech-recognition language is available on this device.':
+        'इस डिवाइस पर कोई समर्थित वॉइस पहचान भाषा उपलब्ध नहीं है।',
+    'Select a voice-command language before listening.':
+        'सुनना शुरू करने से पहले वॉइस कमांड की भाषा चुनें।',
+    'Listening…': 'सुन रहा है…',
+    'Recognizing…': 'पहचान हो रही है…',
+    'Command received.': 'कमांड मिल गया।',
+    'No command was recognized.': 'कोई कमांड पहचाना नहीं गया।',
+    'Could not start speech recognition:': 'वॉइस पहचान शुरू नहीं हो सकी:',
+    'Could not listen:': 'सुनना शुरू नहीं हो सका:',
+    'Could not process that command:': 'कमांड पर कार्रवाई नहीं हो सकी:',
+    'Speech recognition error:': 'वॉइस पहचान में त्रुटि:',
+    'Recognized speech': 'पहचानी गई आवाज़',
+    'Recognized command will appear here.':
+        'पहचाना गया कमांड यहाँ दिखाई देगा।',
+    'Stop listening': 'सुनना बंद करें',
+    'Preparing microphone…': 'माइक्रोफ़ोन तैयार हो रहा है…',
+    'Processing…': 'प्रोसेस हो रहा है…',
+    'Listen': 'सुनें',
+    'Only English, Hindi, and Marathi commands are enabled.':
+        'केवल अंग्रेज़ी, हिंदी और मराठी कमांड उपलब्ध हैं।',
+    'Command completed.': 'कमांड पूरा हुआ।',
+    'Reading started.': 'पढ़ना शुरू हुआ।',
+    'Reading paused.': 'पढ़ना रोक दिया गया।',
+    'Reading resumed.': 'पढ़ना फिर शुरू हुआ।',
+    'Reading stopped.': 'पढ़ना बंद हुआ।',
+    'There is no sentence to repeat.': 'दोहराने के लिए कोई वाक्य नहीं है।',
+    'Repeating the current sentence.': 'मौजूदा वाक्य दोहराया जा रहा है।',
+    'Repeating the passage.': 'यह अंश दोहराया जा रहा है।',
+    'Reading speed updated.': 'पढ़ने की गति बदल दी गई।',
+    'Text size updated.': 'पाठ का आकार बदल दिया गया।',
+    'Reading colors updated.': 'पढ़ने के रंग बदल दिए गए।',
+    'I did not recognize that command. Try one command at a time, such as “read this page,” “pause reading,” or “read slower.” Sentence navigation is not available yet.':
+        'कमांड समझ नहीं आया। एक बार में एक कमांड बोलें, जैसे “यह पेज पढ़ें”, “पढ़ना रोकें” या “धीरे पढ़ें”। वाक्य पर आगे-पीछे जाना अभी उपलब्ध नहीं है।',
+    'Customize Reading Experience': 'पढ़ने का अनुभव अनुकूलित करें',
+    'Font Family': 'फ़ॉन्ट परिवार',
+    'English Reading Fonts': 'अंग्रेज़ी पढ़ने के फ़ॉन्ट',
+    'Recommended for English': 'अंग्रेज़ी के लिए सुझाया गया',
+    'Hindi & Marathi Fonts': 'हिंदी और मराठी के फ़ॉन्ट',
+    'Recommended for Hindi & Marathi':
+        'हिंदी और मराठी के लिए सुझाया गया',
+    'Font Size': 'फ़ॉन्ट आकार',
+    'Letter Spacing': 'अक्षरों के बीच दूरी',
+    'Word Spacing': 'शब्दों के बीच दूरी',
+    'Line Height': 'पंक्ति की ऊँचाई',
+    'Paragraph Spacing': 'अनुच्छेदों के बीच दूरी',
+    'Color Theme': 'रंग थीम',
+    'Accessibility Features': 'सुलभता सुविधाएँ',
+    'Word Highlighting during TTS': 'TTS के दौरान शब्द हाइलाइट करें',
+    'Auto Read': 'अपने-आप पढ़ें',
+    'Automatically read new content when it opens. Save as Default to keep this choice.':
+        'नई सामग्री खुलने पर अपने-आप पढ़ें। इस विकल्प को रखने के लिए “डिफ़ॉल्ट के रूप में सहेजें” चुनें।',
+    'Focus Window': 'फ़ोकस विंडो',
+    'Dims surrounding text; drag the handle to reposition.':
+        'आसपास का पाठ धुँधला करता है; इसे दूसरी जगह रखने के लिए हैंडल खींचें।',
+    'Syllable Breakdown (Experimental)': 'शब्दांश विभाजन (प्रयोगात्मक)',
+    'Inserts visible breaks into words (e.g. read-ing, im-por-tant).':
+        'शब्दों में दिखने वाले विराम जोड़ता है (जैसे read-ing, im-por-tant)।',
+    'Larger Touch Targets': 'बड़े टच लक्ष्य',
+    'Reduce Motion / Animations': 'गतिशीलता / एनिमेशन कम करें',
+    'Save as Default': 'डिफ़ॉल्ट के रूप में सहेजें',
+    'Reading Test Preview': 'पढ़ने के परीक्षण का पूर्वावलोकन',
+    'System': 'सिस्टम',
+    'Backend response was not JSON.':
+        'बैकएंड से मिला जवाब मान्य JSON प्रारूप में नहीं है।',
+    'Unknown backend error': 'बैकएंड में अज्ञात त्रुटि हुई।',
+    'The OCR server took too long to process this image. Please try a smaller or clearer image.':
+        'OCR सर्वर को इस छवि को प्रोसेस करने में बहुत समय लगा। छोटी या अधिक स्पष्ट छवि आज़माएँ।',
+    'Could not reach the OCR server. Check that the phone and computer are on the same Wi-Fi and try again.':
+        'OCR सर्वर से संपर्क नहीं हो सका। जाँचें कि फ़ोन और कंप्यूटर एक ही Wi-Fi पर हैं, फिर दोबारा कोशिश करें।',
+    'The OCR server returned an invalid response. Please try again.':
+        'OCR सर्वर से अमान्य जवाब मिला। कृपया फिर कोशिश करें।',
+    'The OCR server returned a response in an unexpected format.':
+        'OCR सर्वर से अप्रत्याशित प्रारूप में जवाब मिला।',
+    'Unable to process the image:': 'छवि प्रोसेस नहीं हो सकी:',
+    'Simplification failed': 'पाठ सरल नहीं हो सका।',
+    'Text simplification took too long. Please try again.':
+        'पाठ सरल करने में बहुत समय लगा। कृपया फिर कोशिश करें।',
+    'Could not reach the backend server.':
+        'बैकएंड सर्वर से संपर्क नहीं हो सका।',
+    'Connection failed:': 'कनेक्शन विफल हुआ:',
+    'Structured simplification failed':
+        'संरचित पाठ सरल नहीं हो सका।',
+    'Structured text processing took too long. Please try again.':
+        'संरचित पाठ प्रोसेस करने में बहुत समय लगा। कृपया फिर कोशिश करें।',
   };
 }

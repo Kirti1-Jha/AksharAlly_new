@@ -11,6 +11,7 @@ import '../services/tts_progress_mapper.dart';
 import '../services/tts_service.dart';
 import '../services/voice_command_handler.dart';
 import '../theme/app_settings.dart';
+import '../theme/app_localizations.dart';
 import '../theme/accessibility_settings.dart';
 import '../theme/ui_accessibility.dart';
 import '../widgets/highlighted_text_view.dart';
@@ -71,6 +72,12 @@ class OutputScreen extends StatefulWidget {
 }
 
 class _OutputScreenState extends State<OutputScreen> {
+  String _t(String english) => AppLocalizations.text(english);
+
+  void _onInterfaceLanguageChanged() {
+    if (mounted) setState(() {});
+  }
+
   // ── display text state ────────────────────────────────────────────────────
   String simplifiedText = '';
   List<OutputTextSection> _sections = const [];
@@ -118,6 +125,9 @@ class _OutputScreenState extends State<OutputScreen> {
   @override
   void initState() {
     super.initState();
+    AppSettings.interfaceLanguageNotifier.addListener(
+      _onInterfaceLanguageChanged,
+    );
     _playbackSpeed = TTSService.playbackSpeedForEngineRate(speechRate);
     speechRate = TTSService.engineRateForPlaybackSpeed(_playbackSpeed);
     AppSettings.speechRate = speechRate;
@@ -775,6 +785,9 @@ class _OutputScreenState extends State<OutputScreen> {
 
   @override
   void dispose() {
+    AppSettings.interfaceLanguageNotifier.removeListener(
+      _onInterfaceLanguageChanged,
+    );
     ++_playbackSession;
     _timer?.cancel();
     _progressWatchdog?.cancel();
@@ -796,11 +809,11 @@ class _OutputScreenState extends State<OutputScreen> {
 
     Widget chip(String value, {IconData? icon}) {
       final isSelected = activeChip == value;
-      final label = '${value[0].toUpperCase()}${value.substring(1)}';
+      final label = _t(_cap(value));
       return Semantics(
         button: true,
         selected: isSelected,
-        label: '$label reading profile',
+        label: '$label ${_t('reading profile')}',
         child: Material(
           color: Colors.transparent,
           child: InkWell(
@@ -957,14 +970,14 @@ class _OutputScreenState extends State<OutputScreen> {
         text: TextSpan(
           children: [
             TextSpan(
-              text: '$label: ',
+              text: '${_t(label)}: ',
               style: TextStyle(
                 fontSize: 11,
                 color: UIAccessibility.mutedTextColor,
               ),
             ),
             TextSpan(
-              text: value,
+              text: _t(value),
               style: TextStyle(
                 fontSize: 11,
                 color: UIAccessibility.textColor,
@@ -1019,7 +1032,7 @@ class _OutputScreenState extends State<OutputScreen> {
           : null,
       icon: Icon(isPaused ? Icons.play_arrow : Icons.pause, size: 20),
       label: Text(
-        isPaused ? 'Resume' : 'Pause',
+        _t(isPaused ? 'Resume' : 'Pause'),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         softWrap: false,
@@ -1042,7 +1055,7 @@ class _OutputScreenState extends State<OutputScreen> {
 
     return InputDecorator(
       decoration: InputDecoration(
-        labelText: 'Playback speed',
+        labelText: _t('Playback speed'),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppTheme.radiusMD),
         ),
@@ -1089,7 +1102,7 @@ class _OutputScreenState extends State<OutputScreen> {
           ),
           const SizedBox(height: AppTheme.spaceMD),
           Text(
-            'Nothing to read yet',
+            _t('Nothing to read yet'),
             style: UIAccessibility.applyGlobalTextStyle(
               AppTheme.titleStyle,
             ).copyWith(color: UIAccessibility.textColor),
@@ -1097,7 +1110,7 @@ class _OutputScreenState extends State<OutputScreen> {
           ),
           const SizedBox(height: AppTheme.spaceXS),
           Text(
-            'Go back and scan, type, or upload some content first.',
+            _t('Go back and scan, type, or upload some content first.'),
             style: UIAccessibility.applyGlobalTextStyle(
               AppTheme.captionStyle,
             ).copyWith(color: UIAccessibility.mutedTextColor),
@@ -1187,7 +1200,7 @@ class _OutputScreenState extends State<OutputScreen> {
                 tilePadding: EdgeInsets.zero,
                 childrenPadding: const EdgeInsets.only(bottom: 4),
                 title: Text(
-                  'View original OCR',
+                  _t('View original OCR'),
                   style: TextStyle(
                     color: UIAccessibility.textColor,
                     fontWeight: FontWeight.w800,
@@ -1217,7 +1230,10 @@ class _OutputScreenState extends State<OutputScreen> {
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   Text(
-                    'Section ${_sectionIndex + 1} of ${_sections.length}',
+                    AppLocalizations.choose(
+                      'Section ${_sectionIndex + 1} of ${_sections.length}',
+                      'अनुभाग ${_sectionIndex + 1} / ${_sections.length}',
+                    ),
                     style: TextStyle(
                       color: getTextColor().withOpacity(0.7),
                       fontSize: 12,
@@ -1226,7 +1242,7 @@ class _OutputScreenState extends State<OutputScreen> {
                   ),
                   const SizedBox(width: 4),
                   IconButton(
-                    tooltip: 'Previous section',
+                    tooltip: _t('Previous section'),
                     onPressed: _sectionIndex > 0
                         ? () => _changeSection(_sectionIndex - 1)
                         : null,
@@ -1237,7 +1253,7 @@ class _OutputScreenState extends State<OutputScreen> {
                     ),
                   ),
                   IconButton(
-                    tooltip: 'Next section',
+                    tooltip: _t('Next section'),
                     onPressed: _sectionIndex < _sections.length - 1
                         ? () => _changeSection(_sectionIndex + 1)
                         : null,
@@ -1410,7 +1426,7 @@ class _OutputScreenState extends State<OutputScreen> {
                           children: [
                             Expanded(
                               child: _primaryButton(
-                                'Start',
+                                _t('Start'),
                                 startReading,
                                 icon: Icons.play_arrow,
                               ),
@@ -1420,7 +1436,7 @@ class _OutputScreenState extends State<OutputScreen> {
                             const SizedBox(width: AppTheme.spaceSM),
                             Expanded(
                               child: _primaryButton(
-                                'Stop',
+                                _t('Stop'),
                                 stopReading,
                                 icon: Icons.stop,
                               ),

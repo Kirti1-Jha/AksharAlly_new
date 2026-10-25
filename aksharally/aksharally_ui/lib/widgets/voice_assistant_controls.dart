@@ -5,6 +5,9 @@ import 'package:speech_to_text/speech_recognition_error.dart';
 import 'package:speech_to_text/speech_recognition_result.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
+import '../theme/app_localizations.dart';
+import '../theme/app_settings.dart';
+
 class VoiceAssistantControls extends StatefulWidget {
   const VoiceAssistantControls({
     super.key,
@@ -34,6 +37,8 @@ class VoiceAssistantControls extends StatefulWidget {
 }
 
 class _VoiceAssistantControlsState extends State<VoiceAssistantControls> {
+  String _t(String english) => AppLocalizations.text(english);
+
   final SpeechToText _speech = SpeechToText();
 
   List<LocaleName> _supportedLocales = const [];
@@ -50,7 +55,22 @@ class _VoiceAssistantControlsState extends State<VoiceAssistantControls> {
   bool _listeningCancelledNotified = false;
 
   @override
+  void initState() {
+    super.initState();
+    AppSettings.interfaceLanguageNotifier.addListener(
+      _onInterfaceLanguageChanged,
+    );
+  }
+
+  void _onInterfaceLanguageChanged() {
+    if (mounted) setState(() {});
+  }
+
+  @override
   void dispose() {
+    AppSettings.interfaceLanguageNotifier.removeListener(
+      _onInterfaceLanguageChanged,
+    );
     if (_sessionOpen || _isListening || _startingListening || _preparing) {
       unawaited(
         _cancelSpeechOnDispose(
@@ -351,6 +371,35 @@ class _VoiceAssistantControlsState extends State<VoiceAssistantControls> {
     _ => code,
   };
 
+  String _localizedMessage() {
+    final localeMessage = RegExp(
+      r'^Voice commands use (.+)\.$',
+    ).firstMatch(_message);
+    if (localeMessage != null) {
+      final languageCode = _languageForLocale(_selectedLocaleId ?? '');
+      final languageName = languageCode == null
+          ? localeMessage.group(1)!
+          : _t(_languageName(languageCode));
+      return AppLocalizations.choose(
+        'Voice commands use ${localeMessage.group(1)}.',
+        'वॉइस कमांड के लिए $languageName भाषा का उपयोग हो रहा है।',
+      );
+    }
+
+    for (final prefix in const [
+      'Could not start speech recognition:',
+      'Could not listen:',
+      'Could not process that command:',
+      'Speech recognition error:',
+    ]) {
+      if (_message.startsWith(prefix)) {
+        final detail = _message.substring(prefix.length).trimLeft();
+        return '${_t(prefix)} $detail';
+      }
+    }
+    return _t(_message);
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
@@ -372,7 +421,7 @@ class _VoiceAssistantControlsState extends State<VoiceAssistantControls> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'Voice commands',
+                    _t('Voice commands'),
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                 ),
@@ -385,24 +434,24 @@ class _VoiceAssistantControlsState extends State<VoiceAssistantControls> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                Text(_isListening ? 'Listening' : 'Mic off'),
+                Text(_t(_isListening ? 'Listening' : 'Mic off')),
               ],
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
               value: _selectedLocaleId,
               isExpanded: true,
-              decoration: const InputDecoration(
-                labelText: 'Voice-command language',
+              decoration: InputDecoration(
+                labelText: _t('Voice-command language'),
                 border: OutlineInputBorder(),
               ),
-              hint: const Text('Choose a supported language'),
+              hint: Text(_t('Choose a supported language')),
               items: _supportedLocales
                   .map(
                     (locale) => DropdownMenuItem(
                       value: locale.localeId,
                       child: Text(
-                        '${locale.name} (${_languageName(_languageForLocale(locale.localeId)!)})',
+                        '${locale.name} (${_t(_languageName(_languageForLocale(locale.localeId)!))})',
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
@@ -415,7 +464,10 @@ class _VoiceAssistantControlsState extends State<VoiceAssistantControls> {
                     },
             ),
             const SizedBox(height: 10),
-            Text(_message, style: Theme.of(context).textTheme.bodyMedium),
+            Text(
+              _localizedMessage(),
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
             const SizedBox(height: 8),
             Container(
               width: double.infinity,
@@ -426,10 +478,10 @@ class _VoiceAssistantControlsState extends State<VoiceAssistantControls> {
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Semantics(
-                label: 'Recognized speech',
+                label: _t('Recognized speech'),
                 child: SelectableText(
                   _transcript.isEmpty
-                      ? 'Recognized command will appear here.'
+                      ? _t('Recognized command will appear here.')
                       : _transcript,
                   style: Theme.of(context).textTheme.bodyLarge,
                 ),
@@ -438,7 +490,7 @@ class _VoiceAssistantControlsState extends State<VoiceAssistantControls> {
             if (widget.feedback != null && widget.feedback!.isNotEmpty) ...[
               const SizedBox(height: 8),
               Text(
-                widget.feedback!,
+                _t(widget.feedback!),
                 key: const ValueKey('voice-command-feedback'),
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: colors.primary,
@@ -454,12 +506,12 @@ class _VoiceAssistantControlsState extends State<VoiceAssistantControls> {
                 icon: Icon(_isListening ? Icons.stop : Icons.mic),
                 label: Text(
                   _isListening
-                      ? 'Stop listening'
+                      ? _t('Stop listening')
                       : _preparing || _startingListening
-                      ? 'Preparing microphone…'
+                      ? _t('Preparing microphone…')
                       : processing
-                      ? 'Processing…'
-                      : 'Listen',
+                      ? _t('Processing…')
+                      : _t('Listen'),
                 ),
                 style: FilledButton.styleFrom(
                   minimumSize: const Size.fromHeight(56),
@@ -470,7 +522,7 @@ class _VoiceAssistantControlsState extends State<VoiceAssistantControls> {
               Padding(
                 padding: const EdgeInsets.only(top: 8),
                 child: Text(
-                  'Only English, Hindi, and Marathi commands are enabled.',
+                  _t('Only English, Hindi, and Marathi commands are enabled.'),
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
               ),

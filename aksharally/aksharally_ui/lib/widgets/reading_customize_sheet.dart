@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../theme/accessibility_settings.dart';
+import '../theme/app_localizations.dart';
+import '../theme/app_settings.dart';
+
+String _t(String english) => AppLocalizations.text(english);
 
 /// Shows the "Customize Reading Experience" bottom sheet.
 ///
@@ -24,8 +28,9 @@ Future<void> showReadingCustomizeSheet(
     sheetAnimationStyle: AccessibilitySettings.reduceMotion
         ? AnimationStyle.noAnimation
         : null,
-    builder: (ctx) {
-      return StatefulBuilder(
+    builder: (ctx) => AnimatedBuilder(
+      animation: AppSettings.interfaceLanguageNotifier,
+      builder: (ctx, _) => StatefulBuilder(
         builder: (ctx, setSheet) {
           // update() — modify AccessibilitySettings, repaint sheet, notify
           // caller so the reading preview behind the sheet updates live.
@@ -63,9 +68,9 @@ Future<void> showReadingCustomizeSheet(
                     const SizedBox(width: 16),
                     const Icon(Icons.tune, color: Color(0xFF1565C0)),
                     const SizedBox(width: 8),
-                    const Expanded(
+                    Expanded(
                       child: Text(
-                        'Customize Reading Experience',
+                        _t('Customize Reading Experience'),
                         style: TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.w700,
@@ -281,7 +286,7 @@ Future<void> showReadingCustomizeSheet(
                       // ── SAVE BUTTON ─────────────────────────────────────
                       ElevatedButton.icon(
                         icon: const Icon(Icons.save_outlined),
-                        label: const Text('Save as Default'),
+                        label: Text(_t('Save as Default')),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF1565C0),
                           foregroundColor: Colors.white,
@@ -303,8 +308,8 @@ Future<void> showReadingCustomizeSheet(
             ),
           );
         },
-      );
-    },
+      ),
+    ),
   );
 
   // After the sheet closes, rebuild so the main screen reflects any
@@ -318,14 +323,14 @@ Widget _themeCard(String key, void Function(VoidCallback) update) {
   final sel = AccessibilitySettings.colorTheme == key;
   final bg = AccessibilitySettings.previewBg(key);
   final tc = AccessibilitySettings.previewText(key);
-  final label = AccessibilitySettings.themeLabels[key] ?? key;
-  final desc = AccessibilitySettings.themeDescriptions[key] ?? '';
+  final label = _t(AccessibilitySettings.themeLabels[key] ?? key);
+  final desc = _t(AccessibilitySettings.themeDescriptions[key] ?? '');
   final badge = AccessibilitySettings.themeBadges[key];
 
   return Semantics(
     button: true,
     selected: sel,
-    label: '$label color theme${desc.isEmpty ? '' : '. $desc'}',
+    label: '$label ${_t('color theme')}${desc.isEmpty ? '' : '. $desc'}',
     child: Material(
       color: Colors.transparent,
       child: InkWell(
@@ -479,7 +484,7 @@ Widget _categoryHeader(String category) {
         ),
         const SizedBox(width: 6),
         Text(
-          category,
+          _t(category),
           style: const TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w700,
@@ -528,7 +533,7 @@ Widget _badgePill(String badge) {
       borderRadius: BorderRadius.circular(10),
     ),
     child: Text(
-      '⭐ $badge',
+      '⭐ ${_t(badge)}',
       style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: fg),
     ),
   );
@@ -589,13 +594,13 @@ Widget _fontCategory(
         runSpacing: 6,
         children: fonts.map((font) {
           final selected = AccessibilitySettings.fontFamily == font;
-          final label = _fontChipLabel(font);
+          final label = _t(_fontChipLabel(font));
           final padH = largeTap ? 14.0 : 10.0;
           final padV = largeTap ? 9.0 : 6.0;
           return Semantics(
             button: true,
             selected: selected,
-            label: '$label reading font',
+            label: '$label ${_t('reading font')}',
             child: Material(
               color: Colors.transparent,
               child: InkWell(
@@ -791,7 +796,7 @@ Widget _sectionHeader(String title) {
   return Padding(
     padding: const EdgeInsets.only(bottom: 2),
     child: Text(
-      title,
+                _t(title),
       style: const TextStyle(
         fontSize: 13,
         fontWeight: FontWeight.w600,
