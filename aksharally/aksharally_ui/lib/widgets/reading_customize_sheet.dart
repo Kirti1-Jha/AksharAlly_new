@@ -94,9 +94,9 @@ Future<void> showReadingCustomizeSheet(
                       ),
                     ),
                     NarrationSpeakerButton(
-                      text: AppLocalizations.explanation(
-                        'Customize Reading Experience',
-                      ),
+                      text:
+                          '${_t('Customize Reading Experience')}. '
+                          '${AppLocalizations.explanation('Customize Reading Experience')}',
                       onSpeak: onNarrate,
                       color: const Color(0xFF1565C0),
                     ),
@@ -117,6 +117,8 @@ Future<void> showReadingCustomizeSheet(
                       _sectionHeader(
                         'Font Family',
                         onNarrate: onNarrate,
+                        speechValue:
+                            '${_t('Font')}: ${_t(_fontChipLabel(AccessibilitySettings.fontFamily))}',
                         explanation: AppLocalizations.explanation('Font Family'),
                       ),
                       const SizedBox(height: 8),
@@ -156,6 +158,12 @@ Future<void> showReadingCustomizeSheet(
                         value:
                             '${AccessibilitySettings.fontSize.toStringAsFixed(0)}px',
                         onNarrate: onNarrate,
+                        speechValue: _spokenSettingValue(
+                          'Font Size',
+                          AccessibilitySettings.fontSize,
+                          decimals: 0,
+                          unit: 'pixels',
+                        ),
                         explanation: AppLocalizations.explanation('Font Size'),
                       ),
                       Slider(
@@ -183,6 +191,10 @@ Future<void> showReadingCustomizeSheet(
                         value: AccessibilitySettings.letterSpacing
                             .toStringAsFixed(1),
                         onNarrate: onNarrate,
+                        speechValue: _spokenSettingValue(
+                          'Letter Spacing',
+                          AccessibilitySettings.letterSpacing,
+                        ),
                         explanation: AppLocalizations.explanation(
                           'Letter Spacing',
                         ),
@@ -206,6 +218,10 @@ Future<void> showReadingCustomizeSheet(
                         value: AccessibilitySettings.wordSpacing
                             .toStringAsFixed(1),
                         onNarrate: onNarrate,
+                        speechValue: _spokenSettingValue(
+                          'Word Spacing',
+                          AccessibilitySettings.wordSpacing,
+                        ),
                         explanation: AppLocalizations.explanation(
                           'Word Spacing',
                         ),
@@ -228,6 +244,11 @@ Future<void> showReadingCustomizeSheet(
                         value:
                             '${AccessibilitySettings.lineHeight.toStringAsFixed(1)}×',
                         onNarrate: onNarrate,
+                        speechValue: _spokenSettingValue(
+                          'Line Height',
+                          AccessibilitySettings.lineHeight,
+                          unit: 'times',
+                        ),
                         explanation: AppLocalizations.explanation('Line Height'),
                       ),
                       Slider(
@@ -250,6 +271,12 @@ Future<void> showReadingCustomizeSheet(
                         value:
                             '${AccessibilitySettings.paragraphSpacing.toStringAsFixed(0)}px',
                         onNarrate: onNarrate,
+                        speechValue: _spokenSettingValue(
+                          'Paragraph Spacing',
+                          AccessibilitySettings.paragraphSpacing,
+                          decimals: 0,
+                          unit: 'pixels',
+                        ),
                         explanation: AppLocalizations.explanation(
                           'Paragraph Spacing',
                         ),
@@ -282,6 +309,8 @@ Future<void> showReadingCustomizeSheet(
                       _sectionHeader(
                         'Color Theme',
                         onNarrate: onNarrate,
+                        speechValue:
+                            '${_t('Color Theme')}: ${_t(AccessibilitySettings.themeLabels[AccessibilitySettings.colorTheme] ?? 'Custom')}',
                         explanation: AppLocalizations.explanation('Color Theme'),
                       ),
                       const SizedBox(height: 10),
@@ -727,7 +756,9 @@ Widget _fontCategory(
                 borderRadius: BorderRadius.circular(10),
                 onTap: () {
                   update(() => AccessibilitySettings.fontFamily = font);
-                  unawaited(onNarrate('${_t('Font')}: $label'));
+                  unawaited(
+                    onNarrate('${_t('Font Family')}. ${_t('Font')}: $label'),
+                  );
                 },
                 child: Container(
                   constraints: BoxConstraints(
@@ -925,6 +956,7 @@ Widget _readingTestPanel({
 Widget _sectionHeader(
   String title, {
   String? value,
+  String? speechValue,
   required Future<void> Function(String text) onNarrate,
   required String explanation,
 }) {
@@ -943,7 +975,11 @@ Widget _sectionHeader(
           ),
         ),
         NarrationSpeakerButton(
-          text: explanation,
+          text: [
+            _t(title),
+            explanation,
+            if (speechValue != null) speechValue,
+          ].join('. '),
           onSpeak: onNarrate,
           color: const Color(0xFF1565C0),
           iconSize: 18,

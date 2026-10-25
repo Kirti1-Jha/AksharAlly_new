@@ -935,6 +935,12 @@ class _OutputScreenState extends State<OutputScreen> {
               ),
             ),
           ),
+          NarrationSpeakerButton(
+            text: _selectedProfileNarration(),
+            onSpeak: _narrateAccessibility,
+            color: UIAccessibility.textColor,
+            iconSize: 18,
+          ),
         ],
       ],
     );

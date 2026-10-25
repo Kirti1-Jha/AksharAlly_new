@@ -238,6 +238,17 @@ class AppLocalizations {
     'Baloo 2': 'बालू 2',
     'Tiro Devanagari Hindi': 'टिरो देवनागरी हिंदी',
     'System Default': 'सिस्टम डिफ़ॉल्ट',
+    'OpenDyslexic · Cream · Generous spacing':
+        'ओपनडिस्लेक्सिक · क्रीम · अधिक दूरी',
+    'Inter · Soft Yellow · Reduced glare':
+        'इंटर · हल्का पीला · कम चमक',
+    'Monospace · White · Large, spaced text':
+        'मोनोस्पेस · सफ़ेद · बड़ा और दूर-दूर पाठ',
+    'OpenDyslexic · Light Blue · Very large text':
+        'ओपनडिस्लेक्सिक · हल्का नीला · बहुत बड़ा पाठ',
+    'pixels': 'पिक्सेल',
+    'Font Family': 'फ़ॉन्ट परिवार',
+    'Selected color': 'चुना हुआ रंग',
     'Hindi': 'हिंदी',
     'Marathi': 'मराठी',
     'English': 'अंग्रेज़ी',

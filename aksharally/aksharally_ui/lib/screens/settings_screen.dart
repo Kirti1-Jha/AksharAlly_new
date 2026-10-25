@@ -46,6 +46,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   late final AccessibilityNarrator _narrator = AccessibilityNarrator(_tts);
   String _t(String english) => AppLocalizations.text(english);
   Future<void> _narrate(String text) => _narrator.speak(text);
+  String _settingValue(String key, String value) => '${_t(key)}: $value';
 
   @override
   void initState() {
@@ -335,7 +336,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 if (speechText != null || description != null)
                   NarrationSpeakerButton(
-                    text: speechText ?? description!,
+                    text: '$title. ${speechText ?? description!}',
                     onSpeak: _narrate,
                     color: _cardText,
                   ),
@@ -548,7 +549,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return GestureDetector(
       onTap: () {
         _pendingApplyProfile(key);
-        unawaited(_narrate(label));
+        unawaited(_narrate('$label. $desc'));
       },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 220),
@@ -603,16 +604,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             const SizedBox(height: 2),
             Expanded(
-              child: Text(
-                desc,
-                style: TextStyle(
-                    fontSize: 9.5,
-                    color:    isPending
-                        ? Colors.white.withOpacity(0.8)
-                        : AppTheme.textMuted,
-                    height:   1.3),
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Text(
+                      desc,
+                      style: TextStyle(
+                          fontSize: 9.5,
+                          color:    isPending
+                              ? Colors.white.withOpacity(0.8)
+                              : AppTheme.textMuted,
+                          height:   1.3),
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  NarrationSpeakerButton(
+                    text: '$label. $desc',
+                    onSpeak: _narrate,
+                    color: textOnCard,
+                    iconSize: 16,
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 6),
@@ -668,6 +682,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
             min: 12, max: 22, divisions: 10,
             display:   _pendingSize.toStringAsFixed(0),
             onChanged: (v) => _preview(() => _pendingSize = v),
+            onChangeEnd: (v) => unawaited(
+              _narrate(_settingValue(
+                'Font Size',
+                '${v.toStringAsFixed(0)} ${_t('pixels')}',
+              )),
+            ),
           ),
           _slider(
             label:     _t('Letter Spacing'),
@@ -676,6 +696,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             min: 0.0, max: 2.5, divisions: 10,
             display:   _pendingLetterSp.toStringAsFixed(1),
             onChanged: (v) => _preview(() => _pendingLetterSp = v),
+            onChangeEnd: (v) => unawaited(
+              _narrate(_settingValue('Letter Spacing', v.toStringAsFixed(1))),
+            ),
           ),
           _slider(
             label:     _t('Word Spacing'),
@@ -684,6 +707,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             min: 0.0, max: 8.0, divisions: 8,
             display:   _pendingWordSp.toStringAsFixed(1),
             onChanged: (v) => _preview(() => _pendingWordSp = v),
+            onChangeEnd: (v) => unawaited(
+              _narrate(_settingValue('Word Spacing', v.toStringAsFixed(1))),
+            ),
           ),
           _slider(
             label:     _t('Line Height'),
@@ -692,6 +718,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
             min: 1.0, max: 3.0, divisions: 10,
             display:   _pendingLineH.toStringAsFixed(1),
             onChanged: (v) => _preview(() => _pendingLineH = v),
+            onChangeEnd: (v) => unawaited(
+              _narrate(
+                _settingValue('Line Height', '${v.toStringAsFixed(1)} ${_t('times')}'),
+              ),
+            ),
           ),
         ],
       ),
@@ -711,7 +742,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _pendingFont = name;
               _pendingProfile = 'custom';
             });
-            unawaited(_narrate(_t(name)));
+            unawaited(_narrate(_settingValue('Font Family', _t(name))));
           },
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 180),
@@ -747,6 +778,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     required int divisions,
     required String display,
     required ValueChanged<double> onChanged,
+    ValueChanged<double>? onChangeEnd,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -765,7 +797,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         ),
         NarrationSpeakerButton(
-          text: explanation,
+          text: '$label. $explanation. $display',
           onSpeak: _narrate,
           color: _cardText,
           iconSize: 18,
@@ -800,12 +832,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
             divisions: divisions,
             onChanged: onChanged,
             onChangeEnd: (nextValue) {
+              if (onChangeEnd != null) {
+                onChangeEnd(nextValue);
+                return;
+              }
               unawaited(
-                _narrate(
+                _narrate(_settingValue(
+                  label,
                   nextValue == nextValue.roundToDouble()
                       ? nextValue.toStringAsFixed(0)
                       : nextValue.toStringAsFixed(1),
-                ),
+                )),
               );
             },
           ),
@@ -902,7 +939,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _pendingBgColor = bg;
           _pendingProfile = 'custom';
         });
-        unawaited(_narrate(label));
+        unawaited(_narrate('$label. $desc'));
       },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
@@ -1067,7 +1104,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _pendingProfile   = 'custom';
               _pendingTheme     = 'custom';
             }),
-            onNarrate: (c) => _narrate(_t(_colorName(c))),
+            onNarrate: (c) => _narrate(
+              _settingValue('Text Colour', _t(_colorName(c))),
+            ),
           ),
           const SizedBox(height: AppTheme.spaceMD),
           _settingHeading(
@@ -1083,7 +1122,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _pendingProfile = 'custom';
               _pendingTheme   = 'custom';
             }),
-            onNarrate: (c) => _narrate(_t(_colorName(c))),
+            onNarrate: (c) => _narrate(
+              _settingValue('Background Colour', _t(_colorName(c))),
+            ),
           ),
 
           // ── Contrast warning — live, non-blocking ─────────────────────────
@@ -1314,7 +1355,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             value: value,
             onChanged: (enabled) {
               onChanged(enabled);
-              unawaited(_narrate(_t(enabled ? 'On' : 'Off')));
+              unawaited(
+                _narrate(_settingValue(label, _t(enabled ? 'On' : 'Off'))),
+              );
             },
           ),
         ],
