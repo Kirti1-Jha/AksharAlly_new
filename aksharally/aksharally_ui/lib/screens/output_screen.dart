@@ -1049,33 +1049,58 @@ class _OutputScreenState extends State<OutputScreen> {
     );
   }
 
+  
   Widget _playbackSpeedSelector() {
     String labelFor(double speed) =>
         '${speed.toStringAsFixed(speed == speed.roundToDouble() ? 1 : 2)}x';
 
-    return InputDecorator(
-      decoration: InputDecoration(
-        labelText: _t('Playback speed'),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppTheme.radiusMD),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(
+            left: 20,
+            bottom: 8,
+          ),
+          child: Text(
+            _t('Playback speed'),
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<double>(
-          value: _playbackSpeed,
-          isExpanded: true,
-          onChanged: (speed) {
-            if (speed != null) _setPlaybackSpeed(speed);
-          },
-          items: [
-            for (final speed in TTSService.playbackSpeeds)
-              DropdownMenuItem(value: speed, child: Text(labelFor(speed))),
-          ],
+        InputDecorator(
+          decoration: InputDecoration(
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(AppTheme.radiusMD),
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 4,
+            ),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<double>(
+              value: _playbackSpeed,
+              isExpanded: true,
+              onChanged: (speed) {
+                if (speed != null) _setPlaybackSpeed(speed);
+              },
+              items: [
+                for (final speed in TTSService.playbackSpeeds)
+                  DropdownMenuItem(
+                    value: speed,
+                    child: Text(labelFor(speed)),
+                  ),
+              ],
+            ),
+          ),
         ),
-      ),
+      ],
     );
   }
+
 
   // ── empty state — no content was provided to this screen ─────────────────
   Widget _emptyState() {
