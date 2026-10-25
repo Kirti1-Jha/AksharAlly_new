@@ -273,7 +273,6 @@ class AppLocalizations {
         'मोनोस्पेस · सफ़ेद · बड़ा और दूर-दूर पाठ',
     'OpenDyslexic · Light Blue · Very large text':
         'ओपनडिस्लेक्सिक · हल्का नीला · बहुत बड़ा पाठ',
-    'pixels': 'पिक्सेल',
     'Selected color': 'चुना हुआ रंग',
     'Hindi': 'हिंदी',
     'Marathi': 'मराठी',
