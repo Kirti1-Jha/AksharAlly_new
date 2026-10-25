@@ -430,6 +430,7 @@ class _OutputScreenState extends State<OutputScreen> {
         'Custom';
     return [
       _t(_cap(_selectedProfile)),
+      _t('${_cap(_selectedProfile)} profile description'),
       '${_t('Font')}: ${_t(AccessibilitySettings.fontFamily)}',
       '${_t('Size')}: ${AccessibilitySettings.fontSize.toStringAsFixed(0)}',
       '${_t('Letter')}: ${AccessibilitySettings.letterSpacing.toStringAsFixed(1)}',
@@ -921,6 +922,20 @@ class _OutputScreenState extends State<OutputScreen> {
             chip('customize', icon: Icons.tune),
           ],
         ),
+        if (!_isCustomize) ...[
+          const SizedBox(height: 4),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Text(
+              _t('${_cap(_selectedProfile)} profile description'),
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: UIAccessibility.mutedTextColor,
+                fontSize: 11,
+              ),
+            ),
+          ),
+        ],
       ],
     );
   }

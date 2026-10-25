@@ -81,6 +81,10 @@ class AppLocalizations {
         'Choose the language used for app menus and messages.',
     'Reading History': 'Review and manage your saved readings.',
     'Account': 'Manage your current AksharAlly session.',
+    'Customize Reading Experience':
+        'Adjust fonts, spacing, colours, and accessibility features for a more comfortable reading experience.',
+    'Live Preview':
+        'Preview your current accessibility settings before applying them.',
   };
 
   static const Map<String, String> _hindiExplanations = {
@@ -123,6 +127,10 @@ class AppLocalizations {
         'ऐप के मेनू और संदेशों की भाषा चुनें।',
     'Reading History': 'सहेजी गई रीडिंग देखें और प्रबंधित करें।',
     'Account': 'अपने मौजूदा AksharAlly सत्र का प्रबंधन करें।',
+    'Customize Reading Experience':
+        'आरामदायक पढ़ने के लिए फ़ॉन्ट, दूरी, रंग और सुलभता सुविधाएँ बदलें।',
+    'Live Preview':
+        'लागू करने से पहले अपनी मौजूदा सुलभता सेटिंग का पूर्वावलोकन करें।',
   };
 
   static const Map<String, String> _hindi = {
@@ -349,6 +357,18 @@ class AppLocalizations {
     'Mild': 'हल्का',
     'Moderate': 'मध्यम',
     'Severe': 'गंभीर',
+    'Mild profile description':
+        'आरामदायक शुरुआत के लिए हल्की दूरी और क्रीम पृष्ठभूमि।',
+    'Moderate profile description':
+        'आसान पढ़ने के लिए बड़ा पाठ, अधिक दूरी और हल्की पीली पृष्ठभूमि।',
+    'Severe profile description':
+        'अधिक सहायता के लिए बहुत बड़ा पाठ, अधिक दूरी और उच्च-कंट्रास्ट सफ़ेद पृष्ठभूमि।',
+    'Customize Reading Experience': 'पढ़ने का अनुभव अपने अनुसार बदलें',
+    'English Reading Fonts': 'अंग्रेज़ी पढ़ने के फ़ॉन्ट',
+    'Hindi & Marathi Fonts': 'हिंदी और मराठी फ़ॉन्ट',
+    'Reading Test Preview': 'पढ़ने के नमूने का पूर्वावलोकन',
+    'pixels': 'पिक्सेल',
+    'times': 'गुना',
     'Customize': 'अपने अनुसार बदलें',
     'Custom': 'कस्टम',
     'reading profile': 'रीडिंग प्रोफ़ाइल',
